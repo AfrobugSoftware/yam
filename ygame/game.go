@@ -10,19 +10,21 @@ import (
 )
 
 type Game struct {
-	Actors     []Actor
-	DeadActors []Actor
-	Running    bool
-	ClearColor [4]uint8
+	Actors        []Actor
+	DeadActors    []Actor
+	SpawnedActors []Actor
+	Running       bool
 	//input state
 	KeyState []uint8
 	MouseX   float32
 	MouseY   float32
 	Renderer *yrender.Renderer
 
-	Ticks   uint64
-	logFile *os.File
-	Log     *slog.Logger
+	Ticks      uint64
+	NeedsReset bool
+	DoReset    func()
+	logFile    *os.File
+	Log        *slog.Logger
 }
 
 var gGame *Game
@@ -39,13 +41,19 @@ func NewGame(title string, width, height int32) (*Game, error) {
 	handler := slog.NewJSONHandler(file, nil)
 	logger := slog.New(handler)
 	gGame = &Game{
-		Renderer:   r,
-		logFile:    file,
-		Log:        logger,
-		ClearColor: [4]uint8{255, 255, 255, 255},
-		Ticks:      sdl.GetTicks64(),
+		Renderer: r,
+		logFile:  file,
+		Log:      logger,
+		Ticks:    sdl.GetTicks64(),
 	}
 	return gGame, nil
+}
+func (g *Game) AddActor(a Actor) {
+	g.Actors = append(g.Actors, a)
+}
+
+func (g *Game) AddSpawnedActor(a Actor) {
+	g.Actors = append(g.SpawnedActors, a)
 }
 
 func GetGame() *Game {
@@ -53,8 +61,14 @@ func GetGame() *Game {
 }
 
 func (g *Game) Update(dt float64) {
-	for _, a := range g.Actors {
-		a.Update(dt)
+	for i := range g.Actors {
+		g.Actors[i].Update(dt)
+	}
+	if g.NeedsReset {
+		if g.DoReset != nil {
+			g.DoReset()
+			g.NeedsReset = false
+		}
 	}
 }
 
@@ -69,35 +83,32 @@ func (g *Game) ProcessInput() {
 			if state[sdl.SCANCODE_ESCAPE] != 0 {
 				g.Running = false
 			}
+			if g.KeyState == nil {
+				g.KeyState = make([]uint8, len(state))
+			}
+			copy(g.KeyState, state)
 		}
-		g.KeyState = make([]uint8, 0, len(state))
-		copy(g.KeyState, state)
+	}
+	for i := range g.Actors {
+		g.Actors[i].ProcessInput()
 	}
 }
 
 func (g *Game) Draw() {
-	g.Renderer.Clear()
 	//rest of the drawing goes here
-	for _, a := range g.Actors {
-		a.Draw()
+	g.Renderer.BeginRendering()
+	for i := range g.Actors {
+		g.Actors[i].Draw(g.Renderer.Renderer)
 	}
-	g.Renderer.Swap()
+	g.Renderer.EndRendering()
 }
 
 func (g *Game) Run() {
 	defer g.Quit()
 	var dt float64
 	g.Running = true
-	g.Renderer.ClearBackgroundColor(
-		g.ClearColor[0],
-		g.ClearColor[1],
-		g.ClearColor[2],
-		g.ClearColor[3],
-	)
 	for g.Running {
-		//wait for 16ms to pass
-		for int64(g.Ticks-sdl.GetTicks64()) <= 0 {
-		}
+		//how do I wait for 16ms to pass ??
 
 		dt = float64(sdl.GetTicks64()-g.Ticks) / 1000.0
 		g.Ticks = sdl.GetTicks64()
@@ -107,7 +118,6 @@ func (g *Game) Run() {
 		g.ProcessInput()
 		g.Update(dt)
 		g.Draw()
-
 	}
 }
 

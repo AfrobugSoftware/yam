@@ -1,8 +1,7 @@
 package main
 
 import (
-	"log"
-	"yam/ygame"
+	yam "yam/tests"
 )
 
 const (
@@ -11,9 +10,5 @@ const (
 )
 
 func main() {
-	game, err := ygame.NewGame("a game", width, height)
-	if err != nil {
-		log.Fatal(err)
-	}
-	game.Run()
+	yam.NewPingPongGame()
 }

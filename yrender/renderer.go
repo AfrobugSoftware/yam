@@ -5,10 +5,11 @@ import (
 )
 
 type Renderer struct {
-	Window   *sdl.Window
-	Renderer *sdl.Renderer
-	Height   int32
-	Width    int32
+	Window     *sdl.Window
+	Renderer   *sdl.Renderer
+	ClearColor [4]uint8
+	Height     int32
+	Width      int32
 }
 
 func CreateSDLRenderer(title string, width, height int32) (*Renderer, error) {
@@ -25,22 +26,29 @@ func CreateSDLRenderer(title string, width, height int32) (*Renderer, error) {
 		return nil, err
 	}
 	return &Renderer{
-		Window:   window,
-		Renderer: renderer,
-		Width:    width,
-		Height:   height,
+		Window:     window,
+		Renderer:   renderer,
+		ClearColor: [4]uint8{255, 255, 255, 255},
+		Width:      width,
+		Height:     height,
 	}, nil
 }
 
-func (re *Renderer) ClearBackgroundColor(r, g, b, a uint8) {
-	re.Renderer.SetDrawColor(r, g, b, a)
+func (re *Renderer) ClearBackgroundColor() {
+	re.Renderer.SetDrawColor(
+		re.ClearColor[0],
+		re.ClearColor[1],
+		re.ClearColor[2],
+		re.ClearColor[3],
+	)
 }
 
-func (r *Renderer) Clear() {
+func (r *Renderer) BeginRendering() {
+	r.ClearBackgroundColor()
 	r.Renderer.Clear()
 }
 
-func (r *Renderer) Swap() {
+func (r *Renderer) EndRendering() {
 	r.Renderer.Present()
 }
 
