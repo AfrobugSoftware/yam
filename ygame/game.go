@@ -6,6 +6,7 @@ import (
 	"os"
 	"yam/yrender"
 
+	"github.com/veandco/go-sdl2/img"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -15,16 +16,16 @@ type Game struct {
 	SpawnedActors []Actor
 	Running       bool
 	//input state
-	KeyState []uint8
-	MouseX   float32
-	MouseY   float32
-	Renderer *yrender.Renderer
-
-	Ticks      uint64
-	NeedsReset bool
-	DoReset    func()
-	logFile    *os.File
-	Log        *slog.Logger
+	KeyState        []uint8
+	MouseX          float32
+	MouseY          float32
+	Renderer        *yrender.Renderer
+	ResourceManager *ResourceManager
+	Ticks           uint64
+	NeedsReset      bool
+	DoReset         func()
+	logFile         *os.File
+	Log             *slog.Logger
 }
 
 var gGame *Game
@@ -34,6 +35,11 @@ func NewGame(title string, width, height int32) (*Game, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = img.Init(img.INIT_PNG | img.INIT_JPG)
+	if err != nil {
+		return nil, err
+	}
+
 	file, err := os.OpenFile("yam.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatal(err)
@@ -41,10 +47,11 @@ func NewGame(title string, width, height int32) (*Game, error) {
 	handler := slog.NewJSONHandler(file, nil)
 	logger := slog.New(handler)
 	gGame = &Game{
-		Renderer: r,
-		logFile:  file,
-		Log:      logger,
-		Ticks:    sdl.GetTicks64(),
+		Renderer:        r,
+		logFile:         file,
+		Log:             logger,
+		Ticks:           sdl.GetTicks64(),
+		ResourceManager: NewResourceManager(r.Renderer),
 	}
 	return gGame, nil
 }
@@ -64,6 +71,8 @@ func (g *Game) Update(dt float64) {
 	for i := range g.Actors {
 		g.Actors[i].Update(dt)
 	}
+	g.RemoveDeadActors()
+	g.MoveSpawnedActors()
 	if g.NeedsReset {
 		if g.DoReset != nil {
 			g.DoReset()
@@ -118,6 +127,24 @@ func (g *Game) Run() {
 		g.ProcessInput()
 		g.Update(dt)
 		g.Draw()
+
+	}
+}
+
+func (g *Game) MoveSpawnedActors() {
+	g.Actors = append(g.Actors, g.SpawnedActors...)
+	g.SpawnedActors = g.SpawnedActors[:0]
+}
+
+func (g *Game) RemoveDeadActors() {
+	for i := len(g.Actors) - 1; i >= 0; i-- {
+		if g.Actors[i].GetState() == DEAD {
+			if i+1 == len(g.Actors) {
+				g.Actors = g.Actors[:i-1]
+			} else {
+				g.Actors = append(g.Actors[:i], g.Actors[i+1:]...)
+			}
+		}
 	}
 }
 

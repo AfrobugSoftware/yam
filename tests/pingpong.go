@@ -4,7 +4,6 @@ import (
 	"math"
 	"yam/y3d"
 	"yam/ygame"
-	"yam/yrender"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -22,16 +21,16 @@ const (
 )
 
 type Paddle struct {
-	yrender.Sprite
+	ygame.Sprite
 	Controls [2]int
 }
 
 type Wall struct {
-	yrender.Sprite
+	ygame.Sprite
 }
 
 type Ball struct {
-	yrender.Sprite
+	ygame.Sprite
 }
 
 func NewPaddle(pos y3d.Vec3, color [4]uint8, controls [2]int) *Paddle {
@@ -41,6 +40,7 @@ func NewPaddle(pos y3d.Vec3, color [4]uint8, controls [2]int) *Paddle {
 	p.Pos = pos
 	p.Color = color
 	p.Controls = controls
+	p.Components = append(p.Components, ygame.MoveComponent{})
 	return p
 }
 func (p *Paddle) GetType() int {
@@ -72,7 +72,6 @@ func (p *Paddle) Update(dt float64) {
 			}
 		}
 	}
-
 }
 
 func NewWall(pos y3d.Vec3, height int32, color [4]uint8) *Wall {
@@ -100,6 +99,7 @@ func NewBall(pos y3d.Vec3, color [4]uint8) *Ball {
 	b.Width = 25
 	b.Height = 25
 	b.Color = color
+	b.Components = append(b.Components, ygame.MoveComponent{})
 	return b
 }
 
@@ -107,7 +107,8 @@ func (b *Ball) Update(dt float64) {
 	g := ygame.GetGame()
 	b.Sprite.Update(dt)
 	for i := range g.Actors {
-		if g.Actors[i].GetType() == WALL {
+		switch g.Actors[i].GetType() {
+		case WALL:
 			w := g.Actors[i].GetBox()
 			if b.Vel.Y < 0.0 && b.Pos.Y <= w.MaxY && b.Pos.Y >= w.MinY {
 				b.Vel.Y *= -1
@@ -115,7 +116,7 @@ func (b *Ball) Update(dt float64) {
 				b.Pos.Y >= w.MinY && b.Pos.Y <= w.MaxY {
 				b.Vel.Y *= -1
 			}
-		} else if g.Actors[i].GetType() == PADDLE {
+		case PADDLE:
 			p := g.Actors[i].(*Paddle)
 			dist := math.Abs(p.Pos.Y - b.Pos.Y)
 			if dist <= float64(p.Height)/2.0 && b.Vel.X < 0.0 &&
@@ -127,6 +128,7 @@ func (b *Ball) Update(dt float64) {
 			}
 		}
 	}
+
 	if b.Pos.X < 0.0 || b.Pos.X > float64(g.Renderer.Width) {
 		g.NeedsReset = true
 	}
