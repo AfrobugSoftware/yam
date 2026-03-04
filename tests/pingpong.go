@@ -40,7 +40,7 @@ func NewPaddle(pos y3d.Vec3, color [4]uint8, controls [2]int) *Paddle {
 	p.Pos = pos
 	p.Color = color
 	p.Controls = controls
-	p.Components = append(p.Components, ygame.MoveComponent{})
+	p.Components = append(p.Components, &ygame.MoveComponent{})
 	return p
 }
 func (p *Paddle) GetType() int {
@@ -99,7 +99,7 @@ func NewBall(pos y3d.Vec3, color [4]uint8) *Ball {
 	b.Width = 25
 	b.Height = 25
 	b.Color = color
-	b.Components = append(b.Components, ygame.MoveComponent{})
+	b.Components = append(b.Components, &ygame.MoveComponent{})
 	return b
 }
 

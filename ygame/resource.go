@@ -29,7 +29,7 @@ func NewResourceManager(r *sdl.Renderer) *ResourceManager {
 	}
 }
 
-func (r *ResourceManager) GetSurface(name string) (*TextureBundle, error) {
+func (r *ResourceManager) GetTextureBundle(name string) (*TextureBundle, error) {
 	bundle, exists := r.SurfaceResource[name]
 	if !exists {
 		return nil, ErrorNoSuchSurface
@@ -38,7 +38,7 @@ func (r *ResourceManager) GetSurface(name string) (*TextureBundle, error) {
 	return bundle, nil
 }
 
-func (r *ResourceManager) ReturnSurface(name string) error {
+func (r *ResourceManager) ReturnTextureBundle(name string) error {
 	bundle, exists := r.SurfaceResource[name]
 	if !exists {
 		return ErrorNoSuchSurface

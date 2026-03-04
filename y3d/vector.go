@@ -6,6 +6,10 @@ type Vec3 struct {
 	X, Y, Z float64
 }
 
+type IVec3 struct {
+	X, Y, Z int
+}
+
 func Add(lhs, rhs Vec3) Vec3 {
 	return Vec3{
 		X: lhs.X + rhs.X,
@@ -66,4 +70,33 @@ func DistanceSqured(v1, v2 Vec3) float64 {
 	dy := v1.Y - v2.Y
 	dz := v1.Z - v2.Z
 	return dx*dx + dy*dy + dz*dz
+}
+
+func GetForward2D(rad float64) Vec3 {
+	x := math.Cos(rad)
+	y := -math.Sin(rad) //sdl +y is down
+	return Vec3{
+		X: x,
+		Y: y,
+		Z: 0,
+	}
+}
+
+func GetAngle2D(v Vec3) float64 {
+	return math.Atan2(-v.Y, v.X)
+}
+
+func Dot(v, q Vec3) float64 {
+	return v.X*q.X + v.Y*q.Y + v.Z*q.Z
+}
+
+func Cross(v, q Vec3) Vec3 {
+	x := v.Y*q.Z - v.Z*q.Y
+	y := v.Z*q.X - v.X*q.Z
+	z := v.X*q.Y - v.Y*q.X
+	return Vec3{
+		X: x,
+		Y: y,
+		Z: z,
+	}
 }

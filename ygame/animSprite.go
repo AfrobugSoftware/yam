@@ -16,8 +16,24 @@ type AnimSprite struct {
 	FrameWidth  int32
 }
 
+func NewAnimSprite(fps float64, numFrames int, frameWidth, frameHeight int32) *AnimSprite {
+	return &AnimSprite{
+		FPS:         fps,
+		NumFrames:   numFrames,
+		FrameWidth:  frameWidth,
+		FrameHeight: frameHeight,
+	}
+}
+
 func (an *AnimSprite) SelectSheet(indx int) {
 	an.Frames = an.Texture.Surfaces[indx]
+}
+
+func (an *AnimSprite) SwitchAnimation(indx int, numFrame int, frameWidth, frameHeight int32) {
+	an.Frames = an.Texture.Surfaces[indx]
+	an.NumFrames = numFrame
+	an.FrameHeight = frameHeight
+	an.FrameWidth = frameWidth
 }
 
 func (an *AnimSprite) Update(dt float64) {
@@ -36,8 +52,8 @@ func (s *AnimSprite) Draw(renderer *sdl.Renderer) {
 		H: s.FrameHeight,
 	}
 	dstRect := &sdl.Rect{
-		X: int32(s.Pos.X) - int32(s.FrameWidth/2),
-		Y: int32(s.Pos.Y) - int32(s.FrameHeight/2),
+		X: (int32(s.Pos.X) - int32(s.FrameWidth/2)),
+		Y: (int32(s.Pos.Y) - int32(s.FrameHeight/2)),
 		W: s.FrameWidth,
 		H: s.FrameHeight,
 	}

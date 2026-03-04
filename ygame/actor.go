@@ -22,8 +22,10 @@ type Actor interface {
 	GetBox() y3d.AABB
 	GetType() int
 	GetState() int
+	GetRect() sdl.Rect
 }
 
 type Component interface {
 	UpdateComponent(dt float64, s *Sprite)
+	ProcessInput(keys []uint8)
 }

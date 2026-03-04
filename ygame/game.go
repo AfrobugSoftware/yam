@@ -14,6 +14,7 @@ type Game struct {
 	Actors        []Actor
 	DeadActors    []Actor
 	SpawnedActors []Actor
+	Level         *TileMap
 	Running       bool
 	//input state
 	KeyState        []uint8
@@ -103,9 +104,16 @@ func (g *Game) ProcessInput() {
 	}
 }
 
+func (g *Game) AddLevel(t *TileMap) {
+	g.Level = t
+}
+
 func (g *Game) Draw() {
 	//rest of the drawing goes here
 	g.Renderer.BeginRendering()
+	if g.Level != nil {
+		g.Level.Draw(g.Renderer.Renderer)
+	}
 	for i := range g.Actors {
 		g.Actors[i].Draw(g.Renderer.Renderer)
 	}

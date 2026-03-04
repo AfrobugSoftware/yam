@@ -19,6 +19,7 @@ type Sprite struct {
 	Texture       *TextureBundle
 	TexIndx       int //what texture in the bundle
 	Components    []Component
+	StateMachine  *StateMachine
 }
 
 const (
@@ -30,7 +31,12 @@ func (s *Sprite) GetType() int {
 }
 
 func (s *Sprite) ProcessInput() {
-
+	if s.State == ACTIVE {
+		g := GetGame()
+		for _, c := range s.Components {
+			c.ProcessInput(g.KeyState)
+		}
+	}
 }
 
 func (s *Sprite) GenerateAABB() {
@@ -54,7 +60,14 @@ func (s *Sprite) Update(dt float64) {
 	for _, comp := range s.Components {
 		comp.UpdateComponent(dt, s)
 	}
+	if s.StateMachine != nil {
+		s.StateMachine.Update(dt)
+	}
 	s.GenerateAABB()
+}
+
+func (s *Sprite) GetForward() y3d.Vec3 {
+	return y3d.GetForward2D(s.Angle)
 }
 
 func (s *Sprite) Draw(sr *sdl.Renderer) {
@@ -75,5 +88,14 @@ func (s *Sprite) Draw(sr *sdl.Renderer) {
 			s.Color[3],
 		)
 		sr.FillRect(rect)
+	}
+}
+
+func (s *Sprite) GetRect() sdl.Rect {
+	return sdl.Rect{
+		X: int32(s.Pos.X) - int32(s.Width/2),
+		Y: int32(s.Pos.Y) - int32(s.Height/2),
+		W: s.Width,
+		H: s.Height,
 	}
 }
