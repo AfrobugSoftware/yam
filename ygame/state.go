@@ -43,8 +43,7 @@ func (s *StateMachine) ChangeState(state int) {
 		return
 	}
 	save := s.PrevState
-	s.PrevState = s.CurState
-	s.CurState = state
+	s.PrevState, s.CurState = s.CurState, state
 	err = s.OnEnter[s.PrevState][s.CurState](s.Owner)
 	if err != nil {
 		s.CurState = s.PrevState
