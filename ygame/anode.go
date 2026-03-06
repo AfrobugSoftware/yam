@@ -7,8 +7,8 @@ import (
 
 type ANode struct {
 	Pos        y3d.Vec3
-	GlobalGoal float64
-	LocalGoal  float64
+	GlobalGoal float64 //path cost + huristic
+	PathCost   float64 //path cost
 	IsObstacle bool
 	IsVisited  bool
 	Parent     *ANode
@@ -37,17 +37,26 @@ func SolveAStar(graph []ANode, start *ANode, end *ANode) {
 	queue := ANodeQueue{}
 	start.GlobalGoal = y3d.Distance(end.Pos, start.Pos)
 	queue = append(queue, start)
-	for len(queue) > 0 {
+search:
+	for len(queue) > 0 && start != end {
 		queue.Sort()
 		f := queue[0]
+		if f.IsVisited {
+			queue = queue[1:]
+			continue search
+		}
 		if f.Neighbours != nil && !f.IsObstacle {
-			for _, r := range f.Neighbours {
-				dist := y3d.Distance(r.Pos, f.Pos) + f.LocalGoal
-				if dist < r.LocalGoal {
-					r.GlobalGoal = y3d.Distance(end.Pos, r.Pos) + dist
-					r.LocalGoal = dist
-					r.Parent = f
-					queue = append(queue, r)
+		nloop:
+			for _, n := range f.Neighbours {
+				if n.IsVisited || n.IsObstacle {
+					continue nloop
+				}
+				dist := y3d.Distance(n.Pos, f.Pos) + f.PathCost
+				if dist < n.PathCost {
+					n.PathCost = dist
+					n.GlobalGoal = y3d.Distance(end.Pos, n.Pos) + n.PathCost
+					n.Parent = f
+					queue = append(queue, n)
 				}
 			}
 		}

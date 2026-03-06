@@ -2,6 +2,7 @@ package yam
 
 import (
 	"errors"
+	"math"
 	"yam/ygame"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -38,6 +39,15 @@ func EnterRunning(a ygame.Actor) error {
 	if !err {
 		return errors.New("actor not a AnimeSprite")
 	}
+	c, err := as.Components[0].(*ygame.InputComponent)
+	if !err {
+		return errors.New("wrong component type")
+	}
+	if math.Signbit(c.ForwardSpeed) {
+		as.FlipMode = sdl.FLIP_HORIZONTAL
+	} else {
+		as.FlipMode = sdl.FLIP_NONE
+	}
 	as.SelectSheet(Running)
 	as.FPS = FPS
 	as.NumFrames = 8
@@ -61,10 +71,14 @@ func UpdateIdle(a ygame.Actor, dt float64) error {
 		return errors.New("actor not a AnimeSprite")
 	}
 	g := ygame.GetGame()
-	if g.KeyState[sdl.SCANCODE_A] != 0 || g.KeyState[sdl.SCANCODE_D] != 0 {
+	c, err := as.Components[0].(*ygame.InputComponent)
+	if !err {
+		return errors.New("wrong component type")
+	}
+	if math.Abs(c.ForwardSpeed) > 0 {
 		as.StateMachine.ChangeState(Running)
 	}
-	if g.KeyState[sdl.SCANCODE_W] != 0 {
+	if g.KeyState[sdl.SCANCODE_UP] != 0 {
 		as.StateMachine.ChangeState(Jumping)
 	}
 	return nil
@@ -76,10 +90,14 @@ func UpdateRunning(a ygame.Actor, dt float64) error {
 		return errors.New("actor not a AnimeSprite")
 	}
 	g := ygame.GetGame()
-	if g.KeyState[sdl.SCANCODE_S] != 0 {
+	c, err := as.Components[0].(*ygame.InputComponent)
+	if !err {
+		return errors.New("wrong component type")
+	}
+	if c.ForwardSpeed == 0 {
 		as.StateMachine.ChangeState(Idle)
 	}
-	if g.KeyState[sdl.SCANCODE_W] != 0 {
+	if g.KeyState[sdl.SCANCODE_UP] != 0 {
 		as.StateMachine.ChangeState(Jumping)
 	}
 	return nil
@@ -90,10 +108,14 @@ func UpdateJumping(a ygame.Actor, dt float64) error {
 		return errors.New("actor not a AnimeSprite")
 	}
 	g := ygame.GetGame()
-	if g.KeyState[sdl.SCANCODE_D] != 0 {
+	c, err := as.Components[0].(*ygame.InputComponent)
+	if !err {
+		return errors.New("wrong component type")
+	}
+	if c.ForwardSpeed > 0 {
 		as.StateMachine.ChangeState(Running)
 	}
-	if g.KeyState[sdl.SCANCODE_S] != 0 {
+	if g.KeyState[sdl.SCANCODE_DOWN] != 0 {
 		as.StateMachine.ChangeState(Idle)
 	}
 	return nil

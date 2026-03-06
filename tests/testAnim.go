@@ -58,14 +58,16 @@ func NewTestAnim() {
 	an.NumFrames = 10
 
 	an2 := &ygame.AnimSprite{}
-	an2.Components = append(an2.Components, &ygame.InputComponent{
+	inputComponent := &ygame.InputComponent{
 		MaxForwardSpeed:      150,
 		MaxAngularSpeed:      5,
 		ForwardKey:           sdl.SCANCODE_RIGHT,
 		BackwardKey:          sdl.SCANCODE_LEFT,
-		ClockwiseRotationKey: sdl.SCANCODE_UP,
-		CounterClockwiseKey:  sdl.SCANCODE_DOWN,
-	})
+		ClockwiseRotationKey: -1,
+		CounterClockwiseKey:  -1,
+	}
+	inputComponent.Owner = an2
+	an2.Components = append(an2.Components, inputComponent)
 	an2.StateMachine = &ygame.StateMachine{
 		PrevState: 0,
 		CurState:  0,

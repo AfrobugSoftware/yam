@@ -57,5 +57,5 @@ func (s *AnimSprite) Draw(renderer *sdl.Renderer) {
 		W: s.FrameWidth,
 		H: s.FrameHeight,
 	}
-	renderer.CopyEx(s.Frames, srcRect, dstRect, -yutil.ToDegree(s.Angle), nil, sdl.FLIP_NONE)
+	renderer.CopyEx(s.Frames, srcRect, dstRect, -yutil.ToDegree(s.Angle), nil, s.FlipMode)
 }

@@ -5,6 +5,7 @@ import "yam/y3d"
 type MoveComponent struct {
 	ForwardSpeed float64
 	AngularSpeed float64
+	Owner        Actor
 }
 
 func (m *MoveComponent) UpdateComponent(dt float64, s *Sprite) {

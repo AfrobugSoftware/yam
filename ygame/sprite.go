@@ -20,6 +20,7 @@ type Sprite struct {
 	TexIndx       int //what texture in the bundle
 	Components    []Component
 	StateMachine  *StateMachine
+	FlipMode      sdl.RendererFlip
 }
 
 const (
@@ -79,7 +80,7 @@ func (s *Sprite) Draw(sr *sdl.Renderer) {
 	}
 	if s.Texture != nil && s.TexIndx != -1 {
 		tex := s.Texture.Surfaces[s.TexIndx]
-		sr.CopyEx(tex, nil, rect, -yutil.ToDegree(s.Angle), nil, sdl.FLIP_NONE)
+		sr.CopyEx(tex, nil, rect, -yutil.ToDegree(s.Angle), nil, s.FlipMode)
 	} else {
 		sr.SetDrawColor(
 			s.Color[0],
