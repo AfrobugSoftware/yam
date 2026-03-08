@@ -7,7 +7,7 @@ type Sphere struct {
 	R float64
 }
 
-func IntersectsSphere(a, b Sphere) bool {
+func SphereIntersects(a, b Sphere) bool {
 	d := DistanceSqured(b.C, a.C)
 	if d <= math.Pow(a.R+b.R, 2) {
 		return true

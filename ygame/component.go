@@ -49,3 +49,29 @@ func (i *InputComponent) ProcessInput(keys []uint8) {
 		i.OtherProcess(keys)
 	}
 }
+
+type NavComponent struct {
+	MoveComponent
+	AtPoint int
+	Points  []y3d.Vec3
+}
+
+func (n *NavComponent) TurnTo(to y3d.Vec3, s *Sprite) {
+	dir := y3d.Sub(to, s.Pos)
+	s.Angle = y3d.GetAngle2D(dir)
+}
+
+func (n *NavComponent) UpdateComponent(dt float64, s *Sprite) {
+	if n.Points == nil || n.AtPoint > len(n.Points) {
+		return
+	}
+	diff := y3d.Sub(n.Points[n.AtPoint], s.Pos)
+	if diff.Length() <= 2.0 {
+		n.AtPoint++
+		if n.AtPoint > len(n.Points) {
+			return //reached end of path
+		}
+		n.TurnTo(n.Points[n.AtPoint], s)
+	}
+	n.MoveComponent.UpdateComponent(dt, s)
+}

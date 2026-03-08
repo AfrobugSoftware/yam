@@ -2,96 +2,328 @@ package yecs
 
 import (
 	"errors"
+	"fmt"
+	"reflect"
 	"sort"
+	"sync"
 )
 
 var (
 	ErrorNoComponentInArchType = errors.New("no component in archtype")
 )
 
-type ArchTypeId uint64
+type ArchetypeId uint64
 type ComponentId uint64
 type EntityId uint64
 
-type Type []ComponentId
+var (
+	componentMu       sync.RWMutex
+	componentRegistry = map[reflect.Type]ComponentId{}
+	componentCounter  ComponentId
+)
 
-func (a Type) Len() int {
-	return len((a))
+type Component interface{}
+type System interface {
+	Query() []ComponentId
+	Update(w *World, dt float64, entities []EntityId)
 }
 
-func (a Type) Swap(i, j int) {
-	a[i], a[j] = a[j], a[i]
+func RegisterComponent[T Component]() ComponentId {
+	componentMu.Lock()
+	defer componentMu.Unlock()
+
+	t := reflect.TypeOf((*T)(nil)).Elem()
+	if id, ok := componentRegistry[t]; ok {
+		return id
+	}
+	componentCounter++
+	componentRegistry[t] = componentCounter
+	return componentCounter
 }
 
-func (a Type) Less(i, j int) bool {
-	return a[i] < a[j]
+func ComponentIDOf[T Component]() ComponentId {
+	componentMu.RLock()
+	defer componentMu.RUnlock()
+
+	t := reflect.TypeOf((*T)(nil)).Elem()
+	id, ok := componentRegistry[t]
+	if !ok {
+		panic(fmt.Sprintf("component %s not registered", t.Name()))
+	}
+	return id
 }
 
-func (a Type) Sort() {
-	sort.Sort(a)
+type archetypeKey []ComponentId
+
+func newArchetypeKey(ids []ComponentId) archetypeKey {
+	key := make(archetypeKey, len(ids))
+	copy(key, ids)
+	sort.Slice(key, func(i, j int) bool { return key[i] < key[j] })
+	return key
 }
 
-type ArchType struct {
-	Id    ArchTypeId
-	Type  Type
-	Edges map[ComponentId]ArchTypeEdge
+func (k archetypeKey) String() string {
+	return fmt.Sprintf("%v", []ComponentId(k))
 }
 
-type ArchTypeEdge struct {
-	Add    *ArchType
-	Remove *ArchType
+func (k archetypeKey) contains(id ComponentId) bool {
+	for _, c := range k {
+		if c == id {
+			return true
+		}
+	}
+	return false
 }
 
-type Record struct {
-	ArchType ArchType
-	Row      int
+func (k archetypeKey) containsAll(ids []ComponentId) bool {
+	for _, id := range ids {
+		if !k.contains(id) {
+			return false
+		}
+	}
+	return true
 }
 
-// maps an archtype to a column, the integer is the column with the data
-type ArchTypeSet map[ArchTypeId]ComponentId
-type EntityIndex map[EntityId]*Record
-type ComponentIndex map[ComponentId]ArchTypeSet
+type Archetype struct {
+	id         ArchetypeId
+	key        archetypeKey
+	entities   []EntityId
+	components map[ComponentId][]Component // column storage per component
+}
+
+func newArchetype(id ArchetypeId, key archetypeKey) *Archetype {
+	return &Archetype{
+		id:         id,
+		key:        key,
+		entities:   []EntityId{},
+		components: make(map[ComponentId][]Component),
+	}
+}
+
+func (a *Archetype) addEntity(entity EntityId, comps map[ComponentId]Component) int {
+	row := len(a.entities)
+	a.entities = append(a.entities, entity)
+	for cid, comp := range comps {
+		a.components[cid] = append(a.components[cid], comp)
+	}
+	return row
+}
+
+func (a *Archetype) removeEntity(row int) (swappedEntity EntityId, wasSwapped bool) {
+	last := len(a.entities) - 1
+
+	if row != last {
+		// Swap with last
+		a.entities[row] = a.entities[last]
+		for cid := range a.components {
+			a.components[cid][row] = a.components[cid][last]
+		}
+		swappedEntity = a.entities[row]
+		wasSwapped = true
+	}
+
+	// Truncate
+	a.entities = a.entities[:last]
+	for cid := range a.components {
+		a.components[cid] = a.components[cid][:last]
+	}
+	return
+}
+
+func (a *Archetype) getComponent(row int, cid ComponentId) Component {
+	col, ok := a.components[cid]
+	if !ok || row >= len(col) {
+		return nil
+	}
+	return col[row]
+}
+
+func (a *Archetype) setComponent(row int, cid ComponentId, comp Component) {
+	a.components[cid][row] = comp
+}
+
+type entityRecord struct {
+	archetype *Archetype
+	row       int
+}
 
 type World struct {
-	EntIndx   EntityIndex
-	CompIndex ComponentIndex
-	Storage   map[ComponentId]any //holds storage for the components as *Column[T] types
+	mu sync.RWMutex
+
+	nextEntity    EntityId
+	nextArchetype ArchetypeId
+
+	entities   map[EntityId]*entityRecord
+	archetypes map[string]*Archetype // keyed by archetypeKey.String()
+	systems    []System
 }
 
-type Column[T any] struct {
-	slice map[ArchTypeId][]T
-}
-
-func HasComponent(w *World, ent EntityId, comp ComponentId) bool {
-	archType := w.EntIndx[ent].ArchType
-	archTypeSet := w.CompIndex[comp]
-	_, exists := archTypeSet[archType.Id]
-	return exists
-}
-
-func GetComponent[T any](w *World, ent EntityId, comp ComponentId) (*T, error) {
-	record := w.EntIndx[ent]
-	archType := record.ArchType
-	archTypeSet := w.CompIndex[comp]
-	colId, exists := archTypeSet[archType.Id]
-	if !exists {
-		return nil, ErrorNoComponentInArchType
+func NewWorld() *World {
+	return &World{
+		entities:   make(map[EntityId]*entityRecord),
+		archetypes: make(map[string]*Archetype),
 	}
-	col := w.Storage[colId].(*Column[T])
-	return &col.slice[archType.Id][record.Row], nil
 }
 
-func MoveEntity[T any](w *World, dst, src *ArchType, ent EntityId, comp ComponentId) *T {
-	return nil
+func (w *World) NewEntity() EntityId {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	w.nextEntity++
+	id := w.nextEntity
+	w.entities[id] = nil
+	return id
 }
 
-func AddComponent[T any](w *World, ent EntityId, comp ComponentId) *T {
-	record := w.EntIndx[ent]
-	archType := record.ArchType
-	nextArch := archType.Edges[comp].Add
-	return MoveEntity[T](w, nextArch, &archType, ent, comp)
+func (w *World) DestroyEntity(entity EntityId) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	record, ok := w.entities[entity]
+	if !ok || record == nil {
+		return
+	}
+
+	swapped, wasSwapped := record.archetype.removeEntity(record.row)
+	if wasSwapped {
+		// Update the swapped entity's row
+		w.entities[swapped].row = record.row
+	}
+	delete(w.entities, entity)
 }
 
-func RemoveComponent(w *World, ent EntityId, comp ComponentId) {
+func (w *World) gatherComponents(record *entityRecord) map[ComponentId]Component {
+	comps := make(map[ComponentId]Component)
+	for cid, col := range record.archetype.components {
+		comps[cid] = col[record.row]
+	}
+	return comps
+}
 
+func (w *World) getOrCreateArchetype(key archetypeKey) *Archetype {
+	k := key.String()
+	if arch, ok := w.archetypes[k]; ok {
+		return arch
+	}
+	w.nextArchetype++
+	arch := newArchetype(w.nextArchetype, key)
+	w.archetypes[k] = arch
+	return arch
+}
+
+func (w *World) AddComponent(entity EntityId, cid ComponentId, comp Component) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	record := w.entities[entity]
+	var currentComps map[ComponentId]Component
+	var newKey archetypeKey
+
+	if record == nil {
+		// Entity has no archetype yet
+		currentComps = map[ComponentId]Component{cid: comp}
+		newKey = newArchetypeKey([]ComponentId{cid})
+	} else {
+		// Gather existing components
+		currentComps = w.gatherComponents(record)
+		currentComps[cid] = comp
+
+		ids := make([]ComponentId, 0, len(currentComps))
+		for id := range currentComps {
+			ids = append(ids, id)
+		}
+		newKey = newArchetypeKey(ids)
+
+		// Remove from old archetype
+		swapped, wasSwapped := record.archetype.removeEntity(record.row)
+		if wasSwapped {
+			w.entities[swapped].row = record.row
+		}
+	}
+
+	// Find or create target archetype
+	arch := w.getOrCreateArchetype(newKey)
+	row := arch.addEntity(entity, currentComps)
+	w.entities[entity] = &entityRecord{archetype: arch, row: row}
+}
+
+func (w *World) RemoveComponent(entity EntityId, cid ComponentId) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	record := w.entities[entity]
+	if record == nil {
+		return
+	}
+
+	currentComps := w.gatherComponents(record)
+	delete(currentComps, cid)
+
+	// Remove from old archetype
+	swapped, wasSwapped := record.archetype.removeEntity(record.row)
+	if wasSwapped {
+		w.entities[swapped].row = record.row
+	}
+
+	if len(currentComps) == 0 {
+		w.entities[entity] = nil
+		return
+	}
+
+	ids := make([]ComponentId, 0, len(currentComps))
+	for id := range currentComps {
+		ids = append(ids, id)
+	}
+
+	arch := w.getOrCreateArchetype(newArchetypeKey(ids))
+	row := arch.addEntity(entity, currentComps)
+	w.entities[entity] = &entityRecord{archetype: arch, row: row}
+}
+
+func (w *World) GetComponent(entity EntityId, cid ComponentId) Component {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	record := w.entities[entity]
+	if record == nil {
+		return nil
+	}
+	return record.archetype.getComponent(record.row, cid)
+}
+
+func (w *World) SetComponent(entity EntityId, cid ComponentId, comp Component) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	record := w.entities[entity]
+	if record == nil {
+		return
+	}
+	//bug here, if it does not have to component, it would create one
+	record.archetype.setComponent(record.row, cid, comp)
+}
+
+// returns all entities that has at least the given component ids
+func (w *World) Query(cids []ComponentId) []EntityId {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	var result []EntityId
+	for _, arch := range w.archetypes {
+		if arch.key.containsAll(cids) {
+			result = append(result, arch.entities...)
+		}
+	}
+	return result
+}
+
+func (w *World) AddSystem(s System) {
+	w.systems = append(w.systems, s)
+}
+
+func (w *World) Update(dt float64) {
+	for _, s := range w.systems {
+		entities := w.Query(s.Query())
+		s.Update(w, dt, entities)
+	}
 }

@@ -46,7 +46,7 @@ func (v Vec3) Length() float64 {
 	return math.Sqrt(v.X*v.X + v.Y*v.Y + v.Z*v.Z)
 }
 
-func (v Vec3) Normalize() Vec3 {
+func Normalize(v Vec3) Vec3 {
 	m := v.Length()
 	if m > 0 {
 		return Vec3{
