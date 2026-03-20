@@ -1,9 +1,7 @@
 package main
 
-import (
-	yam "yam/tests"
-)
+import "fmt"
 
 func main() {
-	yam.NewTestAnim()
+	fmt.Println("yam yum!")
 }

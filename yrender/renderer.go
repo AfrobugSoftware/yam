@@ -1,6 +1,8 @@
 package yrender
 
 import (
+	"yam/ygl"
+
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -10,6 +12,7 @@ type Renderer struct {
 	ClearColor [4]uint8
 	Height     int32
 	Width      int32
+	Gl3        *ygl.Gl3
 }
 
 func CreateSDLRenderer(title string, width, height int32) (*Renderer, error) {
@@ -25,6 +28,7 @@ func CreateSDLRenderer(title string, width, height int32) (*Renderer, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &Renderer{
 		Window:     window,
 		Renderer:   renderer,

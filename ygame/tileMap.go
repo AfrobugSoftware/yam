@@ -1,7 +1,9 @@
 package ygame
 
+import "yam/yecs"
+
 type TileMap struct {
-	Level       []rune
+	Level       []yecs.EntityId
 	LevelWidth  int
 	LevelHeight int
 	TileWidth   int
@@ -14,8 +16,10 @@ const (
 )
 
 func NewTileMap(level string, width, height, tileWidth, tileHeight int, camara *Camara) *TileMap {
+	//how to laod the map
+
 	return &TileMap{
-		Level:       []rune(level),
+		Level:       []yecs.EntityId{},
 		LevelWidth:  width,
 		LevelHeight: height,
 		TileWidth:   tileWidth,
@@ -24,7 +28,7 @@ func NewTileMap(level string, width, height, tileWidth, tileHeight int, camara *
 	}
 }
 
-func (t *TileMap) GetTile(x, y int) rune {
+func (t *TileMap) GetTile(x, y int) yecs.EntityId {
 	if x >= 0 && x < t.LevelWidth && y >= 0 && y < t.LevelHeight {
 		return t.Level[y*t.LevelWidth+x]
 	} else {
@@ -32,7 +36,7 @@ func (t *TileMap) GetTile(x, y int) rune {
 	}
 }
 
-func (t *TileMap) SetTile(x, y int, r rune) {
+func (t *TileMap) SetTile(x, y int, r yecs.EntityId) {
 	if x >= 0 && x < t.LevelWidth && y >= 0 && y < t.LevelHeight {
 		t.Level[y*t.LevelWidth+x] = r
 	}

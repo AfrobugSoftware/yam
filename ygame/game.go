@@ -4,6 +4,8 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"yam/yecs"
+	"yam/ygl"
 	"yam/yrender"
 
 	"github.com/veandco/go-sdl2/img"
@@ -11,22 +13,15 @@ import (
 )
 
 type Game struct {
-	Actors        []Actor
-	DeadActors    []Actor
-	SpawnedActors []Actor
-	Level         *TileMap
-	Running       bool
-	//input state
-	KeyState        []uint8
-	MouseX          float32
-	MouseY          float32
-	Renderer        *yrender.Renderer
-	ResourceManager *ResourceManager
-	Ticks           uint64
-	NeedsReset      bool
-	DoReset         func()
-	logFile         *os.File
-	Log             *slog.Logger
+	World      *yecs.World
+	Running    bool
+	Renderer   *yrender.Renderer
+	Ticks      uint64
+	NeedsReset bool
+	DoReset    func()
+	logFile    *os.File
+	Log        *slog.Logger
+	GL         *ygl.Gl3
 }
 
 var gGame *Game
@@ -47,21 +42,14 @@ func NewGame(title string, width, height int32) (*Game, error) {
 	}
 	handler := slog.NewJSONHandler(file, nil)
 	logger := slog.New(handler)
+
 	gGame = &Game{
-		Renderer:        r,
-		logFile:         file,
-		Log:             logger,
-		Ticks:           sdl.GetTicks64(),
-		ResourceManager: NewResourceManager(r.Renderer),
+		Renderer: r,
+		logFile:  file,
+		Log:      logger,
+		Ticks:    sdl.GetTicks64(),
 	}
 	return gGame, nil
-}
-func (g *Game) AddActor(a Actor) {
-	g.Actors = append(g.Actors, a)
-}
-
-func (g *Game) AddSpawnedActor(a Actor) {
-	g.Actors = append(g.SpawnedActors, a)
 }
 
 func GetGame() *Game {
@@ -69,17 +57,7 @@ func GetGame() *Game {
 }
 
 func (g *Game) Update(dt float64) {
-	for i := range g.Actors {
-		g.Actors[i].Update(dt)
-	}
-	g.RemoveDeadActors()
-	g.MoveSpawnedActors()
-	if g.NeedsReset {
-		if g.DoReset != nil {
-			g.DoReset()
-			g.NeedsReset = false
-		}
-	}
+	g.World.Update(dt)
 }
 
 func (g *Game) ProcessInput() {
@@ -93,27 +71,14 @@ func (g *Game) ProcessInput() {
 			if state[sdl.SCANCODE_ESCAPE] != 0 {
 				g.Running = false
 			}
-			if g.KeyState == nil {
-				g.KeyState = make([]uint8, len(state))
-			}
-			copy(g.KeyState, state)
+			g.World.ProcessInput(state)
 		}
 	}
-	for i := range g.Actors {
-		g.Actors[i].ProcessInput()
-	}
-}
-
-func (g *Game) AddLevel(t *TileMap) {
-	g.Level = t
 }
 
 func (g *Game) Draw() {
-	//rest of the drawing goes here
 	g.Renderer.BeginRendering()
-	for i := range g.Actors {
-		g.Actors[i].Draw(g.Renderer.Renderer)
-	}
+
 	g.Renderer.EndRendering()
 }
 
@@ -133,23 +98,6 @@ func (g *Game) Run() {
 		g.Update(dt)
 		g.Draw()
 
-	}
-}
-
-func (g *Game) MoveSpawnedActors() {
-	g.Actors = append(g.Actors, g.SpawnedActors...)
-	g.SpawnedActors = g.SpawnedActors[:0]
-}
-
-func (g *Game) RemoveDeadActors() {
-	for i := len(g.Actors) - 1; i >= 0; i-- {
-		if g.Actors[i].GetState() == DEAD {
-			if i+1 == len(g.Actors) {
-				g.Actors = g.Actors[:i-1]
-			} else {
-				g.Actors = append(g.Actors[:i], g.Actors[i+1:]...)
-			}
-		}
 	}
 }
 

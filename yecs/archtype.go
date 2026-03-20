@@ -121,8 +121,6 @@ func (a *Archetype) removeEntity(row int) (swappedEntity EntityId, wasSwapped bo
 		swappedEntity = a.entities[row]
 		wasSwapped = true
 	}
-
-	// Truncate
 	a.entities = a.entities[:last]
 	for cid := range a.components {
 		a.components[cid] = a.components[cid][:last]
@@ -294,12 +292,12 @@ func (w *World) GetComponent(entity EntityId, cid ComponentId) Component {
 func (w *World) SetComponent(entity EntityId, cid ComponentId, comp Component) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-
 	record := w.entities[entity]
 	if record == nil {
 		return
 	}
-	//bug here, if it does not have to component, it would create one
+	//assuming the the component we want to set is in this archetype
+	//possible bug here, if it does not have to component, it would create one
 	record.archetype.setComponent(record.row, cid, comp)
 }
 
@@ -325,5 +323,16 @@ func (w *World) Update(dt float64) {
 	for _, s := range w.systems {
 		entities := w.Query(s.Query())
 		s.Update(w, dt, entities)
+	}
+}
+
+func (w *World) ProcessInput(keyState []uint8) {
+	entities := w.Query([]ComponentId{InputComponent})
+	for _, e := range entities {
+		in := Input{
+			KeyState: []uint8{},
+		}
+		copy(in.KeyState, keyState)
+		w.SetComponent(e, InputComponent, in)
 	}
 }

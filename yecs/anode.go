@@ -1,4 +1,4 @@
-package ygame
+package yecs
 
 import (
 	"math"
@@ -32,20 +32,8 @@ func NewANode(pos y3d.Vec3, isObstacle bool, indx int, neighbours []int) ANode {
 
 type ANodeQueue []*ANode
 
-func (a ANodeQueue) Len() int {
-	return len([]*ANode(a))
-}
-
-func (a ANodeQueue) Swap(i, j int) {
-	a[i], a[j] = a[j], a[i]
-}
-
 func (a ANodeQueue) Sort() {
-	sort.Sort(a)
-}
-
-func (a ANodeQueue) Less(i, j int) bool {
-	return a[i].GlobalGoal < a[j].GlobalGoal
+	sort.Slice(a, func(i, j int) bool { return a[i].GlobalGoal < a[j].GlobalGoal })
 }
 
 func SolveAStar(graph []ANode, start int, end int) []y3d.Vec3 {

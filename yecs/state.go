@@ -1,4 +1,4 @@
-package ygame
+package yecs
 
 import "errors"
 
@@ -10,24 +10,16 @@ var (
 // for example Enter[a][b](s, actor) runs for a an outgoing state for
 // a and incoming state for b
 
-type EnterExitStateFunc func(a Actor) error
-type UpdateStateFunc func(a Actor, dt float64) error
+type EnterExitStateFunc func(a EntityId) error
+type UpdateStateFunc func(a EntityId, dt float64) error
 
 type StateMachine struct {
-	Owner     Actor
+	Owner     EntityId
 	PrevState int
 	CurState  int
 	OnUpdate  []UpdateStateFunc
 	OnEnter   [][]EnterExitStateFunc
 	OnLeave   [][]EnterExitStateFunc
-}
-
-func InvalidState(a Actor, dt float64) error {
-	return ErrorInvalidState
-}
-
-func NilState(a Actor, dt float64) error {
-	return nil
 }
 
 func (s *StateMachine) Update(dt float64) {
