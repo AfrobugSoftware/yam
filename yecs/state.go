@@ -10,11 +10,10 @@ var (
 // for example Enter[a][b](s, actor) runs for a an outgoing state for
 // a and incoming state for b
 
-type EnterExitStateFunc func(a EntityId) error
-type UpdateStateFunc func(a EntityId, dt float64) error
+type EnterExitStateFunc func(w *World, a EntityId) error
+type UpdateStateFunc func(w *World, a EntityId, dt float64) error
 
 type StateMachine struct {
-	Owner     EntityId
 	PrevState int
 	CurState  int
 	OnUpdate  []UpdateStateFunc
@@ -22,23 +21,39 @@ type StateMachine struct {
 	OnLeave   [][]EnterExitStateFunc
 }
 
-func (s *StateMachine) Update(dt float64) {
+func (s *StateMachine) Update(w *World, dt float64, e EntityId) {
 	if s.OnUpdate != nil {
 		f := s.OnUpdate[s.CurState]
-		f(s.Owner, dt)
+		f(w, e, dt)
 	}
 }
 
-func (s *StateMachine) ChangeState(state int) {
-	err := s.OnLeave[s.PrevState][s.CurState](s.Owner)
+func (s *StateMachine) ChangeState(w *World, e EntityId, state int) {
+	err := s.OnLeave[s.PrevState][s.CurState](w, e)
 	if err != nil {
 		return
 	}
 	save := s.PrevState
 	s.PrevState, s.CurState = s.CurState, state
-	err = s.OnEnter[s.PrevState][s.CurState](s.Owner)
+	err = s.OnEnter[s.PrevState][s.CurState](w, e)
 	if err != nil {
 		s.CurState = s.PrevState
 		s.PrevState = save
+	}
+}
+
+type StateSystem struct{}
+
+func (ss StateSystem) Query() []ComponentId {
+	return []ComponentId{StateComponent}
+}
+
+func (ss StateSystem) Update(w *World, dt float64, entities []EntityId) {
+	for _, e := range entities {
+		machine, ok := w.GetComponent(e, StateComponent).(StateMachine)
+		if !ok {
+			continue
+		}
+		machine.Update(w, dt, e)
 	}
 }

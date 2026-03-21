@@ -6,7 +6,6 @@ import (
 	"os"
 	"yam/yecs"
 	"yam/ygl"
-	"yam/yrender"
 
 	"github.com/veandco/go-sdl2/img"
 	"github.com/veandco/go-sdl2/sdl"
@@ -15,22 +14,26 @@ import (
 type Game struct {
 	World      *yecs.World
 	Running    bool
-	Renderer   *yrender.Renderer
 	Ticks      uint64
 	NeedsReset bool
 	DoReset    func()
 	logFile    *os.File
 	Log        *slog.Logger
-	GL         *ygl.Gl3
+	Gl3        *ygl.Gl3
 }
 
 var gGame *Game
 
 func NewGame(title string, width, height int32) (*Game, error) {
-	r, err := yrender.CreateSDLRenderer(title, width, height)
+	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
+		return nil, err
+	}
+	window, err := sdl.CreateWindow(title, sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, width, height,
+		sdl.WINDOW_OPENGL|sdl.WINDOW_ALLOW_HIGHDPI|sdl.WINDOW_SHOWN)
 	if err != nil {
 		return nil, err
 	}
+
 	err = img.Init(img.INIT_PNG | img.INIT_JPG)
 	if err != nil {
 		return nil, err
@@ -43,11 +46,18 @@ func NewGame(title string, width, height int32) (*Game, error) {
 	handler := slog.NewJSONHandler(file, nil)
 	logger := slog.New(handler)
 
+	gl3 := &ygl.Gl3{
+		Window: window,
+	}
+	err = gl3.InitGL()
+	if err != nil {
+		return nil, err
+	}
 	gGame = &Game{
-		Renderer: r,
-		logFile:  file,
-		Log:      logger,
-		Ticks:    sdl.GetTicks64(),
+		logFile: file,
+		Log:     logger,
+		Ticks:   sdl.GetTicks64(),
+		Gl3:     gl3,
 	}
 	return gGame, nil
 }
@@ -77,9 +87,7 @@ func (g *Game) ProcessInput() {
 }
 
 func (g *Game) Draw() {
-	g.Renderer.BeginRendering()
 
-	g.Renderer.EndRendering()
 }
 
 func (g *Game) Run() {
@@ -102,8 +110,8 @@ func (g *Game) Run() {
 }
 
 func (g *Game) Quit() {
-	if g.Renderer != nil {
-		g.Renderer.Close()
+	if g.Gl3 != nil {
+		g.Gl3.ShutDownGL()
 	}
 	if g.logFile != nil {
 		g.logFile.Close()

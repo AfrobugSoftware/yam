@@ -19,3 +19,7 @@ func (trans Transform) GetTransformation() y3d.Mat4 {
 	}
 	return trans.cacheTransform
 }
+
+func (trans Transform) GetForward() y3d.Vec3 {
+	return trans.Orientation.RotateVec3(y3d.UNIT_X)
+}

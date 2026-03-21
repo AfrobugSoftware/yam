@@ -51,7 +51,7 @@ func OBBIntersects(a, b OBB) bool {
 
 	for _, axis := range axes {
 		// Skip near-zero axes (degenerate cross products from parallel edges)
-		if axis.Length() < 1e-10 {
+		if axis.Length() < NearZero {
 			continue
 		}
 

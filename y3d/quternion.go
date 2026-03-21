@@ -5,7 +5,7 @@ import (
 )
 
 // New returns a new quaternion
-func New(w, x, y, z float64) Quaternion {
+func NewQuaternion(w, x, y, z float64) Quaternion {
 	return Quaternion{W: w, X: x, Y: y, Z: z}
 }
 
@@ -48,7 +48,7 @@ func Scalar(w float64) Quaternion {
 	return Quaternion{W: w}
 }
 
-func Sum(qin ...Quaternion) Quaternion {
+func SumQuaternion(qin ...Quaternion) Quaternion {
 	qout := Quaternion{}
 	for _, q := range qin {
 		qout.W += q.W
@@ -59,7 +59,17 @@ func Sum(qin ...Quaternion) Quaternion {
 	return qout
 }
 
-func Prod(qin ...Quaternion) Quaternion {
+func FromAngleAxis(axis Vec3, angle float64) Quaternion {
+	axis = Normalize(axis)
+	s := math.Sin(angle / 2)
+	w := math.Cos(angle / 2)
+	x := axis.X * s
+	y := axis.Y * s
+	z := axis.Z * s
+	return NewQuaternion(w, x, y, z)
+}
+
+func ProdQuaternion(qin ...Quaternion) Quaternion {
 	qout := Quaternion{1, 0, 0, 0}
 	var w, x, y, z float64
 	for _, q := range qin {
@@ -86,14 +96,14 @@ func (qin Quaternion) Inv() Quaternion {
 func (qin Quaternion) RotateVec3(vec Vec3) Vec3 {
 	conj := qin.Conj()
 	aug := Quaternion{0, vec.X, vec.Y, vec.Z}
-	rot := Prod(qin, aug, conj)
+	rot := ProdQuaternion(qin, aug, conj)
 	return Vec3{rot.X, rot.Y, rot.Z}
 }
 
 func Rotate(q Quaternion, vin Vec3) Vec3 {
 	conj := q.Conj()
 	aug := Quaternion{0, vin.X, vin.Y, vin.Z}
-	rot := Prod(q, aug, conj)
+	rot := ProdQuaternion(q, aug, conj)
 	return Vec3{rot.X, rot.Y, rot.Z}
 }
 

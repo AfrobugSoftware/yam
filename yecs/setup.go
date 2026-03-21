@@ -1,0 +1,16 @@
+package yecs
+
+import "yam/y3d"
+
+var (
+	TransformComponent   = RegisterComponent[Transform]()
+	ANodeComponent       = RegisterComponent[ANode]()
+	OBBComponent         = RegisterComponent[y3d.OBB]()
+	ABBComponent         = RegisterComponent[y3d.AABB]()
+	InputComponent       = RegisterComponent[Input]()
+	ControlComponent     = RegisterComponent[Control]()
+	SptiteComponent      = RegisterComponent[Sprite]()
+	RenderStateComponent = RegisterComponent[RenderState]()
+	MoveComponent        = RegisterComponent[Move]()
+	StateComponent       = RegisterComponent[StateMachine]()
+)

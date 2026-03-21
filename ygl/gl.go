@@ -9,8 +9,6 @@ import (
 )
 
 type Gl3 struct {
-	mu sync.Mutex
-
 	Context      sdl.GLContext
 	Window       *sdl.Window
 	ClearColor   sdl.Color
@@ -20,12 +18,14 @@ type Gl3 struct {
 	MajorVersion int
 	Height       int
 	Width        int
-	Buffers      map[string]VertBuffer
-	Programs     map[string]gl.Uint
-	Textures     map[string][]gl.Uint
+
+	mu       sync.Mutex
+	buffers  map[string]VertBuffer
+	programs map[string]gl.Uint
+	textures map[string][]gl.Uint
 }
 
-func InitGL(g *Gl3) error {
+func (g *Gl3) InitGL() error {
 	context, err := g.Window.GLCreateContext()
 	if err != nil {
 		return err
@@ -33,17 +33,11 @@ func InitGL(g *Gl3) error {
 	g.Context = context
 	gl.Init()
 	gl.Viewport(0, 0, gl.Sizei(g.Width), gl.Sizei(g.Height))
-	// OPENGL FLAGS
 	gl.ClearColor(gl.Float(g.ClearColor.R), gl.Float(g.ClearColor.G), gl.Float(g.ClearColor.B), gl.Float(g.ClearColor.A))
-	gl.Enable(gl.DEPTH_TEST)
-	gl.DepthFunc(gl.LESS)
-	gl.Enable(gl.BLEND)
-	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-
 	return nil
 }
 
-func ShutDownGL(g *Gl3) {
+func (g *Gl3) ShutDownGL() {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	sdl.GLDeleteContext(g.Context)
@@ -60,11 +54,14 @@ func (g *Gl3) AddTextures(filePath []string, name string) error {
 		}
 		texs[i] = t
 	}
-	g.Textures[name] = texs
+	g.textures[name] = texs
 	return nil
 }
 
 func (g *Gl3) AddPrograms(name string, filePath []string, types []gl.Enum) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	if len(filePath) != len(types) {
 		return fmt.Errorf("invalid file to types")
 	}
@@ -81,11 +78,14 @@ func (g *Gl3) AddPrograms(name string, filePath []string, types []gl.Enum) error
 	if err != nil {
 		return err
 	}
-	g.Programs[name] = p
+	g.programs[name] = p
 	return nil
 }
 
 func (g *Gl3) AddProgramSource(name, vert, frag string) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	v, err := CreateShader(vert, gl.VERTEX_SHADER)
 	if err != nil {
 		return err
@@ -98,6 +98,6 @@ func (g *Gl3) AddProgramSource(name, vert, frag string) error {
 	if err != nil {
 		return err
 	}
-	g.Programs[name] = p
+	g.programs[name] = p
 	return nil
 }

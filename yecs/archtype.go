@@ -3,6 +3,7 @@ package yecs
 import (
 	"errors"
 	"fmt"
+	"log"
 	"reflect"
 	"sort"
 	"sync"
@@ -20,24 +21,34 @@ var (
 	componentMu       sync.RWMutex
 	componentRegistry = map[reflect.Type]ComponentId{}
 	componentCounter  ComponentId
+
+	storageMu     sync.Mutex
+	storageBuffer = map[ComponentId]any{} //contain all the storage
 )
 
-type Component interface{}
+type Component any
 type System interface {
 	Query() []ComponentId
 	Update(w *World, dt float64, entities []EntityId)
+}
+
+type Storage[T any] struct {
+	Store map[ArchetypeId][]T
 }
 
 func RegisterComponent[T Component]() ComponentId {
 	componentMu.Lock()
 	defer componentMu.Unlock()
 
-	t := reflect.TypeOf((*T)(nil)).Elem()
+	t := reflect.TypeFor[*T]()
 	if id, ok := componentRegistry[t]; ok {
 		return id
 	}
 	componentCounter++
 	componentRegistry[t] = componentCounter
+	storageBuffer[componentCounter] = Storage[T]{
+		Store: make(map[ArchetypeId][]T),
+	}
 	return componentCounter
 }
 
@@ -85,59 +96,151 @@ func (k archetypeKey) containsAll(ids []ComponentId) bool {
 }
 
 type Archetype struct {
-	id         ArchetypeId
-	key        archetypeKey
-	entities   []EntityId
-	components map[ComponentId][]Component // column storage per component
+	id       ArchetypeId
+	key      archetypeKey
+	entities []EntityId
 }
 
 func newArchetype(id ArchetypeId, key archetypeKey) *Archetype {
 	return &Archetype{
-		id:         id,
-		key:        key,
-		entities:   []EntityId{},
-		components: make(map[ComponentId][]Component),
+		id:       id,
+		key:      key,
+		entities: []EntityId{},
 	}
+}
+
+// storage methods
+func appendToStorage[T any](data T, comp ComponentId, a *Archetype) {
+	storageMu.Lock()
+	defer storageMu.Unlock()
+
+	str, ok := storageBuffer[comp]
+	if !ok {
+		storageBuffer[comp] = Storage[T]{
+			Store: make(map[ArchetypeId][]T),
+		}
+		str = storageBuffer[comp]
+	}
+	store := reflect.ValueOf(str)
+	mapVal := store.Field(0)
+	key := reflect.ValueOf(a.id)
+
+	slc := mapVal.MapIndex(key)
+	if !slc.IsValid() {
+		sliceType := mapVal.Type().Elem()
+		slc = reflect.MakeSlice(sliceType, 0, 10)
+	}
+	newSlc := reflect.Append(slc, reflect.ValueOf(data))
+	mapVal.SetMapIndex(key, newSlc)
+}
+
+func removeFromStorage(row, last int, comp ComponentId, a *Archetype) {
+	storageMu.Lock()
+	defer storageMu.Unlock()
+
+	str, ok := storageBuffer[comp]
+	if !ok {
+		return
+	}
+	store := reflect.ValueOf(str)
+	mapVal := store.Field(0)
+	key := reflect.ValueOf(a.id)
+	slc := mapVal.MapIndex(key)
+	if row != last {
+		slc.Index(row).Set(slc.Index(last))
+	}
+	mapVal.SetMapIndex(key, slc.Slice(0, last))
+}
+
+func getStorageLen(comp ComponentId, a *Archetype) int {
+	storageMu.Lock()
+	defer storageMu.Unlock()
+
+	store := reflect.ValueOf(storageBuffer[comp])
+	if store.Kind() != reflect.Struct {
+		panic(fmt.Errorf("invalid type used for component storage"))
+	}
+	slc := store.Field(0).MapIndex(reflect.ValueOf(a.id))
+	return slc.Len()
+}
+
+func getFromStorage(row int, comp ComponentId, a *Archetype) Component {
+	storageMu.Lock()
+	defer storageMu.Unlock()
+
+	store := reflect.ValueOf(storageBuffer[comp])
+	if store.Kind() != reflect.Struct {
+		panic(fmt.Errorf("invalid type used for component storage"))
+	}
+	slc := store.Field(0).MapIndex(reflect.ValueOf(a.id))
+	return slc.Index(row).Interface()
+}
+
+func SetToStorage(row int, data any, comp ComponentId, a *Archetype) {
+	storageMu.Lock()
+	defer storageMu.Unlock()
+	str, ok := storageBuffer[comp]
+	if !ok {
+		log.Printf("no component: %d", comp)
+		return
+	}
+	store := reflect.ValueOf(str)
+	mapVal := store.Field(0)
+	key := reflect.ValueOf(a.id)
+	if store.Kind() != reflect.Struct {
+		panic(fmt.Errorf("invalid type used for component storage"))
+	}
+	slc := store.Field(0).MapIndex(key)
+	slc.Index(row).Set(reflect.ValueOf(data))
+	mapVal.SetMapIndex(key, slc)
+}
+
+func gatherComponentsFromStorage(a *Archetype, row int) map[ComponentId]Component {
+	comps := make(map[ComponentId]Component)
+	for _, cid := range a.key {
+		store := reflect.ValueOf(storageBuffer[cid])
+		if store.Kind() != reflect.Struct {
+			panic(fmt.Errorf("invalid type used for component storage"))
+		}
+		slc := store.Field(0).MapIndex(reflect.ValueOf(a.id))
+		comps[cid] = slc.Index(row).Interface()
+	}
+	return comps
 }
 
 func (a *Archetype) addEntity(entity EntityId, comps map[ComponentId]Component) int {
 	row := len(a.entities)
 	a.entities = append(a.entities, entity)
 	for cid, comp := range comps {
-		a.components[cid] = append(a.components[cid], comp)
+		appendToStorage(comp, cid, a)
 	}
 	return row
 }
 
 func (a *Archetype) removeEntity(row int) (swappedEntity EntityId, wasSwapped bool) {
 	last := len(a.entities) - 1
-
+	// Swap with last
 	if row != last {
-		// Swap with last
 		a.entities[row] = a.entities[last]
-		for cid := range a.components {
-			a.components[cid][row] = a.components[cid][last]
+		for _, cid := range a.key {
+			removeFromStorage(row, last, cid, a)
 		}
 		swappedEntity = a.entities[row]
 		wasSwapped = true
 	}
 	a.entities = a.entities[:last]
-	for cid := range a.components {
-		a.components[cid] = a.components[cid][:last]
-	}
 	return
 }
 
 func (a *Archetype) getComponent(row int, cid ComponentId) Component {
-	col, ok := a.components[cid]
-	if !ok || row >= len(col) {
+	if row >= getStorageLen(cid, a) {
 		return nil
 	}
-	return col[row]
+	return getFromStorage(row, cid, a)
 }
 
 func (a *Archetype) setComponent(row int, cid ComponentId, comp Component) {
-	a.components[cid][row] = comp
+	SetToStorage(row, comp, cid, a)
 }
 
 type entityRecord struct {
@@ -191,11 +294,7 @@ func (w *World) DestroyEntity(entity EntityId) {
 }
 
 func (w *World) gatherComponents(record *entityRecord) map[ComponentId]Component {
-	comps := make(map[ComponentId]Component)
-	for cid, col := range record.archetype.components {
-		comps[cid] = col[record.row]
-	}
-	return comps
+	return gatherComponentsFromStorage(record.archetype, record.row)
 }
 
 func (w *World) getOrCreateArchetype(key archetypeKey) *Archetype {

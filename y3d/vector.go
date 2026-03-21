@@ -2,6 +2,12 @@ package y3d
 
 import "math"
 
+var (
+	UNIT_X = Vec3{X: 1.0, Y: 0.0, Z: 0.0}
+	UNIT_Y = Vec3{X: 0.0, Y: 1.0, Z: 0.0}
+	UNIT_Z = Vec3{X: 0.0, Y: 0.0, Z: 1.0}
+)
+
 type Vec3 struct {
 	X, Y, Z float64
 }

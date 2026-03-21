@@ -8,14 +8,13 @@ type TileMap struct {
 	LevelHeight int
 	TileWidth   int
 	TileHeight  int
-	Camara      *Camara
 }
 
 const (
 	NULLCHARACTER = ' '
 )
 
-func NewTileMap(level string, width, height, tileWidth, tileHeight int, camara *Camara) *TileMap {
+func NewTileMap(level string, width, height, tileWidth, tileHeight int) *TileMap {
 	//how to laod the map
 
 	return &TileMap{
@@ -24,7 +23,6 @@ func NewTileMap(level string, width, height, tileWidth, tileHeight int, camara *
 		LevelHeight: height,
 		TileWidth:   tileWidth,
 		TileHeight:  tileHeight,
-		Camara:      camara,
 	}
 }
 

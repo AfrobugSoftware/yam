@@ -136,7 +136,20 @@ func Ortho(left, right, bottom, top, near, far float64) Mat4 {
 	return Mat4{
 		2 / rml, 0, 0, 0,
 		0, 2 / tmb, 0, 0,
-		0, 0, -2 / fmn, 0,
-		-(right + left) / rml, -(top + bottom) / tmb, -(far + near) / fmn, 1,
+		0, 0, 2 / fmn, 0,
+		(right + left) / rml, (top + bottom) / tmb, (far + near) / fmn, 1,
+	}
+}
+
+func Frustum(left, right, bottom, top, near, far float64) Mat4 {
+	rml := right - left
+	tmb := top - bottom
+	fmn := far - near
+
+	return Mat4{
+		2 * near / rml, 0, 0, 0,
+		0, 2 * near / tmb, 0, 0,
+		right + left/rml, top + bottom/tmb, near + far/fmn, -1,
+		0, 0, 2 * (far + near) / fmn, 0,
 	}
 }
