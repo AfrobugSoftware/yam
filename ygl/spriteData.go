@@ -52,7 +52,8 @@ var (
 	uniform sampler2D tex;
 	
 	void main() {
-		frag_color = texture(tex, frag_uv);
+		//frag_color = texture(tex, frag_uv);
+		frag_color = vec4(1.0, 0.0,0.0,1.0);
 	}`
 
 	SpriteAnimFrag string = `#version 330

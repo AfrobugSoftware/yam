@@ -2,7 +2,9 @@ package ygl
 
 import (
 	"fmt"
+	"log"
 	"sync"
+	"yam/yecs"
 
 	gl "github.com/chsc/gogl/gl33"
 	"github.com/veandco/go-sdl2/sdl"
@@ -25,16 +27,24 @@ type Gl3 struct {
 	textures map[string][]gl.Uint
 }
 
-func (g *Gl3) InitGL() error {
+func NewYGL(window *sdl.Window, width, height int) (*Gl3, error) {
+	g := &Gl3{
+		Window:   window,
+		buffers:  make(map[string]VertBuffer),
+		programs: make(map[string]gl.Uint),
+		textures: make(map[string][]gl.Uint),
+		Height:   height,
+		Width:    width,
+	}
 	context, err := g.Window.GLCreateContext()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	g.Context = context
 	gl.Init()
 	gl.Viewport(0, 0, gl.Sizei(g.Width), gl.Sizei(g.Height))
 	gl.ClearColor(gl.Float(g.ClearColor.R), gl.Float(g.ClearColor.G), gl.Float(g.ClearColor.B), gl.Float(g.ClearColor.A))
-	return nil
+	return g, nil
 }
 
 func (g *Gl3) ShutDownGL() {
@@ -100,4 +110,89 @@ func (g *Gl3) AddProgramSource(name, vert, frag string) error {
 	}
 	g.programs[name] = p
 	return nil
+}
+
+func (g *Gl3) AddSprite(name string) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	vbuf := CreateVextexBuffer(SpriteData[:], SpriteIndices, SpriteFormat[:])
+	g.buffers[name] = vbuf
+}
+
+func (g *Gl3) AddVertexBuffer(name string, data []gl.Float, indx []uint16, formats []DataFormat) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	vbuf := CreateVextexBuffer(data, indx, formats)
+	g.buffers[name] = vbuf
+}
+
+func (g *Gl3) DrawSprites(w *yecs.World) {
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
+	camera := w.Query([]yecs.ComponentId{yecs.CameraComponent})
+	sprites := w.Query([]yecs.ComponentId{yecs.SpriteComponent, yecs.TransformComponent, yecs.RenderStateComponent})
+	if len(camera) == 0 {
+		log.Println("no camera attached to scene")
+		return
+	}
+	MainCam := w.GetComponent(camera[0], yecs.CameraComponent).(yecs.Camera)
+	var curBuf, curProgram string
+	var program gl.Uint
+	var drawBuffer VertBuffer
+	for _, e := range sprites {
+		s := w.GetComponent(e, yecs.SpriteComponent).(yecs.Sprite)
+		t := w.GetComponent(e, yecs.TransformComponent).(yecs.Transform)
+		r := w.GetComponent(e, yecs.RenderStateComponent).(yecs.RenderState)
+
+		if curBuf != s.Buffer {
+			b, ok := g.buffers[s.Buffer]
+			if !ok {
+				log.Printf("no buffer for entity: %d\n", e)
+				continue
+			}
+			b.SetActive()
+			curBuf = s.Buffer
+			drawBuffer = b
+		}
+		if curProgram != s.Program {
+			p, ok := g.programs[s.Program]
+			if !ok {
+				log.Printf("no program for entity: %d\n", e)
+				continue
+			}
+			curProgram = s.Program
+			SetActiveProgram(p)
+			program = p
+		}
+		tex, ok := g.textures[s.Textures]
+		if ok {
+			for _, t := range tex {
+				SetActiveTex(t)
+			}
+		}
+		r.SetupRenderState()
+		err := AssignUniformMat4(program, "view", MainCam.GetViewTransformation())
+		if err != nil {
+			log.Println(err)
+		}
+		err = AssignUniformMat4(program, "proj", MainCam.GetProjectionTransformation())
+		if err != nil {
+			log.Println(err)
+		}
+		err = AssignUniformMat4(program, "world", t.GetTransformation())
+		if err != nil {
+			log.Println(err)
+		}
+		if s.AssignUniforms != nil {
+			err = s.AssignUniforms(program)
+			if err != nil {
+				log.Println(err)
+			}
+		}
+		drawBuffer.DrawBuffer()
+
+		g.Window.GLSwap()
+	}
 }

@@ -1,6 +1,11 @@
-package ygame
+package yecs
 
 import "yam/y3d"
+
+const (
+	CAM_TYPE_PESPECTIVE = iota
+	CAM_TYPE_ORTHOGRAPHIC
+)
 
 type Camera struct {
 	Pos                                 y3d.Vec3
@@ -8,8 +13,9 @@ type Camera struct {
 	LookAt                              y3d.Vec3
 	View                                y3d.Mat4
 	NeedCalculation                     bool
-	Speed                               float64
-	Right, Left, Top, Bottom, Near, Far float64
+	Speed                               float32
+	CamType                             int
+	Right, Left, Top, Bottom, Near, Far float32
 }
 
 func (c *Camera) GetViewTransformation() y3d.Mat4 {
@@ -33,8 +39,15 @@ func (c *Camera) GetViewTransformation() y3d.Mat4 {
 	return c.View
 }
 
-func (c *Camera) GetProjTransformation() y3d.Mat4 {
-	return y3d.Frustum(c.Left, c.Right, c.Bottom, c.Top, c.Near, c.Far)
+func (c *Camera) GetProjectionTransformation() y3d.Mat4 {
+	switch c.CamType {
+	case CAM_TYPE_ORTHOGRAPHIC:
+		return y3d.Ortho(c.Left, c.Right, c.Bottom, c.Top, c.Near, c.Far)
+	case CAM_TYPE_PESPECTIVE:
+		return y3d.Frustum(c.Left, c.Right, c.Bottom, c.Top, c.Near, c.Far)
+	default:
+		return y3d.Mat4{}
+	}
 }
 
 func (c *Camera) Move(dt float64) {
@@ -42,6 +55,6 @@ func (c *Camera) Move(dt float64) {
 	dir = y3d.Normalize(dir)
 
 	vel := y3d.Smul(dir, c.Speed)
-	c.Pos = y3d.Add(c.Pos, y3d.Smul(vel, dt))
+	c.Pos = y3d.Add(c.Pos, y3d.Smul(vel, float32(dt)))
 	c.NeedCalculation = true
 }

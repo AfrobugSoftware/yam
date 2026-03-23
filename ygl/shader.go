@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"unsafe"
+	"yam/y3d"
 
 	gl "github.com/chsc/gogl/gl33"
 )
@@ -63,10 +65,19 @@ func CreateProgram(shaders []gl.Uint) (gl.Uint, error) {
 	return p, nil
 }
 
-func SetActive(p gl.Uint) {
+func SetActiveProgram(p gl.Uint) {
 	gl.UseProgram(p)
 }
 
 func DestroyProgram(p gl.Uint) {
 	gl.DeleteProgram(p)
+}
+
+func AssignUniformMat4(p gl.Uint, name string, mat y3d.Mat4) error {
+	loc := gl.GetUniformLocation(p, gl.GLString(name))
+	if loc == -1 {
+		return fmt.Errorf("no uniform mat4 with that name\n")
+	}
+	gl.UniformMatrix4fv(loc, 1, gl.FALSE, (*gl.Float)(unsafe.Pointer(&mat[0])))
+	return nil
 }

@@ -38,7 +38,7 @@ func (a ANodeQueue) Sort() {
 
 func SolveAStar(graph []ANode, start int, end int) []y3d.Vec3 {
 	queue := ANodeQueue{}
-	graph[start].GlobalGoal = y3d.Distance(graph[end].Pos, graph[start].Pos)
+	graph[start].GlobalGoal = float64(y3d.Distance(graph[end].Pos, graph[start].Pos))
 	queue = append(queue, &graph[start])
 	cur := start
 search:
@@ -56,10 +56,10 @@ search:
 				if graph[n].IsVisited || graph[n].IsObstacle {
 					continue nloop
 				}
-				dist := y3d.Distance(graph[n].Pos, f.Pos) + f.PathCost
+				dist := float64(y3d.Distance(graph[n].Pos, f.Pos)) + f.PathCost
 				if dist < graph[n].PathCost {
 					graph[n].PathCost = dist
-					graph[n].GlobalGoal = y3d.Distance(graph[end].Pos, graph[n].Pos) + graph[n].PathCost
+					graph[n].GlobalGoal = float64(y3d.Distance(graph[end].Pos, graph[n].Pos)) + graph[n].PathCost
 					graph[n].Parent = f.Indx
 					queue = append(queue, &graph[n])
 				}

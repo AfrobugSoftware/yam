@@ -8,9 +8,9 @@ import "math"
 //	| m[1]  m[5]  m[9]  m[13] |
 //	| m[2]  m[6]  m[10] m[14] |
 //	| m[3]  m[7]  m[11] m[15] |
-type Mat4 [16]float64
+type Mat4 [16]float32
 
-type Vec4 struct{ X, Y, Z, W float64 }
+type Vec4 struct{ X, Y, Z, W float32 }
 
 var Identity = Mat4{
 	1, 0, 0, 0,
@@ -37,7 +37,7 @@ func (a Mat4) Mul(b Mat4) Mat4 {
 	var out Mat4
 	for col := range 4 {
 		for row := range 4 {
-			var sum float64
+			var sum float32
 			for k := range 4 {
 				sum += a[k*4+row] * b[col*4+k]
 			}
@@ -66,8 +66,8 @@ func Translation(t Vec3) Mat4 {
 }
 
 func RotationX(angle float64) Mat4 {
-	c := math.Cos(angle)
-	s := math.Sin(angle)
+	c := float32(math.Cos(angle))
+	s := float32(math.Sin(angle))
 	return Mat4{
 		1, 0, 0, 0,
 		0, c, s, 0,
@@ -77,8 +77,8 @@ func RotationX(angle float64) Mat4 {
 }
 
 func RotationY(angle float64) Mat4 {
-	c := math.Cos(angle)
-	s := math.Sin(angle)
+	c := float32(math.Cos(angle))
+	s := float32(math.Sin(angle))
 	return Mat4{
 		c, 0, -s, 0,
 		0, 1, 0, 0,
@@ -88,8 +88,8 @@ func RotationY(angle float64) Mat4 {
 }
 
 func RotationZ(angle float64) Mat4 {
-	c := math.Cos(angle)
-	s := math.Sin(angle)
+	c := float32(math.Cos(angle))
+	s := float32(math.Sin(angle))
 	return Mat4{
 		c, s, 0, 0,
 		-s, c, 0, 0,
@@ -99,8 +99,8 @@ func RotationZ(angle float64) Mat4 {
 }
 
 func RotationAxis(axis Vec3, angle float64) Mat4 {
-	c := math.Cos(angle)
-	s := math.Sin(angle)
+	c := float32(math.Cos(angle))
+	s := float32(math.Sin(angle))
 	sum := 1.0 - c
 
 	axis = Normalize(axis)
@@ -128,7 +128,7 @@ func RotationAxis(axis Vec3, angle float64) Mat4 {
 	return mat
 }
 
-func Ortho(left, right, bottom, top, near, far float64) Mat4 {
+func Ortho(left, right, bottom, top, near, far float32) Mat4 {
 	rml := right - left
 	tmb := top - bottom
 	fmn := far - near
@@ -141,7 +141,7 @@ func Ortho(left, right, bottom, top, near, far float64) Mat4 {
 	}
 }
 
-func Frustum(left, right, bottom, top, near, far float64) Mat4 {
+func Frustum(left, right, bottom, top, near, far float32) Mat4 {
 	rml := right - left
 	tmb := top - bottom
 	fmn := far - near

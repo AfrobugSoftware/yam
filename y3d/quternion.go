@@ -15,10 +15,7 @@ func Pure(x, y, z float64) Quaternion {
 
 // A quternion
 type Quaternion struct {
-	W float64
-	X float64
-	Y float64
-	Z float64
+	W, X, Y, Z float64
 }
 
 func (qin Quaternion) Conj() Quaternion {
@@ -63,9 +60,9 @@ func FromAngleAxis(axis Vec3, angle float64) Quaternion {
 	axis = Normalize(axis)
 	s := math.Sin(angle / 2)
 	w := math.Cos(angle / 2)
-	x := axis.X * s
-	y := axis.Y * s
-	z := axis.Z * s
+	x := float64(axis.X) * s
+	y := float64(axis.Y) * s
+	z := float64(axis.Z) * s
 	return NewQuaternion(w, x, y, z)
 }
 
@@ -95,16 +92,27 @@ func (qin Quaternion) Inv() Quaternion {
 
 func (qin Quaternion) RotateVec3(vec Vec3) Vec3 {
 	conj := qin.Conj()
-	aug := Quaternion{0, vec.X, vec.Y, vec.Z}
+	aug := Quaternion{0,
+		float64(vec.X),
+		float64(vec.Y),
+		float64(vec.Z),
+	}
 	rot := ProdQuaternion(qin, aug, conj)
-	return Vec3{rot.X, rot.Y, rot.Z}
+	return Vec3{float32(rot.X), float32(rot.Y), float32(rot.Z)}
 }
 
 func Rotate(q Quaternion, vin Vec3) Vec3 {
 	conj := q.Conj()
-	aug := Quaternion{0, vin.X, vin.Y, vin.Z}
+	aug := Quaternion{0,
+		float64(vin.X),
+		float64(vin.Y),
+		float64(vin.Z),
+	}
 	rot := ProdQuaternion(q, aug, conj)
-	return Vec3{rot.X, rot.Y, rot.Z}
+	return Vec3{
+		float32(rot.X),
+		float32(rot.Y),
+		float32(rot.Z)}
 }
 
 func (q Quaternion) Euler() (float64, float64, float64) {
@@ -129,20 +137,20 @@ func FromEuler(phi, theta, psi float64) Quaternion {
 }
 
 // role major
-func (qin Quaternion) RotMat() [9]float64 {
+func (qin Quaternion) RotMat() [9]float32 {
 	q := qin.Unit()
-	m := [9]float64{}
-	m[0] = 1 - 2*(q.Y*q.Y+q.Z*q.Z)
-	m[1] = 2 * (q.X*q.Y - q.W*q.Z)
-	m[2] = 2 * (q.W*q.Y + q.X*q.Z)
+	m := [9]float32{}
+	m[0] = float32(1 - 2*(q.Y*q.Y+q.Z*q.Z))
+	m[1] = float32(2 * (q.X*q.Y - q.W*q.Z))
+	m[2] = float32(2 * (q.W*q.Y + q.X*q.Z))
 
-	m[3] = 1 - 2*(q.Z*q.Z+q.X*q.X)
-	m[4] = 2 * (q.Y*q.Z - q.W*q.X)
-	m[5] = 2 * (q.W*q.Z + q.Y*q.X)
+	m[3] = float32(1 - 2*(q.Z*q.Z+q.X*q.X))
+	m[4] = float32(2 * (q.Y*q.Z - q.W*q.X))
+	m[5] = float32(2 * (q.W*q.Z + q.Y*q.X))
 
-	m[6] = 1 - 2*(q.X*q.X+q.Y*q.Y)
-	m[7] = 2 * (q.Z*q.X - q.W*q.Y)
-	m[8] = 2 * (q.W*q.X + q.Z*q.Y)
+	m[6] = float32(1 - 2*(q.X*q.X+q.Y*q.Y))
+	m[7] = float32(2 * (q.Z*q.X - q.W*q.Y))
+	m[8] = float32(2 * (q.W*q.X + q.Z*q.Y))
 	return m
 }
 

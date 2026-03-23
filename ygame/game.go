@@ -1,7 +1,6 @@
 package ygame
 
 import (
-	"log"
 	"log/slog"
 	"os"
 	"yam/yecs"
@@ -41,23 +40,22 @@ func NewGame(title string, width, height int32) (*Game, error) {
 
 	file, err := os.OpenFile("yam.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	handler := slog.NewJSONHandler(file, nil)
 	logger := slog.New(handler)
 
-	gl3 := &ygl.Gl3{
-		Window: window,
-	}
-	err = gl3.InitGL()
+	gl3, err := ygl.NewYGL(window, int(width), int(height))
 	if err != nil {
 		return nil, err
 	}
+
 	gGame = &Game{
 		logFile: file,
 		Log:     logger,
 		Ticks:   sdl.GetTicks64(),
 		Gl3:     gl3,
+		World:   yecs.NewWorld(),
 	}
 	return gGame, nil
 }
@@ -87,6 +85,7 @@ func (g *Game) ProcessInput() {
 }
 
 func (g *Game) Draw() {
+	g.Gl3.DrawSprites(g.World)
 
 }
 
@@ -105,7 +104,6 @@ func (g *Game) Run() {
 		g.ProcessInput()
 		g.Update(dt)
 		g.Draw()
-
 	}
 }
 

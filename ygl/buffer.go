@@ -25,7 +25,6 @@ func (b VertBuffer) SetActive() {
 }
 
 func (b VertBuffer) DrawBuffer() {
-	b.SetActive()
 	gl.DrawElements(gl.TRIANGLES, gl.Sizei(b.IndxCount), gl.UNSIGNED_INT, nil)
 }
 

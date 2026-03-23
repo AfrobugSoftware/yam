@@ -8,7 +8,7 @@ type Sphere struct {
 }
 
 func SphereIntersects(a, b Sphere) bool {
-	d := DistanceSqured(b.C, a.C)
+	d := float64(DistanceSqured(b.C, a.C))
 	if d <= math.Pow(a.R+b.R, 2) {
 		return true
 	} else {
