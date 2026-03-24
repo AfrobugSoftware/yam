@@ -1,6 +1,7 @@
 package yam
 
 import (
+	"fmt"
 	"math/rand"
 	"yam/y3d"
 	"yam/yecs"
@@ -30,9 +31,14 @@ func CreateObject(w *yecs.World, transform yecs.Transform) {
 		Textures: "sprite",
 		Program:  "sprite",
 	}
+	move := yecs.Move{
+		AnglularSpeed: 0,
+		ForwardSpeed:  5,
+	}
 	w.AddComponent(ent, yecs.SpriteComponent, sprite)
 	w.AddComponent(ent, yecs.TransformComponent, transform)
 	w.AddComponent(ent, yecs.RenderStateComponent, renderState)
+	w.AddComponent(ent, yecs.MoveComponent, move)
 }
 
 func CreateResources(g *ygame.Game) {
@@ -51,12 +57,12 @@ func CreateCamera(w *yecs.World) {
 		LookAt:          y3d.UNIT_Z,
 		NeedCalculation: true,
 		Speed:           5,
-		Right:           width,
-		Left:            0,
-		Top:             0,
-		Bottom:          height,
-		Near:            10,
-		Far:             10000,
+		Right:           1,
+		Left:            -1,
+		Top:             0.75,
+		Bottom:          -0.75,
+		Near:            0.1,
+		Far:             1000,
 		CamType:         yecs.CAM_TYPE_PESPECTIVE,
 	}
 	w.AddComponent(ent, yecs.CameraComponent, camera)
@@ -67,17 +73,22 @@ func randRange(min, max float32) float32 {
 }
 
 func CreateScene(w *yecs.World) {
-	for range 100 {
-		x := randRange(0, 1000)
-		y := randRange(0, 1000)
-		z := randRange(100, 1000)
+	quat := y3d.FromAngleAxis(y3d.UNIT_Z, 0)
+	for i := range 1000 {
+		x := randRange(-10, 10)
+		y := randRange(-10, 10)
+		z := randRange(-100, -1000)
 		transform := yecs.Transform{
-			Position: y3d.Vec3{X: x, Y: y, Z: z},
-			Scale:    y3d.Vec3{X: 20, Y: 20, Z: 1},
+			Name:            fmt.Sprintf("transform: %d", i),
+			Position:        y3d.Vec3{X: x, Y: y, Z: z},
+			Scale:           y3d.Vec3{X: 200, Y: 200, Z: 1},
+			Orientation:     quat,
+			NeedCalculation: true,
 		}
 		CreateObject(w, transform)
 	}
 	CreateCamera(w)
+	w.AddSystem(yecs.MoveSystem2D{})
 }
 
 func TestGame() {

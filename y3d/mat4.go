@@ -147,9 +147,9 @@ func Frustum(left, right, bottom, top, near, far float32) Mat4 {
 	fmn := far - near
 
 	return Mat4{
-		2 * near / rml, 0, 0, 0,
-		0, 2 * near / tmb, 0, 0,
-		right + left/rml, top + bottom/tmb, near + far/fmn, -1,
-		0, 0, 2 * (far + near) / fmn, 0,
+		(2 * near) / rml, 0, 0, 0,
+		0, (2 * near) / tmb, 0, 0,
+		(right + left) / rml, (top + bottom) / tmb, -(far + near) / fmn, -1,
+		0, 0, (-2 * far * near) / fmn, 0,
 	}
 }

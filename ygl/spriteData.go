@@ -7,11 +7,17 @@ import (
 )
 
 var (
+	// SpriteData [20]gl.Float = [20]gl.Float{
+	// 	1.0, 1.0, 0.0, 1.0, 1.0,
+	// 	1.0, -1.0, 0.0, 0.0, 1.0,
+	// 	-1.0, -1.0, 0.0, 0.0, 0.0,
+	// 	-1.0, 1.0, 0.0, 0.0, 1.0,
+	// }
 	SpriteData [20]gl.Float = [20]gl.Float{
-		1.0, 1.0, 0.0, 1.0, 1.0,
-		1.0, -1.0, 0.0, 0.0, 1.0,
-		-1.0, -1.0, 0.0, 0.0, 0.0,
-		-1.0, 1.0, 0.0, 0.0, 1.0,
+		0.5, 0.5, 0.0, 1.0, 1.0, // top-right    [0]
+		0.5, -0.5, 0.0, 1.0, 0.0, // bottom-right [1]
+		-0.5, -0.5, 0.0, 0.0, 0.0, // bottom-left  [2]
+		-0.5, 0.5, 0.0, 0.0, 1.0, // top-left     [3]
 	}
 	SpriteFormat [2]DataFormat = [2]DataFormat{
 		{
@@ -28,7 +34,7 @@ var (
 		},
 	}
 	SpriteIndices []uint16 = []uint16{
-		0, 1, 2, 0, 2, 3,
+		0, 1, 3, 1, 2, 3,
 	}
 
 	SpriteVert string = `#version 330
@@ -40,10 +46,11 @@ var (
 	 uniform mat4 view;
 	 
 	 out vec2 frag_uv;
+	
 	 
 	 void main() {
 	 	frag_uv = uv;
-		gl_Position = proj*view*world* vec4(pos, 1);
+		gl_Position =  proj * view * world * vec4(pos, 1);								  
 	 }`
 	SpriteFrag string = `#version 330
 	in vec2 frag_uv;
@@ -53,7 +60,7 @@ var (
 	
 	void main() {
 		//frag_color = texture(tex, frag_uv);
-		frag_color = vec4(1.0, 0.0,0.0,1.0);
+		frag_color = vec4(1.0, 1.0,0.0,1.0);
 	}`
 
 	SpriteAnimFrag string = `#version 330

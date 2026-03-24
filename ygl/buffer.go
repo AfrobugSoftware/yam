@@ -25,7 +25,7 @@ func (b VertBuffer) SetActive() {
 }
 
 func (b VertBuffer) DrawBuffer() {
-	gl.DrawElements(gl.TRIANGLES, gl.Sizei(b.IndxCount), gl.UNSIGNED_INT, nil)
+	gl.DrawElements(gl.TRIANGLES, gl.Sizei(b.IndxCount), gl.UNSIGNED_SHORT, nil)
 }
 
 func CreateVextexBuffer(data []gl.Float, indx []uint16, formats []DataFormat) VertBuffer {

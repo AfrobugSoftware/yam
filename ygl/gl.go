@@ -35,6 +35,11 @@ func NewYGL(window *sdl.Window, width, height int) (*Gl3, error) {
 		textures: make(map[string][]gl.Uint),
 		Height:   height,
 		Width:    width,
+		ClearColor: sdl.Color{
+			R: 0,
+			G: 0,
+			B: 0,
+		},
 	}
 	context, err := g.Window.GLCreateContext()
 	if err != nil {
@@ -43,7 +48,7 @@ func NewYGL(window *sdl.Window, width, height int) (*Gl3, error) {
 	g.Context = context
 	gl.Init()
 	gl.Viewport(0, 0, gl.Sizei(g.Width), gl.Sizei(g.Height))
-	gl.ClearColor(gl.Float(g.ClearColor.R), gl.Float(g.ClearColor.G), gl.Float(g.ClearColor.B), gl.Float(g.ClearColor.A))
+	gl.ClearColor(gl.Float(g.ClearColor.R/255), gl.Float(g.ClearColor.G/255), gl.Float(g.ClearColor.B/255), gl.Float(g.ClearColor.A/255))
 	return g, nil
 }
 
@@ -192,7 +197,6 @@ func (g *Gl3) DrawSprites(w *yecs.World) {
 			}
 		}
 		drawBuffer.DrawBuffer()
-
-		g.Window.GLSwap()
 	}
+	g.Window.GLSwap()
 }

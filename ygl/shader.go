@@ -76,7 +76,7 @@ func DestroyProgram(p gl.Uint) {
 func AssignUniformMat4(p gl.Uint, name string, mat y3d.Mat4) error {
 	loc := gl.GetUniformLocation(p, gl.GLString(name))
 	if loc == -1 {
-		return fmt.Errorf("no uniform mat4 with that name\n")
+		return fmt.Errorf("no uniform mat4 with name: %s\n", name)
 	}
 	gl.UniformMatrix4fv(loc, 1, gl.FALSE, (*gl.Float)(unsafe.Pointer(&mat[0])))
 	return nil

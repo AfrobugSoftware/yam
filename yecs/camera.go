@@ -29,9 +29,9 @@ func (c *Camera) GetViewTransformation() y3d.Mat4 {
 		y := y3d.Cross(x, z)
 		y = y3d.Normalize(y)
 
-		c.View = y3d.Mat4{x.X, y.X, z.X, 0.0,
-			x.Y, y.Y, z.Y, 0.0,
-			x.Z, y.Z, z.Z, 0.0,
+		c.View = y3d.Mat4{x.X, x.Y, x.Z, 0.0,
+			y.X, y.Y, y.Z, 0.0,
+			z.X, z.Y, z.Z, 0.0,
 			-c.Pos.X, -c.Pos.Y, -c.Pos.Z, 1.0,
 		}
 		c.NeedCalculation = false

@@ -33,7 +33,7 @@ type System interface {
 }
 
 type Storage[T any] struct {
-	Store map[ArchetypeId][]T
+	Store []T
 }
 
 func RegisterComponent[T Component]() ComponentId {
@@ -46,9 +46,6 @@ func RegisterComponent[T Component]() ComponentId {
 	}
 	componentCounter++
 	componentRegistry[t] = componentCounter
-	storageBuffer[componentCounter] = Storage[T]{
-		Store: make(map[ArchetypeId][]T),
-	}
 	return componentCounter
 }
 
@@ -96,113 +93,102 @@ func (k archetypeKey) containsAll(ids []ComponentId) bool {
 }
 
 type Archetype struct {
-	id       ArchetypeId
-	key      archetypeKey
-	entities []EntityId
+	id            ArchetypeId
+	key           archetypeKey
+	entities      []EntityId
+	storageBuffer map[ComponentId]any //contain all the storage
 }
 
 func newArchetype(id ArchetypeId, key archetypeKey) *Archetype {
 	return &Archetype{
-		id:       id,
-		key:      key,
-		entities: []EntityId{},
+		id:            id,
+		key:           key,
+		entities:      []EntityId{},
+		storageBuffer: make(map[ComponentId]any),
 	}
+
 }
 
 // storage methods
 func appendToStorage[T any](data T, comp ComponentId, a *Archetype) {
-	storageMu.Lock()
-	defer storageMu.Unlock()
-
-	str, ok := storageBuffer[comp]
+	str, ok := a.storageBuffer[comp]
 	if !ok {
-		storageBuffer[comp] = Storage[T]{
-			Store: make(map[ArchetypeId][]T),
+		a.storageBuffer[comp] = &Storage[T]{
+			Store: make([]T, 0),
 		}
-		str = storageBuffer[comp]
+		str = a.storageBuffer[comp]
 	}
-	store := reflect.ValueOf(str)
-	mapVal := store.Field(0)
-	key := reflect.ValueOf(a.id)
-
-	slc := mapVal.MapIndex(key)
-	if !slc.IsValid() {
-		sliceType := mapVal.Type().Elem()
-		slc = reflect.MakeSlice(sliceType, 0, 10)
-	}
-	newSlc := reflect.Append(slc, reflect.ValueOf(data))
-	mapVal.SetMapIndex(key, newSlc)
+	store := reflect.ValueOf(str).Elem()
+	slc := store.Field(0)
+	slc.Set(reflect.Append(slc, reflect.ValueOf(data)))
 }
 
-func removeFromStorage(row, last int, comp ComponentId, a *Archetype) {
-	storageMu.Lock()
-	defer storageMu.Unlock()
-
-	str, ok := storageBuffer[comp]
-	if !ok {
-		return
-	}
-	store := reflect.ValueOf(str)
-	mapVal := store.Field(0)
-	key := reflect.ValueOf(a.id)
-	slc := mapVal.MapIndex(key)
+func removeFromStorage(row int, a *Archetype) (swappedEntity EntityId, wasSwapped bool) {
+	last := len(a.entities) - 1
 	if row != last {
-		slc.Index(row).Set(slc.Index(last))
+		a.entities[row] = a.entities[last]
+		for _, cid := range a.key {
+			str, ok := a.storageBuffer[cid]
+			if !ok {
+				return
+			}
+			store := reflect.ValueOf(str).Elem()
+			slc := store.Field(0)
+			slc.Index(row).Set(slc.Index(last))
+		}
+		swappedEntity = a.entities[row]
+		wasSwapped = true
 	}
-	mapVal.SetMapIndex(key, slc.Slice(0, last))
+	a.entities = a.entities[:last]
+	for _, cid := range a.key {
+		str, ok := a.storageBuffer[cid]
+		if !ok {
+			return
+		}
+		store := reflect.ValueOf(str).Elem()
+		slc := store.Field(0)
+		slc.Set(slc.Slice(0, last))
+	}
+	return
+}
+
+func DumpStorage(a *Archetype) {
+	for _, s := range a.storageBuffer {
+		fmt.Println(s)
+	}
 }
 
 func getStorageLen(comp ComponentId, a *Archetype) int {
-	storageMu.Lock()
-	defer storageMu.Unlock()
-
-	store := reflect.ValueOf(storageBuffer[comp])
+	store := reflect.ValueOf(a.storageBuffer[comp]).Elem()
 	if store.Kind() != reflect.Struct {
 		panic(fmt.Errorf("invalid type used for component storage"))
 	}
-	slc := store.Field(0).MapIndex(reflect.ValueOf(a.id))
+	slc := store.Field(0)
 	return slc.Len()
 }
 
 func getFromStorage(row int, comp ComponentId, a *Archetype) Component {
-	storageMu.Lock()
-	defer storageMu.Unlock()
-
-	store := reflect.ValueOf(storageBuffer[comp])
-	if store.Kind() != reflect.Struct {
-		panic(fmt.Errorf("invalid type used for component storage"))
-	}
-	slc := store.Field(0).MapIndex(reflect.ValueOf(a.id))
+	store := reflect.ValueOf(a.storageBuffer[comp]).Elem()
+	slc := store.Field(0)
 	return slc.Index(row).Interface()
 }
 
 func SetToStorage(row int, data any, comp ComponentId, a *Archetype) {
-	storageMu.Lock()
-	defer storageMu.Unlock()
-	str, ok := storageBuffer[comp]
+	str, ok := a.storageBuffer[comp]
 	if !ok {
 		log.Printf("no component: %d", comp)
 		return
 	}
-	store := reflect.ValueOf(str)
-	mapVal := store.Field(0)
-	key := reflect.ValueOf(a.id)
-	if store.Kind() != reflect.Struct {
-		panic(fmt.Errorf("invalid type used for component storage"))
-	}
-	slc := store.Field(0).MapIndex(key)
+	store := reflect.ValueOf(str).Elem()
+	slc := store.Field(0)
 	slc.Index(row).Set(reflect.ValueOf(data))
-	mapVal.SetMapIndex(key, slc)
 }
 
 func gatherComponentsFromStorage(a *Archetype, row int) map[ComponentId]Component {
 	comps := make(map[ComponentId]Component)
-	for _, cid := range a.key {
-		store := reflect.ValueOf(storageBuffer[cid])
-		if store.Kind() != reflect.Struct {
-			panic(fmt.Errorf("invalid type used for component storage"))
-		}
-		slc := store.Field(0).MapIndex(reflect.ValueOf(a.id))
+	for cid := range a.storageBuffer {
+		store := reflect.ValueOf(a.storageBuffer[cid]).Elem()
+		slc := store.Field(0)
 		comps[cid] = slc.Index(row).Interface()
 	}
 	return comps
@@ -217,19 +203,8 @@ func (a *Archetype) addEntity(entity EntityId, comps map[ComponentId]Component) 
 	return row
 }
 
-func (a *Archetype) removeEntity(row int) (swappedEntity EntityId, wasSwapped bool) {
-	last := len(a.entities) - 1
-	// Swap with last
-	if row != last {
-		a.entities[row] = a.entities[last]
-		for _, cid := range a.key {
-			removeFromStorage(row, last, cid, a)
-		}
-		swappedEntity = a.entities[row]
-		wasSwapped = true
-	}
-	a.entities = a.entities[:last]
-	return
+func (a *Archetype) removeEntity(row int) (EntityId, bool) {
+	return removeFromStorage(row, a)
 }
 
 func (a *Archetype) getComponent(row int, cid ComponentId) Component {

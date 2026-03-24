@@ -1,21 +1,25 @@
 package yecs
 
-import "yam/y3d"
+import (
+	"yam/y3d"
+)
 
 type Transform struct {
-	Position    y3d.Vec3
-	Orientation y3d.Quaternion
-	Scale       y3d.Vec3
-
+	Position        y3d.Vec3
+	Orientation     y3d.Quaternion
+	Scale           y3d.Vec3
+	Name            string
 	NeedCalculation bool
 	cacheTransform  y3d.Mat4
 }
 
 func (trans Transform) GetTransformation() y3d.Mat4 {
 	if trans.NeedCalculation {
-		trans.cacheTransform = y3d.Scale(trans.Scale).
-			Mul(trans.Orientation.ToMat4()).
-			Mul(y3d.Translation(trans.Position))
+		scale := y3d.Scale(trans.Scale)
+		rot := y3d.Identity //trans.Orientation.ToMat4()
+		translation := y3d.Translation(trans.Position)
+		trans.cacheTransform = scale.Mul(rot).Mul(translation)
+		trans.NeedCalculation = false
 	}
 	return trans.cacheTransform
 }
