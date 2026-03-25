@@ -16,7 +16,7 @@ type Transform struct {
 func (trans Transform) GetTransformation() y3d.Mat4 {
 	if trans.NeedCalculation {
 		scale := y3d.Scale(trans.Scale)
-		rot := y3d.Identity //trans.Orientation.ToMat4()
+		rot := trans.Orientation.ToMat4()
 		translation := y3d.Translation(trans.Position)
 		trans.cacheTransform = scale.Mul(rot).Mul(translation)
 		trans.NeedCalculation = false
@@ -25,5 +25,5 @@ func (trans Transform) GetTransformation() y3d.Mat4 {
 }
 
 func (trans Transform) GetForward() y3d.Vec3 {
-	return trans.Orientation.RotateVec3(y3d.UNIT_X)
+	return trans.Orientation.RotateVec3(y3d.UNIT_Z)
 }

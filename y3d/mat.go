@@ -1,6 +1,11 @@
 package y3d
 
-import "math"
+import (
+	"bytes"
+	"fmt"
+	"math"
+	"text/tabwriter"
+)
 
 // Mat4 is a 4x4 column-major matrix (OpenGL convention)
 //
@@ -9,6 +14,8 @@ import "math"
 //	| m[2]  m[6]  m[10] m[14] |
 //	| m[3]  m[7]  m[11] m[15] |
 type Mat4 [16]float32
+type Mat3 [9]float32
+type Mat2 [4]float32
 
 type Vec4 struct{ X, Y, Z, W float32 }
 
@@ -152,4 +159,17 @@ func Frustum(left, right, bottom, top, near, far float32) Mat4 {
 		(right + left) / rml, (top + bottom) / tmb, -(far + near) / fmn, -1,
 		0, 0, (-2 * far * near) / fmn, 0,
 	}
+}
+
+func (m1 Mat4) String() string {
+	var buf bytes.Buffer
+	w := tabwriter.NewWriter(&buf, 4, 4, 1, ' ', tabwriter.AlignRight)
+	for i := range 4 {
+		for j := range 4 {
+			fmt.Fprintf(w, "%f\t", m1[j*4+i])
+		}
+		fmt.Fprintln(w, "")
+	}
+	w.Flush()
+	return buf.String()
 }

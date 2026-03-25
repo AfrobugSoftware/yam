@@ -41,6 +41,14 @@ func Smul(v Vec3, s float32) Vec3 {
 	}
 }
 
+func NegateVec3(v Vec3) Vec3 {
+	return Vec3{
+		X: -v.X,
+		Y: -v.Y,
+		Z: -v.Z,
+	}
+}
+
 func Mul(lhs, rhs Vec3) Vec3 {
 	return Vec3{
 		X: lhs.X * rhs.X,

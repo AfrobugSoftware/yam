@@ -32,8 +32,8 @@ func CreateObject(w *yecs.World, transform yecs.Transform) {
 		Program:  "sprite",
 	}
 	move := yecs.Move{
-		AnglularSpeed: 0,
-		ForwardSpeed:  5,
+		AnglularSpeed: 5,
+		ForwardSpeed:  20,
 	}
 	w.AddComponent(ent, yecs.SpriteComponent, sprite)
 	w.AddComponent(ent, yecs.TransformComponent, transform)
@@ -56,14 +56,14 @@ func CreateCamera(w *yecs.World) {
 		Up:              y3d.UNIT_Y,
 		LookAt:          y3d.UNIT_Z,
 		NeedCalculation: true,
-		Speed:           5,
+		Speed:           20,
 		Right:           1,
 		Left:            -1,
 		Top:             0.75,
 		Bottom:          -0.75,
 		Near:            0.1,
 		Far:             1000,
-		CamType:         yecs.CAM_TYPE_PESPECTIVE,
+		CamType:         yecs.CAM_TYPE_PERSPECTIVE,
 	}
 	w.AddComponent(ent, yecs.CameraComponent, camera)
 }
@@ -73,7 +73,7 @@ func randRange(min, max float32) float32 {
 }
 
 func CreateScene(w *yecs.World) {
-	quat := y3d.FromAngleAxis(y3d.UNIT_Z, 0)
+	quat := y3d.FromAngleAxis(y3d.UNIT_Z, 30)
 	for i := range 1000 {
 		x := randRange(-10, 10)
 		y := randRange(-10, 10)

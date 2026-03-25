@@ -3,7 +3,7 @@ package yecs
 import "yam/y3d"
 
 const (
-	CAM_TYPE_PESPECTIVE = iota
+	CAM_TYPE_PERSPECTIVE = iota
 	CAM_TYPE_ORTHOGRAPHIC
 )
 
@@ -43,7 +43,7 @@ func (c *Camera) GetProjectionTransformation() y3d.Mat4 {
 	switch c.CamType {
 	case CAM_TYPE_ORTHOGRAPHIC:
 		return y3d.Ortho(c.Left, c.Right, c.Bottom, c.Top, c.Near, c.Far)
-	case CAM_TYPE_PESPECTIVE:
+	case CAM_TYPE_PERSPECTIVE:
 		return y3d.Frustum(c.Left, c.Right, c.Bottom, c.Top, c.Near, c.Far)
 	default:
 		return y3d.Mat4{}

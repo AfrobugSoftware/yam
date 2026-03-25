@@ -9,6 +9,10 @@ func NewQuaternion(w, x, y, z float64) Quaternion {
 	return Quaternion{W: w, X: x, Y: y, Z: z}
 }
 
+func IdenQuat() Quaternion {
+	return Quaternion{W: 1}
+}
+
 func Pure(x, y, z float64) Quaternion {
 	return Quaternion{X: x, Y: y, Z: z}
 }
@@ -137,21 +141,14 @@ func FromEuler(phi, theta, psi float64) Quaternion {
 }
 
 // role major
-func (qin Quaternion) RotMat() [9]float32 {
+func (qin Quaternion) RotMat() Mat3 {
 	q := qin.Unit()
-	m := [9]float32{}
-	m[0] = float32(1 - 2*(q.Y*q.Y+q.Z*q.Z))
-	m[1] = float32(2 * (q.X*q.Y - q.W*q.Z))
-	m[2] = float32(2 * (q.W*q.Y + q.X*q.Z))
-
-	m[3] = float32(1 - 2*(q.Z*q.Z+q.X*q.X))
-	m[4] = float32(2 * (q.Y*q.Z - q.W*q.X))
-	m[5] = float32(2 * (q.W*q.Z + q.Y*q.X))
-
-	m[6] = float32(1 - 2*(q.X*q.X+q.Y*q.Y))
-	m[7] = float32(2 * (q.Z*q.X - q.W*q.Y))
-	m[8] = float32(2 * (q.W*q.X + q.Z*q.Y))
-	return m
+	w, x, y, z := float32(q.W), float32(q.X), float32(q.Y), float32(q.Z)
+	return Mat3{
+		1 - 2*y*y - 2*z*z, 2*x*y + 2*w*z, 2*x*z - 2*w*y,
+		2*x*y - 2*w*z, 1 - 2*x*x - 2*z*z, 2*y*z + 2*w*x,
+		2*x*z + 2*w*y, 2*y*z - 2*w*x, 1 - 2*x*x - 2*y*y,
+	}
 }
 
 func (qin Quaternion) ToMat4() Mat4 {
@@ -160,6 +157,6 @@ func (qin Quaternion) ToMat4() Mat4 {
 		m[0], m[1], m[2], 0,
 		m[3], m[4], m[5], 0,
 		m[6], m[7], m[8], 0,
-		0, 0, 0, 0,
+		0, 0, 0, 1,
 	}
 }

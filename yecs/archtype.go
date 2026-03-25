@@ -21,9 +21,6 @@ var (
 	componentMu       sync.RWMutex
 	componentRegistry = map[reflect.Type]ComponentId{}
 	componentCounter  ComponentId
-
-	storageMu     sync.Mutex
-	storageBuffer = map[ComponentId]any{} //contain all the storage
 )
 
 type Component any
@@ -173,7 +170,7 @@ func getFromStorage(row int, comp ComponentId, a *Archetype) Component {
 	return slc.Index(row).Interface()
 }
 
-func SetToStorage(row int, data any, comp ComponentId, a *Archetype) {
+func setToStorage(row int, data any, comp ComponentId, a *Archetype) {
 	str, ok := a.storageBuffer[comp]
 	if !ok {
 		log.Printf("no component: %d", comp)
@@ -215,7 +212,7 @@ func (a *Archetype) getComponent(row int, cid ComponentId) Component {
 }
 
 func (a *Archetype) setComponent(row int, cid ComponentId, comp Component) {
-	SetToStorage(row, comp, cid, a)
+	setToStorage(row, comp, cid, a)
 }
 
 type entityRecord struct {
