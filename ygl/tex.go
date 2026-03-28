@@ -51,7 +51,8 @@ func CreateTex2D(filePath string, minFilter, maxFilter gl.Enum) (gl.Uint, error)
 	return texId, nil
 }
 
-func SetActiveTex(tex gl.Uint) {
+func SetActiveTex(tex gl.Uint, unit int) {
+	gl.ActiveTexture(gl.TEXTURE0 + gl.Enum(unit))
 	gl.BindTexture(gl.TEXTURE_2D, tex)
 }
 

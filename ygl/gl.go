@@ -62,12 +62,12 @@ func (g *Gl3) AddTextures(filePath []string, name string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	texs := make([]gl.Uint, 0, len(filePath))
-	for i, f := range filePath {
+	for _, f := range filePath {
 		t, err := CreateTex2D(f, gl.LINEAR, gl.LINEAR)
 		if err != nil {
 			return err
 		}
-		texs[i] = t
+		texs = append(texs, t)
 	}
 	g.textures[name] = texs
 	return nil
@@ -175,8 +175,12 @@ func (g *Gl3) DrawSprites(w *yecs.World) {
 		}
 		tex, ok := g.textures[s.Textures]
 		if ok {
-			for _, t := range tex {
-				SetActiveTex(t)
+			if s.CurTexture == -1 {
+				for i, t := range tex {
+					SetActiveTex(t, i)
+				}
+			} else {
+				SetActiveTex(tex[s.CurTexture], 0)
 			}
 		}
 		r.SetupRenderState()
