@@ -13,6 +13,12 @@ type Vec3 struct {
 	X, Y, Z float32
 }
 
+func (v Vec3) ToSlice() []float32 {
+	return []float32{
+		v.X, v.Y, v.Z,
+	}
+}
+
 type IVec3 struct {
 	X, Y, Z int
 }

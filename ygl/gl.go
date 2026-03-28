@@ -143,6 +143,8 @@ func (g *Gl3) DrawSprites(w *yecs.World) {
 		return
 	}
 	MainCam := w.GetComponent(camera[0], yecs.CameraComponent).(yecs.Camera)
+	view := MainCam.GetViewTransformation()
+	proj := MainCam.GetProjectionTransformation()
 	var curBuf, curProgram string
 	var program gl.Uint
 	var drawBuffer VertBuffer
@@ -178,11 +180,11 @@ func (g *Gl3) DrawSprites(w *yecs.World) {
 			}
 		}
 		r.SetupRenderState()
-		err := AssignUniformMat4(program, "view", MainCam.GetViewTransformation())
+		err := AssignUniformMat4(program, "view", view)
 		if err != nil {
 			log.Println(err)
 		}
-		err = AssignUniformMat4(program, "proj", MainCam.GetProjectionTransformation())
+		err = AssignUniformMat4(program, "proj", proj)
 		if err != nil {
 			log.Println(err)
 		}
@@ -191,7 +193,7 @@ func (g *Gl3) DrawSprites(w *yecs.World) {
 			log.Println(err)
 		}
 		if s.AssignUniforms != nil {
-			err = s.AssignUniforms(program)
+			err = s.AssignUniforms(e, program)
 			if err != nil {
 				log.Println(err)
 			}

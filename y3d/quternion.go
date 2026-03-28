@@ -62,8 +62,9 @@ func SumQuaternion(qin ...Quaternion) Quaternion {
 
 func FromAngleAxis(axis Vec3, angle float64) Quaternion {
 	axis = Normalize(axis)
-	s := math.Sin(angle / 2)
-	w := math.Cos(angle / 2)
+	a := ToRadians(angle)
+	s := math.Sin(a / 2)
+	w := math.Cos(a / 2)
 	x := float64(axis.X) * s
 	y := float64(axis.Y) * s
 	z := float64(axis.Z) * s

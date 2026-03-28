@@ -7,5 +7,5 @@ type Sprite struct {
 	Program  string
 	Textures string
 
-	AssignUniforms func(program gl.Uint) error
+	AssignUniforms func(e EntityId, program gl.Uint) error
 }

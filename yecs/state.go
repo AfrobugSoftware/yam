@@ -44,11 +44,14 @@ func (s *StateMachine) ChangeState(w *World, e EntityId, state int) {
 
 type StateSystem struct{}
 
-func (ss StateSystem) Query() []ComponentId {
+func (ss *StateSystem) Init()     {}
+func (ss *StateSystem) Shutdown() {}
+
+func (ss *StateSystem) Query() []ComponentId {
 	return []ComponentId{StateComponent}
 }
 
-func (ss StateSystem) Update(w *World, dt float64, entities []EntityId) {
+func (ss *StateSystem) Update(w *World, dt float64, entities []EntityId) {
 	for _, e := range entities {
 		machine, ok := w.GetComponent(e, StateComponent).(StateMachine)
 		if !ok {

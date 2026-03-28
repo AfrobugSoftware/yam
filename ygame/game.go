@@ -16,6 +16,7 @@ type Game struct {
 	Ticks      uint64
 	NeedsReset bool
 	DoReset    func()
+	OnExit     func() bool
 	logFile    *os.File
 	Log        *slog.Logger
 	Gl3        *ygl.Gl3
@@ -73,6 +74,9 @@ func (g *Game) ProcessInput() {
 		switch event.GetType() {
 		case sdl.QUIT:
 			g.Running = false
+			if g.OnExit != nil {
+				g.Running = g.OnExit()
+			}
 		}
 		state := sdl.GetKeyboardState()
 		if state != nil {
@@ -93,10 +97,10 @@ func (g *Game) Run() {
 	defer g.Quit()
 	var dt float64
 	g.Running = true
+	g.World.InitSystems()
 	for g.Running {
 		//how do I wait for 16ms to pass ??
-
-		dt = float64(sdl.GetTicks64()-g.Ticks) / 1000.0
+		dt = float64(sdl.GetTicks64()-g.Ticks) * 0.001
 		g.Ticks = sdl.GetTicks64()
 		if dt > 0.05 {
 			dt = 0.05
@@ -108,6 +112,7 @@ func (g *Game) Run() {
 }
 
 func (g *Game) Quit() {
+	g.World.Shutdown()
 	if g.Gl3 != nil {
 		g.Gl3.ShutDownGL()
 	}

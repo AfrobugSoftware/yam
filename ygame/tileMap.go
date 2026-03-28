@@ -14,7 +14,7 @@ const (
 	NULLCHARACTER = ' '
 )
 
-func NewTileMap(level string, width, height, tileWidth, tileHeight int) *TileMap {
+func NewTileMap(w *yecs.World, level string, width, height, tileWidth, tileHeight int, setupTile func(e yecs.EntityId, r rune)) *TileMap {
 	//how to laod the map
 
 	return &TileMap{

@@ -25,8 +25,10 @@ var (
 
 type Component any
 type System interface {
+	Init()
 	Query() []ComponentId
 	Update(w *World, dt float64, entities []EntityId)
+	Shutdown()
 }
 
 type Storage[T any] struct {
@@ -397,6 +399,12 @@ func (w *World) Update(dt float64) {
 	}
 }
 
+func (w *World) InitSystems() {
+	for _, s := range w.systems {
+		s.Init()
+	}
+}
+
 func (w *World) ProcessInput(keyState []uint8) {
 	entities := w.Query([]ComponentId{InputComponent})
 	for _, e := range entities {
@@ -405,5 +413,11 @@ func (w *World) ProcessInput(keyState []uint8) {
 		}
 		copy(in.KeyState, keyState)
 		w.SetComponent(e, InputComponent, in)
+	}
+}
+
+func (w *World) Shutdown() {
+	for _, s := range w.systems {
+		s.Shutdown()
 	}
 }

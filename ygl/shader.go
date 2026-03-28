@@ -81,3 +81,22 @@ func AssignUniformMat4(p gl.Uint, name string, mat y3d.Mat4) error {
 	gl.UniformMatrix4fv(loc, 1, gl.FALSE, (*gl.Float)(unsafe.Pointer(&mat[0])))
 	return nil
 }
+
+func AssignUniformVec(p gl.Uint, name string, v y3d.Vec3) error {
+	loc := gl.GetUniformLocation(p, gl.GLString(name))
+	if loc == -1 {
+		return fmt.Errorf("no uniform vec3 with name: %s\n", name)
+	}
+	vs := v.ToSlice()
+	gl.Uniform3fv(loc, 1, (*gl.Float)(unsafe.Pointer(&vs[0])))
+	return nil
+}
+
+func AssignUniformFloat32(p gl.Uint, name string, f float32) error {
+	loc := gl.GetUniformLocation(p, gl.GLString(name))
+	if loc == -1 {
+		return fmt.Errorf("no uniform float with name: %s\n", name)
+	}
+	gl.Uniform1f(loc, gl.Float(f))
+	return nil
+}

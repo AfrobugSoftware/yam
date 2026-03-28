@@ -18,7 +18,7 @@ func (trans Transform) GetTransformation() y3d.Mat4 {
 		scale := y3d.Scale(trans.Scale)
 		rot := trans.Orientation.ToMat4()
 		translation := y3d.Translation(trans.Position)
-		trans.cacheTransform = scale.Mul(rot).Mul(translation)
+		trans.cacheTransform = translation.Mul(rot).Mul(scale)
 		trans.NeedCalculation = false
 	}
 	return trans.cacheTransform

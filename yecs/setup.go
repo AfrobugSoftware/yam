@@ -14,4 +14,5 @@ var (
 	MoveComponent        = RegisterComponent[Move]()
 	StateComponent       = RegisterComponent[StateMachine]()
 	CameraComponent      = RegisterComponent[Camera]()
+	AudioComponent       = RegisterComponent[AudioData]()
 )

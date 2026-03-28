@@ -21,6 +21,8 @@ type DepthState struct {
 	Enable    bool
 }
 
+type WindingState struct{}
+
 func DisableRenderStates() {
 	gl.Disable(gl.BLEND)
 	gl.Disable(gl.DEPTH_TEST)

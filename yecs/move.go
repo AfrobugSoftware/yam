@@ -9,11 +9,14 @@ type Move struct {
 
 type MoveSystem2D struct{}
 
-func (ms MoveSystem2D) Query() []ComponentId {
+func (ms *MoveSystem2D) Init()     {}
+func (ms *MoveSystem2D) Shutdown() {}
+
+func (ms *MoveSystem2D) Query() []ComponentId {
 	return []ComponentId{TransformComponent, MoveComponent}
 }
 
-func (ms MoveSystem2D) Update(w *World, dt float64, entites []EntityId) {
+func (ms *MoveSystem2D) Update(w *World, dt float64, entites []EntityId) {
 	for _, e := range entites {
 		move := w.GetComponent(e, MoveComponent).(Move)
 		transform := w.GetComponent(e, TransformComponent).(Transform)
