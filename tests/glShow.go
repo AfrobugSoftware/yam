@@ -84,7 +84,7 @@ func randRange(min, max float32) float32 {
 
 func CreateScene(w *yecs.World) {
 	quat := y3d.FromAngleAxis(y3d.UNIT_X, 0)
-	for i := range 1000 {
+	for i := range 100000 {
 		x := randRange(-1000, 1000)
 		y := randRange(-1000, 1000)
 		z := randRange(-10, -1000)
@@ -98,9 +98,15 @@ func CreateScene(w *yecs.World) {
 		CreateObject(w, transform, i%3)
 	}
 	CreateCamera(w)
+}
+
+func CreateSystems(w *yecs.World) {
 	w.AddSystem(&yecs.StateSystem{})
 	w.AddSystem(&yecs.MoveSystem2D{})
-	w.AddSystem(&yecs.AudioSystem{})
+	w.AddSystem(ygame.GetGame().Audio)
+	w.AddSystem(&yecs.CullSystem{})
+
+	w.InitSystems()
 }
 
 func TestGame() {
@@ -108,6 +114,7 @@ func TestGame() {
 	if err != nil {
 		panic(err)
 	}
+	CreateSystems(g.World)
 	CreateResources(g)
 	CreateScene(g.World)
 

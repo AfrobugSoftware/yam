@@ -21,7 +21,13 @@ type DepthState struct {
 	Enable    bool
 }
 
-type WindingState struct{}
+type FaceState struct {
+	Enable bool
+}
+
+type PolygonMode struct {
+	Mode gl.Enum
+}
 
 func DisableRenderStates() {
 	gl.Disable(gl.BLEND)
@@ -42,6 +48,11 @@ func (rs RenderState) SetupRenderState() {
 				gl.Enable(gl.DEPTH_TEST)
 				gl.DepthFunc(v.DepthFunc)
 			}
+		case FaceState:
+			if v.Enable {
+				gl.Enable(gl.CULL_FACE)
+			}
 		}
+
 	}
 }

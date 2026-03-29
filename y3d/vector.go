@@ -31,6 +31,10 @@ func Add(lhs, rhs Vec3) Vec3 {
 	}
 }
 
+func (v Vec3) Equal(q Vec3) bool {
+	return v.X == q.X && v.Y == q.Y && v.Z == q.Z
+}
+
 func Sub(lhs, rhs Vec3) Vec3 {
 	return Vec3{
 		X: lhs.X - rhs.X,

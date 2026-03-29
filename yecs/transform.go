@@ -27,3 +27,10 @@ func (trans Transform) GetTransformation() y3d.Mat4 {
 func (trans Transform) GetForward() y3d.Vec3 {
 	return trans.Orientation.RotateVec3(y3d.UNIT_Z)
 }
+
+func (t Transform) TransFormAABB(b y3d.AABB) y3d.AABB {
+	world := t.GetTransformation()
+	b.Max = world.MulVec3(b.Max)
+	b.Min = world.MulVec3(b.Min)
+	return b
+}

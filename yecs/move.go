@@ -36,3 +36,9 @@ func (ms *MoveSystem2D) Update(w *World, dt float64, entites []EntityId) {
 		}
 	}
 }
+
+type Navigator struct {
+	Move
+	Positions []y3d.Vec3
+	CurPos    int
+}

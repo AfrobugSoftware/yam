@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 	"yam/yecs"
 
 	gl "github.com/chsc/gogl/gl33"
@@ -148,10 +149,16 @@ func (g *Gl3) DrawSprites(w *yecs.World) {
 	var curBuf, curProgram string
 	var program gl.Uint
 	var drawBuffer VertBuffer
+	now := time.Now()
 	for _, e := range sprites {
 		s := w.GetComponent(e, yecs.SpriteComponent).(yecs.Sprite)
+		if s.Culled {
+			continue
+		}
 		t := w.GetComponent(e, yecs.TransformComponent).(yecs.Transform)
 		r := w.GetComponent(e, yecs.RenderStateComponent).(yecs.RenderState)
+
+		//how do I only draw sprites that are visable?? how do I cull
 
 		if curBuf != s.Buffer {
 			b, ok := g.buffers[s.Buffer]
@@ -172,6 +179,14 @@ func (g *Gl3) DrawSprites(w *yecs.World) {
 			curProgram = s.Program
 			SetActiveProgram(p)
 			program = p
+			err := AssignUniformMat4(program, "view", view)
+			if err != nil {
+				log.Println(err)
+			}
+			err = AssignUniformMat4(program, "proj", proj)
+			if err != nil {
+				log.Println(err)
+			}
 		}
 		tex, ok := g.textures[s.Textures]
 		if ok {
@@ -184,15 +199,7 @@ func (g *Gl3) DrawSprites(w *yecs.World) {
 			}
 		}
 		r.SetupRenderState()
-		err := AssignUniformMat4(program, "view", view)
-		if err != nil {
-			log.Println(err)
-		}
-		err = AssignUniformMat4(program, "proj", proj)
-		if err != nil {
-			log.Println(err)
-		}
-		err = AssignUniformMat4(program, "world", t.GetTransformation())
+		err := AssignUniformMat4(program, "world", t.GetTransformation())
 		if err != nil {
 			log.Println(err)
 		}
@@ -205,4 +212,6 @@ func (g *Gl3) DrawSprites(w *yecs.World) {
 		drawBuffer.DrawBuffer()
 	}
 	g.Window.GLSwap()
+	passed := time.Since(now)
+	log.Printf("elapsed time: %v", passed)
 }

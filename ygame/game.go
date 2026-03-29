@@ -6,6 +6,7 @@ import (
 	"yam/yecs"
 	"yam/ygl"
 
+	"github.com/ebitengine/oto/v3"
 	"github.com/veandco/go-sdl2/img"
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -20,6 +21,7 @@ type Game struct {
 	logFile    *os.File
 	Log        *slog.Logger
 	Gl3        *ygl.Gl3
+	Audio      *yecs.AudioSystem
 }
 
 var gGame *Game
@@ -57,6 +59,7 @@ func NewGame(title string, width, height int32) (*Game, error) {
 		Ticks:   sdl.GetTicks64(),
 		Gl3:     gl3,
 		World:   yecs.NewWorld(),
+		Audio:   yecs.NewAudioSystem(yecs.STEREO, 44000, oto.FormatFloat32LE),
 	}
 	return gGame, nil
 }
@@ -97,7 +100,6 @@ func (g *Game) Run() {
 	defer g.Quit()
 	var dt float64
 	g.Running = true
-	g.World.InitSystems()
 	for g.Running {
 		//how do I wait for 16ms to pass ??
 		dt = float64(sdl.GetTicks64()-g.Ticks) * 0.001
