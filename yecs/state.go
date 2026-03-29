@@ -1,11 +1,5 @@
 package yecs
 
-import "errors"
-
-var (
-	ErrorInvalidState = errors.New("invalid state")
-)
-
 // state machine holds state tables for entering, update and leaving
 // for example Enter[a][b](s, actor) runs for a an outgoing state for
 // a and incoming state for b
@@ -29,6 +23,9 @@ func (s *StateMachine) Update(w *World, dt float64, e EntityId) {
 }
 
 func (s *StateMachine) ChangeState(w *World, e EntityId, state int) {
+	if s.OnLeave == nil || s.OnEnter == nil {
+		return
+	}
 	err := s.OnLeave[s.PrevState][s.CurState](w, e)
 	if err != nil {
 		return

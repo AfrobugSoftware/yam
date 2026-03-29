@@ -7,7 +7,6 @@ import (
 	"yam/ygl"
 
 	"github.com/ebitengine/oto/v3"
-	"github.com/veandco/go-sdl2/img"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -36,12 +35,6 @@ func NewGame(title string, width, height int32) (*Game, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	err = img.Init(img.INIT_PNG | img.INIT_JPG)
-	if err != nil {
-		return nil, err
-	}
-
 	file, err := os.OpenFile("yam.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		return nil, err
@@ -87,6 +80,9 @@ func (g *Game) ProcessInput() {
 			if g.OnExit != nil {
 				g.Running = g.OnExit()
 			}
+		case sdl.MOUSEWHEEL:
+			w := event.(*sdl.MouseWheelEvent)
+			g.Input.ProcessWheel(w)
 		}
 		state := sdl.GetKeyboardState()
 		if state != nil {
@@ -95,7 +91,7 @@ func (g *Game) ProcessInput() {
 			}
 			copy(g.Input.CurKeyState, state)
 		}
-		g.Input.UpdateMouse(sdl.GetMouseState())
+		g.Input.UpdateMouse()
 	}
 }
 

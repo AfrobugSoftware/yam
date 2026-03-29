@@ -212,6 +212,6 @@ func (g *Gl3) DrawSprites(w *yecs.World) {
 		drawBuffer.DrawBuffer()
 	}
 	g.Window.GLSwap()
-	passed := time.Since(now)
-	log.Printf("elapsed time: %v", passed)
+	passed := time.Since(now).Seconds()
+	log.Printf("FPS: %.2f", 1.0/passed)
 }

@@ -63,6 +63,14 @@ func (i Input) GetMousePosition() y3d.Vec3 {
 	return i.isystem.MousePosition
 }
 
+func (i Input) GetMouseWheelPosition() y3d.Vec3 {
+	return i.isystem.ScrollWheelPos
+}
+
+func (i Input) GetMouseWheelDirection() uint32 {
+	return i.isystem.ScrollWheelDir
+}
+
 func (i Input) GetMouseKeyState(key uint32) uint8 {
 	if key >= MOUSE_MAX {
 		return BUTTON_NONE
@@ -99,6 +107,8 @@ type InputSystem struct {
 	ScreenWidth       int32
 	ScreenHeight      int32
 	IsRelative        bool
+	ScrollWheelPos    y3d.Vec3
+	ScrollWheelDir    uint32
 }
 
 func (is *InputSystem) Init() {
@@ -112,6 +122,11 @@ func convertToOpenGLCoords(is *InputSystem, x, y int32) y3d.Vec3 {
 		X: float32(x) - float32(is.ScreenWidth)/2,
 		Y: float32(is.ScreenHeight)/2 - float32(y),
 	}
+}
+
+func (is *InputSystem) ProcessWheel(w *sdl.MouseWheelEvent) {
+	is.ScrollWheelPos = convertToOpenGLCoords(is, w.X, w.Y)
+	is.ScrollWheelDir = w.Direction
 }
 
 func (is *InputSystem) UpdateMouse() {
@@ -143,6 +158,8 @@ func (is *InputSystem) PrepareToUpdate() {
 
 	clear(is.CurKeyState)
 	is.CurMouseKeyState = 0
+	is.ScrollWheelDir = 0
+	is.ScrollWheelPos = y3d.Vec3{}
 }
 
 func (is *InputSystem) Query() []ComponentId {

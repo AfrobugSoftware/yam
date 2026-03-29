@@ -84,7 +84,7 @@ func randRange(min, max float32) float32 {
 
 func CreateScene(w *yecs.World) {
 	quat := y3d.FromAngleAxis(y3d.UNIT_X, 0)
-	for i := range 100000 {
+	for i := range 10000 {
 		x := randRange(-1000, 1000)
 		y := randRange(-1000, 1000)
 		z := randRange(-10, -1000)
