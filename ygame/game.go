@@ -22,6 +22,7 @@ type Game struct {
 	Log        *slog.Logger
 	Gl3        *ygl.Gl3
 	Audio      *yecs.AudioSystem
+	Input      *yecs.InputSystem
 }
 
 var gGame *Game
@@ -60,6 +61,11 @@ func NewGame(title string, width, height int32) (*Game, error) {
 		Gl3:     gl3,
 		World:   yecs.NewWorld(),
 		Audio:   yecs.NewAudioSystem(yecs.STEREO, 44000, oto.FormatFloat32LE),
+		Input: &yecs.InputSystem{
+			ShowCursor:   1,
+			ScreenWidth:  width,
+			ScreenHeight: height,
+		},
 	}
 	return gGame, nil
 }
@@ -73,6 +79,7 @@ func (g *Game) Update(dt float64) {
 }
 
 func (g *Game) ProcessInput() {
+	g.Input.PrepareToUpdate()
 	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 		switch event.GetType() {
 		case sdl.QUIT:
@@ -86,8 +93,9 @@ func (g *Game) ProcessInput() {
 			if state[sdl.SCANCODE_ESCAPE] != 0 {
 				g.Running = false
 			}
-			g.World.ProcessInput(state)
+			copy(g.Input.CurKeyState, state)
 		}
+		g.Input.UpdateMouse(sdl.GetMouseState())
 	}
 }
 

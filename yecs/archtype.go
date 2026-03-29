@@ -405,18 +405,6 @@ func (w *World) InitSystems() {
 	}
 }
 
-func (w *World) ProcessInput(keyState []uint8) {
-	entities := w.Query([]ComponentId{InputComponent})
-	for _, e := range entities {
-		in := w.GetComponent(e, InputComponent).(Input)
-		if in.KeyState == nil {
-			in.KeyState = make([]uint8, len(keyState))
-		}
-		copy(in.KeyState, keyState)
-		w.SetComponent(e, InputComponent, in)
-	}
-}
-
 func (w *World) Shutdown() {
 	for _, s := range w.systems {
 		s.Shutdown()
