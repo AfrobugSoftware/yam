@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"log"
 	"os"
+	"yam/y3d"
 
 	"github.com/ebitengine/oto/v3"
 	"github.com/hajimehoshi/go-mp3"
@@ -32,6 +33,7 @@ type AudioSystem struct {
 	Format     oto.Format
 	Context    *oto.Context
 	Players    map[string]AudioPlayer
+	Listener   y3d.Mat4
 }
 
 func NewAudioSystem(channels int, sampleRate int, format oto.Format) *AudioSystem {

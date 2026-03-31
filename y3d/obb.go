@@ -42,18 +42,12 @@ func OBBIntersects(a, b OBB) bool {
 		if axis.Length() < NearZero {
 			continue
 		}
-
-		// Project both OBBs and the translation onto this axis
 		projA := a.project(axis)
 		projB := b.project(axis)
 		projT := float32(math.Abs(float64(Dot(t, axis))))
-
-		// If there is a gap, we found a separating axis — no intersection
 		if projT > projA+projB {
 			return false
 		}
 	}
-
-	// No separating axis found — OBBs are intersecting
 	return true
 }

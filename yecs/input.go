@@ -22,8 +22,10 @@ const (
 	MOUSE_MAX    = 6
 )
 
+type UpdateInputFunc func(w *World, a EntityId)
 type Input struct {
 	isystem *InputSystem
+	Update  UpdateInputFunc
 }
 
 func (i Input) GetKeyValue(key int) uint8 {
@@ -109,6 +111,7 @@ type InputSystem struct {
 	IsRelative        bool
 	ScrollWheelPos    y3d.Vec3
 	ScrollWheelDir    uint32
+	MaxMouseSpeed     float32
 }
 
 func (is *InputSystem) Init() {
@@ -149,6 +152,14 @@ func (is *InputSystem) SetRelavtive(set bool) {
 func (is *InputSystem) CreateInput() Input {
 	return Input{
 		isystem: is,
+	}
+}
+
+func (is *InputSystem) UpdateInput(w *World) {
+	entites := w.Query([]ComponentId{InputComponent})
+	for _, e := range entites {
+		input := w.GetComponent(e, InputComponent).(Input)
+		input.Update(w, e)
 	}
 }
 

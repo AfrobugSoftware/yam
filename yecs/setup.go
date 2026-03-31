@@ -6,6 +6,7 @@ var (
 	TransformComponent   = RegisterComponent[Transform]()
 	ANodeComponent       = RegisterComponent[ANode]()
 	OBBComponent         = RegisterComponent[y3d.OBB]()
+	SphereComponent      = RegisterComponent[y3d.Sphere]()
 	AABBComponent        = RegisterComponent[y3d.AABB]()
 	InputComponent       = RegisterComponent[Input]()
 	ControlComponent     = RegisterComponent[Control]()
@@ -15,4 +16,5 @@ var (
 	StateComponent       = RegisterComponent[StateMachine]()
 	CameraComponent      = RegisterComponent[Camera]()
 	AudioComponent       = RegisterComponent[AudioData]()
+	NavigatorComponent   = RegisterComponent[Navigator]()
 )

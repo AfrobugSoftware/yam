@@ -3,11 +3,16 @@ package ygame
 import (
 	"log/slog"
 	"os"
+	"time"
 	"yam/yecs"
 	"yam/ygl"
 
 	"github.com/ebitengine/oto/v3"
 	"github.com/veandco/go-sdl2/sdl"
+)
+
+var (
+	MS_PER_FRAME = 16 * time.Millisecond
 )
 
 type Game struct {
@@ -93,6 +98,7 @@ func (g *Game) ProcessInput() {
 		}
 		g.Input.UpdateMouse()
 	}
+	g.Input.UpdateInput(g.World)
 }
 
 func (g *Game) Draw() {
@@ -102,18 +108,26 @@ func (g *Game) Draw() {
 
 func (g *Game) Run() {
 	defer g.Quit()
-	var dt float64
+	var dt time.Duration
 	g.Running = true
+	lastTime := time.Now()
 	for g.Running {
 		//how do I wait for 16ms to pass ??
-		dt = float64(sdl.GetTicks64()-g.Ticks) * 0.001
-		g.Ticks = sdl.GetTicks64()
-		if dt > 0.05 {
-			dt = 0.05
+		// dt = float64(sdl.GetTicks64()-g.Ticks) * 0.001
+		// g.Ticks = sdl.GetTicks64()
+		// if dt > 0.05 {
+		// 	dt = 0.05
+		// }
+		now := time.Now()
+		dt = now.Sub(lastTime)
+		frameTime := dt.Seconds()
+		if frameTime > 0.05 {
+			frameTime = 0.05
 		}
 		g.ProcessInput()
-		g.Update(dt)
+		g.Update(frameTime)
 		g.Draw()
+		lastTime = now
 	}
 }
 

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"sync"
-	"time"
 	"yam/yecs"
 
 	gl "github.com/chsc/gogl/gl33"
@@ -149,7 +148,7 @@ func (g *Gl3) DrawSprites(w *yecs.World) {
 	var curBuf, curProgram string
 	var program gl.Uint
 	var drawBuffer VertBuffer
-	now := time.Now()
+	//now := time.Now()
 	for _, e := range sprites {
 		s := w.GetComponent(e, yecs.SpriteComponent).(yecs.Sprite)
 		if s.Culled {
@@ -198,8 +197,7 @@ func (g *Gl3) DrawSprites(w *yecs.World) {
 				SetActiveTex(tex[s.CurTexture], 0)
 			}
 		}
-		r.SetupRenderState()
-		err := AssignUniformMat4(program, "world", t.GetTransformation())
+		err := AssignUniformMat4(program, "world", t.Transform)
 		if err != nil {
 			log.Println(err)
 		}
@@ -209,9 +207,10 @@ func (g *Gl3) DrawSprites(w *yecs.World) {
 				log.Println(err)
 			}
 		}
+		r.SetupRenderState()
 		drawBuffer.DrawBuffer()
 	}
 	g.Window.GLSwap()
-	passed := time.Since(now).Seconds()
-	log.Printf("FPS: %.2f", 1.0/passed)
+	//passed := time.Since(now).Seconds()
+	//log.Printf("FPS: %.2f", 1.0/passed)
 }

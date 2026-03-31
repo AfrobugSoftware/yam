@@ -1,6 +1,9 @@
 package y3d
 
-import "math"
+import (
+	"fmt"
+	"math"
+)
 
 var (
 	UNIT_X = Vec3{X: 1.0, Y: 0.0, Z: 0.0}
@@ -124,4 +127,8 @@ func Cross(v, q Vec3) Vec3 {
 		Y: y,
 		Z: z,
 	}
+}
+
+func (v Vec3) String() string {
+	return fmt.Sprintf("[X:%.2f Y:%.2f Z:%.2f]\n", v.X, v.Y, v.Z)
 }

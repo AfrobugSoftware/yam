@@ -7,5 +7,6 @@ import (
 
 func main() {
 	fmt.Println("yam yum!")
-	yam.TestGame()
+	//yam.TestGame()
+	yam.TesPlayer()
 }

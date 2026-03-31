@@ -1,37 +1,56 @@
 package yecs
 
-import "yam/y3d"
+import (
+	"math"
+	"yam/y3d"
+)
 
 type Move struct {
 	AnglularSpeed float32
 	ForwardSpeed  float32
+	StrafeSpeed   float32
+	VerticalSpeed float32
+
+	MaxAngularSpeed float32
 }
 
-type MoveSystem2D struct{}
+type MoveSystem struct{}
 
-func (ms *MoveSystem2D) Init()     {}
-func (ms *MoveSystem2D) Shutdown() {}
+func (ms *MoveSystem) Init()     {}
+func (ms *MoveSystem) Shutdown() {}
 
-func (ms *MoveSystem2D) Query() []ComponentId {
+func (ms *MoveSystem) Query() []ComponentId {
 	return []ComponentId{TransformComponent, MoveComponent}
 }
 
-func (ms *MoveSystem2D) Update(w *World, dt float64, entites []EntityId) {
+func (ms *MoveSystem) Update(w *World, dt float64, entites []EntityId) {
 	for _, e := range entites {
+		recal := false
 		move := w.GetComponent(e, MoveComponent).(Move)
 		transform := w.GetComponent(e, TransformComponent).(Transform)
-		if move.AnglularSpeed > y3d.NearZero {
+		if math.Abs(float64(move.AnglularSpeed)) > y3d.NearZero {
 			angle := move.AnglularSpeed * float32(dt)
-			inc := y3d.FromAngleAxis(y3d.UNIT_Z, float64(angle))
+			inc := y3d.FromAngleAxis(transform.GetForward(), float64(angle))
 			transform.Orientation = y3d.ProdQuaternion(inc, transform.Orientation)
-			transform.NeedCalculation = true
+			recal = true
 		}
-		if move.ForwardSpeed > y3d.NearZero {
+		if math.Abs(float64(move.ForwardSpeed)) > y3d.NearZero {
 			velocity := y3d.Smul(transform.GetForward(), move.ForwardSpeed)
 			transform.Position = y3d.Add(transform.Position, y3d.Smul(velocity, float32(dt)))
-			transform.NeedCalculation = true
+			recal = true
 		}
-		if transform.NeedCalculation {
+		if math.Abs(float64(move.StrafeSpeed)) > y3d.NearZero {
+			velocity := y3d.Smul(transform.GetRight(), move.StrafeSpeed)
+			transform.Position = y3d.Add(transform.Position, y3d.Smul(velocity, float32(dt)))
+			recal = true
+		}
+		if math.Abs(float64(move.VerticalSpeed)) > y3d.NearZero {
+			velocity := y3d.Smul(transform.GetUp(), move.VerticalSpeed)
+			transform.Position = y3d.Add(transform.Position, y3d.Smul(velocity, float32(dt)))
+			recal = true
+		}
+		if recal {
+			(&transform).Recalulate()
 			w.SetComponent(e, TransformComponent, transform)
 		}
 	}
@@ -41,4 +60,15 @@ type Navigator struct {
 	Move
 	Positions []y3d.Vec3
 	CurPos    int
+}
+
+type NavigatorMoveSystem struct{}
+
+func (ns *NavigatorMoveSystem) Init()     {}
+func (ns *NavigatorMoveSystem) Shutdown() {}
+func (ns *NavigatorMoveSystem) Update(w *World, dt float64, entires []EntityId) {
+
+}
+func (ns *NavigatorMoveSystem) Query() []ComponentId {
+	return []ComponentId{TransformComponent, NavigatorComponent}
 }

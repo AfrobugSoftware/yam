@@ -234,10 +234,13 @@ type World struct {
 }
 
 func NewWorld() *World {
-	return &World{
+	w := &World{
 		entities:   make(map[EntityId]*entityRecord),
 		archetypes: make(map[string]*Archetype),
 	}
+	w.AddSystem(&StateSystem{})
+	w.AddSystem(&MoveSystem{})
+	return w
 }
 
 func (w *World) NewEntity() EntityId {
