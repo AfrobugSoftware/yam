@@ -54,6 +54,114 @@ func (a Mat4) Mul(b Mat4) Mat4 {
 	return out
 }
 
+func (m1 *Mat4) MulWith(c float32) {
+	m1[0] *= c
+	m1[1] *= c
+	m1[2] *= c
+	m1[3] *= c
+	m1[4] *= c
+	m1[5] *= c
+	m1[6] *= c
+	m1[7] *= c
+	m1[8] *= c
+	m1[9] *= c
+	m1[10] *= c
+	m1[11] *= c
+	m1[12] *= c
+	m1[13] *= c
+	m1[14] *= c
+	m1[15] *= c
+}
+
+func (m1 *Mat4) Invert() {
+	det := m1.Det()
+	if det < NearZero {
+		*m1 = Identity //do not know if this is valid
+		return
+	}
+
+	//m1ake a copy to not override original while reading
+	v0 := m1[0]
+	v1 := m1[1]
+	v2 := m1[2]
+	v3 := m1[3]
+	v4 := m1[4]
+	v5 := m1[5]
+	v6 := m1[6]
+	v7 := m1[7]
+	v8 := m1[8]
+	v9 := m1[9]
+	v10 := m1[10]
+	v11 := m1[11]
+	v12 := m1[12]
+	v13 := m1[13]
+	v14 := m1[14]
+	v15 := m1[15]
+
+	//precalculate the most common products
+	v7v10 := v7 * v10
+	v6v11 := v6 * v11
+	v7v9 := v7 * v9
+	v5v11 := v5 * v11
+	v6v9 := v6 * v9
+	v5v10 := v5 * v10
+	v1v4 := v1 * v4
+	v4v9 := v4 * v9
+	v6v8 := v6 * v8
+	v5v8 := v5 * v8
+	v7v8 := v7 * v8
+	v1v12 := v1 * v12
+	v2v12 := v2 * v12
+	v2v13 := v2 * v13
+	v2v15 := v2 * v15
+	v3v12 := v3 * v12
+	v3v13 := v3 * v13
+	v3v14 := v3 * v14
+	v4v10 := v4 * v10
+	v4v11 := v4 * v11
+	v10v15 := v10 * v15
+	v7v14 := v7 * v14
+	v6v15 := v6 * v15
+	v0v11 := v0 * v11
+	v1v8 := v1 * v8
+	v0v9 := v0 * v9
+	v0v5 := v0 * v5
+	v0v13 := v0 * v13
+
+	m1[0] = -v7v10*v13 + v6v11*v13 + v7v9*v14 - v5v11*v14 - v6v9*v15 + v5v10*v15
+	m1[1] = v3v13*v10 - v2v13*v11 - v3v14*v9 + v1*v11*v14 + v2v15*v9 - v1*v10v15
+	m1[2] = -v3v13*v6 + v2v13*v7 + v3v14*v5 - v1*v7v14 - v2v15*v5 + v1*v6v15
+	m1[3] = v3*v6v9 - v2*v7v9 - v3*v5v10 + v1*v7v10 + v2*v5v11 - v1*v6v11
+	m1[4] = v7v10*v12 - v6v11*v12 - v7v8*v14 + v4v11*v14 + v6v8*v15 - v4v10*v15
+	m1[5] = -v3v12*v10 + v2v12*v11 + v3v14*v8 - v0v11*v14 - v2v15*v8 + v0*v10v15
+	m1[6] = v3v12*v6 - v2v12*v7 - v3v14*v4 + v0*v7v14 + v2v15*v4 - v0*v6v15
+	m1[7] = -v3*v6v8 + v2*v7v8 + v3*v4v10 - v0*v7v10 - v2*v4v11 + v0*v6v11
+	m1[8] = -v7v9*v12 + v5v11*v12 + v7v8*v13 - v4v11*v13 - v5v8*v15 + v4v9*v15
+	m1[9] = v3v12*v9 - v1v12*v11 - v3v13*v8 + v0v11*v13 + v1v8*v15 - v0v9*v15
+	m1[10] = -v3v12*v5 + v1v12*v7 + v3v13*v4 - v0v13*v7 - v1v4*v15 + v0v5*v15
+	m1[11] = v3*v5v8 - v1*v7v8 - v3*v4v9 + v0*v7v9 + v1v4*v11 - v0*v5v11
+	m1[12] = v6v9*v12 - v5v10*v12 - v6v8*v13 + v4v10*v13 + v5v8*v14 - v4v9*v14
+	m1[13] = -v2v12*v9 + v1v12*v10 + v2v13*v8 - v0v13*v10 - v1v8*v14 + v0v9*v14
+	m1[14] = v2v12*v5 - v1v12*v6 - v2v13*v4 + v0v13*v6 + v1v4*v14 - v0v5*v14
+	m1[15] = -v2*v5v8 + v1*v6v8 + v2*v4v9 - v0*v6v9 - v1v4*v10 + v0*v5v10
+	m1.MulWith(1.0 / det)
+}
+
+func (m1 *Mat4) Transposed() Mat4 {
+	return Mat4{m1[0], m1[4], m1[8], m1[12],
+		m1[1], m1[5], m1[9], m1[13],
+		m1[2], m1[6], m1[10], m1[14],
+		m1[3], m1[7], m1[11], m1[15]}
+}
+
+func (m1 *Mat4) Det() float32 {
+	return m1[0]*m1[5]*m1[10]*m1[15] - m1[0]*m1[5]*m1[11]*m1[14] - m1[0]*m1[6]*m1[9]*m1[15] + m1[0]*m1[6]*m1[11]*m1[13] + m1[0]*m1[7]*m1[9]*m1[14] - m1[0]*m1[7]*m1[10]*m1[13] - m1[1]*m1[4]*m1[10]*m1[15] + m1[1]*m1[4]*m1[11]*m1[14] + m1[1]*m1[6]*m1[8]*m1[15] - m1[1]*m1[6]*m1[11]*m1[12] - m1[1]*m1[7]*m1[8]*m1[14] + m1[1]*m1[7]*m1[10]*m1[12] + m1[2]*m1[4]*m1[9]*m1[15] - m1[2]*m1[4]*m1[11]*m1[13] - m1[2]*m1[5]*m1[8]*m1[15] + m1[2]*m1[5]*m1[11]*m1[12] + m1[2]*m1[7]*m1[8]*m1[13] - m1[2]*m1[7]*m1[9]*m1[12] - m1[3]*m1[4]*m1[9]*m1[14] + m1[3]*m1[4]*m1[10]*m1[13] + m1[3]*m1[5]*m1[8]*m1[14] - m1[3]*m1[5]*m1[10]*m1[12] - m1[3]*m1[6]*m1[8]*m1[13] + m1[3]*m1[6]*m1[9]*m1[12]
+}
+
+func (m1 *Mat4) Transpose() {
+	m1[1], m1[2], m1[3], m1[4], m1[6], m1[7], m1[8], m1[9], m1[11], m1[12], m1[13], m1[14] = m1[4], m1[8], m1[12], m1[1], m1[9], m1[13], m1[2], m1[6], m1[14], m1[3], m1[7], m1[11]
+}
+
 func Scale(s Vec3) Mat4 {
 	return Mat4{
 		s.X, 0, 0, 0,

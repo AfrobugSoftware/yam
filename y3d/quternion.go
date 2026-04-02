@@ -60,9 +60,9 @@ func SumQuaternion(qin ...Quaternion) Quaternion {
 	return qout
 }
 
-func FromAngleAxis(axis Vec3, angle float64) Quaternion {
+// a must be in radians
+func FromAngleAxis(axis Vec3, a float64) Quaternion {
 	axis = Normalize(axis)
-	a := ToRadians(angle)
 	s := math.Sin(a / 2)
 	w := math.Cos(a / 2)
 	x := float64(axis.X) * s

@@ -10,6 +10,11 @@ const (
 	CAM_TYPE_ORTHOGRAPHIC
 )
 
+type ICamera interface {
+	GetProjectionTransformation()
+	GetViewTransformation()
+}
+
 type Camera struct {
 	Pos                                 y3d.Vec3
 	Up                                  y3d.Vec3
@@ -68,7 +73,7 @@ func (c *Camera) GetProjectionTransformation() y3d.Mat4 {
 	return c.Proj
 }
 
-func (c *Camera) Move(dt float64) {
+func (c *Camera) Update(dt float64) {
 	dir := y3d.Sub(c.LookAt, c.Pos)
 	dir = y3d.Normalize(dir)
 
@@ -83,16 +88,153 @@ func (c *Camera) Move(dt float64) {
 	c.Recalulate()
 }
 
+func (c Camera) Unproject(x, y float32, screenWidth, screenHeight int) y3d.Vec3 {
+	dcX := x / float32(screenWidth) * 0.5
+	dcY := y / float32(screenHeight) * 0.5
+
+	unprojection := c.Proj.Mul(c.View)
+	(&unprojection).Invert()
+	pw := unprojection.MulVec4(y3d.Vec4{X: dcX, Y: dcY, Z: 0, W: 1})
+	return y3d.Vec3{
+		X: pw.X / pw.W,
+		Y: pw.Y / pw.W,
+		Z: pw.Z / pw.W,
+	}
+}
+
 func (c *Camera) ConstructPlanes() {
 	//view := c.View
 
 }
 
-type CullSystem struct{}
+type FollowCamera struct {
+	Camera
+	EntityToFollow                                       EntityId
+	VerticalDistance, HorizontalDistance, TargetDistance float32
+	SpringConstant                                       float32
+	ActualPos, Velocity                                  y3d.Vec3
+}
 
-func (c *CullSystem) Init()                                            {}
-func (c *CullSystem) Shutdown()                                        {}
-func (c *CullSystem) Update(w *World, dt float64, entities []EntityId) {}
-func (c *CullSystem) Query() []ComponentId {
-	return []ComponentId{AABBComponent}
+func (c *FollowCamera) ComputeFollowPosition(w *World) (pos, targetPos y3d.Vec3) {
+	transform := w.GetComponent(c.EntityToFollow, TransformComponent).(Transform)
+	pos = transform.Position
+	pos = y3d.Sub(c.Pos, y3d.Smul(transform.GetForward(), c.HorizontalDistance))
+	pos = y3d.Add(c.Pos, y3d.Smul(transform.GetUp(), c.VerticalDistance))
+	targetPos = y3d.Add(transform.Position, y3d.Smul(transform.GetForward(), c.TargetDistance))
+
+	return
+}
+
+func (c *FollowCamera) SnapToIdel(w *World) {
+	pos, target := c.ComputeFollowPosition(w)
+	c.ActualPos = pos
+	c.LookAt = target
+	c.Velocity = y3d.ZEROV
+
+	c.Recalulate()
+}
+
+type FollowCameraSystem struct{}
+
+func (c *FollowCameraSystem) Init()     {}
+func (c *FollowCameraSystem) Shutdown() {}
+func (c *FollowCameraSystem) Update(w *World, dt float64, entites []EntityId) {
+	for _, e := range entites {
+		cam := w.GetComponent(e, FollowCameraComponent).(FollowCamera)
+		dampening := 2.0 * math.Sqrt(float64(cam.SpringConstant))
+		pos, targetPos := cam.ComputeFollowPosition(w)
+		diff := y3d.Sub(cam.ActualPos, pos)
+
+		acel := y3d.Sub(y3d.Smul(diff, -cam.SpringConstant), y3d.Smul(cam.Velocity, float32(dampening)))
+		cam.Velocity = y3d.Add(cam.Velocity, y3d.Smul(acel, float32(dt)))
+		cam.ActualPos = y3d.Add(cam.ActualPos, y3d.Smul(cam.Velocity, float32(dt)))
+
+		cam.LookAt = targetPos
+		cam.Pos = cam.ActualPos
+		cam.Up = y3d.UNIT_Y
+		(&cam).Recalulate()
+
+		w.SetComponent(e, FollowCameraComponent, cam)
+	}
+}
+func (c *FollowCameraSystem) Query() []ComponentId {
+	return []ComponentId{FollowCameraComponent}
+}
+
+type OrbitCamera struct {
+	Camera
+	EntityToOrbit        EntityId
+	PitchSpeed, YawSpeed float32 //in radians/seconds
+	Offset               y3d.Vec3
+}
+
+type OrbitCameraSystem struct{}
+
+func (or *OrbitCameraSystem) Init()     {}
+func (or *OrbitCameraSystem) Shutdown() {}
+func (or *OrbitCameraSystem) Query() []ComponentId {
+	return []ComponentId{OrbitCameraComponent}
+}
+func (or *OrbitCameraSystem) Update(w *World, dt float64, entites []EntityId) {
+	for _, e := range entites {
+		cam := w.GetComponent(e, OrbitCameraComponent).(OrbitCamera)
+		transform, ok := w.GetComponent(cam.EntityToOrbit, TransformComponent).(Transform)
+		if !ok {
+			continue
+		}
+		yaw := y3d.FromAngleAxis(y3d.UNIT_Y, float64(cam.YawSpeed)*dt)
+
+		cam.Offset = yaw.RotateVec3(cam.Offset)
+		cam.Up = yaw.RotateVec3(cam.Up)
+
+		forward := y3d.NegateVec3(cam.Offset)
+		forward = y3d.Normalize(forward)
+		right := y3d.Cross(cam.Up, forward)
+
+		pitch := y3d.FromAngleAxis(right, float64(cam.PitchSpeed)*dt)
+		cam.Offset = pitch.RotateVec3(cam.Offset)
+		cam.Up = pitch.RotateVec3(cam.Up)
+		cam.LookAt = transform.Position
+
+		(&cam).Recalulate()
+		w.SetComponent(e, OrbitCameraComponent, cam)
+	}
+}
+
+type SplineCamera struct {
+	Camera
+	Path   y3d.Spline
+	Indx   int
+	T      float32
+	Paused bool
+}
+type SplineCameraSystem struct{}
+
+func (sc *SplineCameraSystem) Init()     {}
+func (sc *SplineCameraSystem) Shutdown() {}
+func (sc *SplineCameraSystem) Query() []ComponentId {
+	return []ComponentId{SplineCamaraComponent}
+}
+func (sc *SplineCameraSystem) Update(w *World, dt float64, entites []EntityId) {
+	for _, e := range entites {
+		cam := w.GetComponent(e, SplineCamaraComponent).(SplineCamera)
+		if !cam.Paused {
+			cam.T = cam.Speed * float32(dt)
+			if cam.T >= 1.0 {
+				l := len(cam.Path.ControlPoints)
+				if cam.Indx < l-3 {
+					cam.Indx++
+					cam.T = cam.T - 1.0
+				} else {
+					cam.Paused = true
+				}
+			}
+		}
+		cam.Pos = cam.Path.Compute(cam.Indx, cam.T)
+		cam.LookAt = cam.Path.Compute(cam.Indx, cam.T+0.01)
+		cam.Up = y3d.UNIT_Y
+
+		(&cam).Recalulate()
+		w.SetComponent(e, SplineCamaraComponent, cam)
+	}
 }

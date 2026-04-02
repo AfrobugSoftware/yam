@@ -321,6 +321,19 @@ func (w *World) AddComponent(entity EntityId, cid ComponentId, comp Component) {
 	w.entities[entity] = &entityRecord{archetype: arch, row: row}
 }
 
+func (w *World) HasComponent(entity EntityId, cid ComponentId) bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	record := w.entities[entity]
+	if record == nil || record.archetype != nil {
+		return false
+	}
+	if _, ok := record.archetype.storageBuffer[cid]; !ok {
+		return false
+	}
+	return true
+}
+
 func (w *World) RemoveComponent(entity EntityId, cid ComponentId) {
 	w.mu.Lock()
 	defer w.mu.Unlock()

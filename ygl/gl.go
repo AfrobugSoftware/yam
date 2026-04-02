@@ -148,7 +148,6 @@ func (g *Gl3) DrawSprites(w *yecs.World) {
 	var curBuf, curProgram string
 	var program gl.Uint
 	var drawBuffer VertBuffer
-	//now := time.Now()
 	for _, e := range sprites {
 		s := w.GetComponent(e, yecs.SpriteComponent).(yecs.Sprite)
 		if s.Culled {
@@ -211,6 +210,4 @@ func (g *Gl3) DrawSprites(w *yecs.World) {
 		drawBuffer.DrawBuffer()
 	}
 	g.Window.GLSwap()
-	//passed := time.Since(now).Seconds()
-	//log.Printf("FPS: %.2f", 1.0/passed)
 }

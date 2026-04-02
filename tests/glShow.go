@@ -99,7 +99,6 @@ func CreateScene(w *yecs.World) {
 func CreateSystems(w *yecs.World) {
 	w.AddSystem(ygame.GetGame().Audio)
 	w.AddSystem(ygame.GetGame().Input)
-	w.AddSystem(&yecs.CullSystem{})
 
 	w.InitSystems()
 }
