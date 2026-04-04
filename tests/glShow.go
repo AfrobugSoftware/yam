@@ -22,7 +22,7 @@ func CreateObject(w *yecs.World, transform yecs.Transform, curText int) {
 		Enable:    true,
 		DepthFunc: gl.LESS,
 	}, yecs.BlendState{
-		Enable:    true,
+		Enable:    false,
 		SrcFactor: gl.SRC_ALPHA,
 		DstFactor: gl.ONE_MINUS_SRC_ALPHA,
 	})
@@ -82,14 +82,14 @@ func randRange(min, max float32) float32 {
 }
 
 func CreateScene(w *yecs.World) {
-	for i := range 10000 {
+	for i := range 100000 {
 		x := randRange(-1000, 1000)
 		y := randRange(-1000, 1000)
 		z := randRange(-10, -1000)
 		transform := yecs.Transform{
-			Position:    y3d.Vec3{X: x, Y: y, Z: z},
-			Scale:       y3d.Vec3{X: 64, Y: 64, Z: 1},
-			Orientation: y3d.IdenQuat(),
+			Position: y3d.Vec3{X: x, Y: y, Z: z},
+			Scale:    y3d.Vec3{X: 64, Y: 64, Z: 1},
+			Rotation: y3d.IdenQuat(),
 		}
 		CreateObject(w, transform, i%3)
 	}

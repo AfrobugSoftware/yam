@@ -2,6 +2,7 @@ package ygl
 
 import (
 	"unsafe"
+	"yam/y3d"
 
 	gl "github.com/chsc/gogl/gl33"
 )
@@ -71,3 +72,31 @@ var (
 	}
 	`
 )
+
+func MakeAABBForSprite(SpriteData []gl.Float, vertFormat DataFormat) y3d.AABB {
+	stride := int(uintptr(vertFormat.Stride) / unsafe.Sizeof(gl.Float(0)))
+	firstPoint := y3d.Vec3{
+		X: float32(SpriteData[0]),
+		Y: float32(SpriteData[1]),
+		Z: float32(SpriteData[2]),
+	}
+	aabb := y3d.AABB{
+		Min: firstPoint,
+		Max: firstPoint,
+	}
+	for i := range vertFormat.Length {
+		point := y3d.Vec3{
+			X: float32(SpriteData[i*stride]),
+			Y: float32(SpriteData[i*stride+1]),
+			Z: float32(SpriteData[i*stride+2]),
+		}
+		aabb.Min.X = min(aabb.Min.X, point.X)
+		aabb.Min.Y = min(aabb.Min.Y, point.Y)
+		aabb.Min.Z = min(aabb.Min.Z, point.Z)
+
+		aabb.Max.X = max(aabb.Max.X, point.X)
+		aabb.Max.Y = max(aabb.Max.Y, point.Y)
+		aabb.Max.Z = max(aabb.Max.Z, point.Z)
+	}
+	return aabb
+}

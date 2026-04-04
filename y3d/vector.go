@@ -74,6 +74,10 @@ func (v Vec3) Length() float32 {
 	return float32(math.Sqrt(float64(v.X*v.X + v.Y*v.Y + v.Z*v.Z)))
 }
 
+func (v Vec3) LengthSq() float32 {
+	return v.X*v.X + v.Y*v.Y + v.Z*v.Z
+}
+
 func Normalize(v Vec3) Vec3 {
 	m := float32(v.Length())
 	if m > 0 {
@@ -127,6 +131,12 @@ func Cross(v, q Vec3) Vec3 {
 		Y: y,
 		Z: z,
 	}
+}
+
+// assumes N is normalised
+func ReflectVec3(I Vec3, N Vec3) Vec3 {
+	r := Sub(I, Smul(N, 2*Dot(I, N)))
+	return r
 }
 
 func (v Vec3) String() string {

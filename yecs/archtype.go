@@ -324,6 +324,7 @@ func (w *World) AddComponent(entity EntityId, cid ComponentId, comp Component) {
 func (w *World) HasComponent(entity EntityId, cid ComponentId) bool {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+
 	record := w.entities[entity]
 	if record == nil || record.archetype != nil {
 		return false
@@ -381,6 +382,7 @@ func (w *World) GetComponent(entity EntityId, cid ComponentId) Component {
 func (w *World) SetComponent(entity EntityId, cid ComponentId, comp Component) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+
 	record := w.entities[entity]
 	if record == nil {
 		return

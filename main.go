@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	fmt.Println("yam yum!")
-	//yam.TestGame()
-	yam.TesPlayer()
+	fmt.Println("kiwi island!")
+	yam.TestGame()
+	//yam.TesPlayer()
 }

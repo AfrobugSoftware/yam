@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 	"yam/yecs"
 
 	gl "github.com/chsc/gogl/gl33"
@@ -134,6 +135,7 @@ func (g *Gl3) AddVertexBuffer(name string, data []gl.Float, indx []uint16, forma
 }
 
 func (g *Gl3) DrawSprites(w *yecs.World) {
+	now := time.Now()
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
 	camera := w.Query([]yecs.ComponentId{yecs.CameraComponent})
@@ -145,19 +147,16 @@ func (g *Gl3) DrawSprites(w *yecs.World) {
 	MainCam := w.GetComponent(camera[0], yecs.CameraComponent).(yecs.Camera)
 	view := MainCam.GetViewTransformation()
 	proj := MainCam.GetProjectionTransformation()
-	var curBuf, curProgram string
+	var curBuf, curProgram, curTexture string
 	var program gl.Uint
 	var drawBuffer VertBuffer
 	for _, e := range sprites {
 		s := w.GetComponent(e, yecs.SpriteComponent).(yecs.Sprite)
-		if s.Culled {
+		if s.IsCulled {
 			continue
 		}
 		t := w.GetComponent(e, yecs.TransformComponent).(yecs.Transform)
 		r := w.GetComponent(e, yecs.RenderStateComponent).(yecs.RenderState)
-
-		//how do I only draw sprites that are visable?? how do I cull
-
 		if curBuf != s.Buffer {
 			b, ok := g.buffers[s.Buffer]
 			if !ok {
@@ -186,14 +185,17 @@ func (g *Gl3) DrawSprites(w *yecs.World) {
 				log.Println(err)
 			}
 		}
-		tex, ok := g.textures[s.Textures]
-		if ok {
-			if s.CurTexture == -1 {
-				for i, t := range tex {
-					SetActiveTex(t, i)
+		if curTexture != s.Textures {
+			tex, ok := g.textures[s.Textures]
+			if ok {
+				curTexture = s.Textures
+				if s.CurTexture == -1 {
+					for i, t := range tex {
+						SetActiveTex(t, i)
+					}
+				} else {
+					SetActiveTex(tex[s.CurTexture], 0)
 				}
-			} else {
-				SetActiveTex(tex[s.CurTexture], 0)
 			}
 		}
 		err := AssignUniformMat4(program, "world", t.Transform)
@@ -201,7 +203,7 @@ func (g *Gl3) DrawSprites(w *yecs.World) {
 			log.Println(err)
 		}
 		if s.AssignUniforms != nil {
-			err = s.AssignUniforms(e, program)
+			err := s.AssignUniforms(e, program)
 			if err != nil {
 				log.Println(err)
 			}
@@ -209,5 +211,7 @@ func (g *Gl3) DrawSprites(w *yecs.World) {
 		r.SetupRenderState()
 		drawBuffer.DrawBuffer()
 	}
+	elapsed := time.Since(now)
+	fmt.Println(elapsed)
 	g.Window.GLSwap()
 }

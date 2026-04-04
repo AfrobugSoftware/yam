@@ -4,6 +4,7 @@ import (
 	"yam/y3d"
 	"yam/yecs"
 	"yam/ygame"
+	"yam/ygl"
 
 	gl "github.com/chsc/gogl/gl33"
 	"github.com/veandco/go-sdl2/sdl"
@@ -27,9 +28,10 @@ func CreatePlayer(w *yecs.World) {
 		CurTexture: 0,
 	}
 	transform := yecs.Transform{
-		Position:    y3d.Vec3{X: 0, Y: 0, Z: -100},
-		Scale:       y3d.Vec3{X: 64, Y: 64, Z: 1},
-		Orientation: y3d.IdenQuat(),
+		Position:  y3d.Vec3{X: 0, Y: 0, Z: -100},
+		Scale:     y3d.Vec3{X: 64, Y: 64, Z: 1},
+		Rotation:  y3d.IdenQuat(),
+		Transform: y3d.Identity,
 	}
 	(&transform).Recalulate()
 	move := yecs.Move{}
@@ -50,11 +52,23 @@ func CreatePlayer(w *yecs.World) {
 		if input.GetKeyState(sdl.SCANCODE_A) == yecs.BUTTON_PRESSED || input.GetKeyState(sdl.SCANCODE_A) == yecs.BUTTON_HELD {
 			move.StrafeSpeed = -2000
 		}
+		if input.GetKeyState(sdl.SCANCODE_Q) == yecs.BUTTON_PRESSED || input.GetKeyState(sdl.SCANCODE_Q) == yecs.BUTTON_HELD {
+			move.VerticalSpeed = 2000
+		}
+		if input.GetKeyState(sdl.SCANCODE_E) == yecs.BUTTON_PRESSED || input.GetKeyState(sdl.SCANCODE_E) == yecs.BUTTON_HELD {
+			move.VerticalSpeed = -2000
+		}
 		w.SetComponent(e, yecs.MoveComponent, move)
+	}
+	aabb := ygl.MakeAABBForSprite(ygl.SpriteData[:], ygl.SpriteFormat[0])
+	box := yecs.Box{
+		Local: aabb,
+		World: aabb,
 	}
 
 	w.AddComponent(e, yecs.InputComponent, in)
 	w.AddComponent(e, yecs.SpriteComponent, sprite)
+	w.AddComponent(e, yecs.BoxComponent, box)
 	w.AddComponent(e, yecs.TransformComponent, transform)
 	w.AddComponent(e, yecs.RenderStateComponent, renderState)
 	w.AddComponent(e, yecs.MoveComponent, move)

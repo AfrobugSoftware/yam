@@ -2,6 +2,8 @@ package yecs
 
 import (
 	"math"
+	"runtime"
+	"sync"
 	"yam/y3d"
 )
 
@@ -14,7 +16,9 @@ type Move struct {
 	MaxAngularSpeed float32
 }
 
-type MoveSystem struct{}
+type MoveSystem struct {
+	Wg sync.WaitGroup
+}
 
 func (ms *MoveSystem) Init()     {}
 func (ms *MoveSystem) Shutdown() {}
@@ -23,7 +27,7 @@ func (ms *MoveSystem) Query() []ComponentId {
 	return []ComponentId{TransformComponent, MoveComponent}
 }
 
-func (ms *MoveSystem) Update(w *World, dt float64, entites []EntityId) {
+func (ms *MoveSystem) Run(w *World, dt float64, entites []EntityId) {
 	for _, e := range entites {
 		recal := false
 		move := w.GetComponent(e, MoveComponent).(Move)
@@ -32,7 +36,7 @@ func (ms *MoveSystem) Update(w *World, dt float64, entites []EntityId) {
 			angle := move.AnglularSpeed * float32(dt)
 			angle = float32(y3d.ToRadians(float64(angle)))
 			inc := y3d.FromAngleAxis(transform.GetForward(), float64(angle))
-			transform.Orientation = y3d.ProdQuaternion(inc, transform.Orientation)
+			transform.Rotation = y3d.ProdQuaternion(inc, transform.Rotation)
 			recal = true
 		}
 		if math.Abs(float64(move.ForwardSpeed)) > y3d.NearZero {
@@ -55,6 +59,17 @@ func (ms *MoveSystem) Update(w *World, dt float64, entites []EntityId) {
 			w.SetComponent(e, TransformComponent, transform)
 		}
 	}
+	ms.Wg.Done()
+}
+
+func (ms *MoveSystem) Update(w *World, dt float64, entites []EntityId) {
+	brk := len(entites) / runtime.NumCPU()
+	for i := range runtime.NumCPU() {
+		ms.Wg.Add(1)
+		offset := i * brk
+		go ms.Run(w, dt, entites[offset:offset+brk])
+	}
+	ms.Wg.Wait()
 }
 
 type Navigator struct {

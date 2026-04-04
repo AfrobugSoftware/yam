@@ -1,6 +1,9 @@
 package y3d
 
-import "math"
+import (
+	"math"
+	"unsafe"
+)
 
 const (
 	DEGTORAD = 180.0 / math.Pi
@@ -23,4 +26,13 @@ func Clamp(a, max, min float32) float32 {
 		a = min
 	}
 	return a
+}
+
+func FastInvSqrt(value float32) float32 {
+	half := 0.5 * value
+	i := *(*int)(unsafe.Pointer(&value))
+	i = 0x5f3759df - (i >> 1)
+	value = *(*float32)(unsafe.Pointer(&i))
+	value = value * (1.5 - half*value*value)
+	return value
 }

@@ -1,38 +1,53 @@
 package yecs
 
 import (
+	"math"
 	"yam/y3d"
 )
 
 type Transform struct {
-	Position    y3d.Vec3
-	Orientation y3d.Quaternion
-	Scale       y3d.Vec3
-	Transform   y3d.Mat4
+	Position  y3d.Vec3
+	Rotation  y3d.Quaternion
+	Scale     y3d.Vec3
+	Transform y3d.Mat4
 }
 
 func (trans *Transform) Recalulate() {
 	scale := y3d.Scale(trans.Scale)
-	rot := trans.Orientation.ToMat4()
+	rot := trans.Rotation.ToMat4()
 	translation := y3d.Translation(trans.Position)
 	trans.Transform = translation.Mul(rot).Mul(scale)
 }
 
 func (trans Transform) GetForward() y3d.Vec3 {
-	return trans.Orientation.RotateVec3(y3d.UNIT_Z)
+	return trans.Rotation.RotateVec3(y3d.UNIT_Z)
 }
 
 func (trans Transform) GetRight() y3d.Vec3 {
-	return trans.Orientation.RotateVec3(y3d.UNIT_X)
+	return trans.Rotation.RotateVec3(y3d.UNIT_X)
 }
 
 func (trans Transform) GetUp() y3d.Vec3 {
-	return trans.Orientation.RotateVec3(y3d.UNIT_Y)
+	return trans.Rotation.RotateVec3(y3d.UNIT_Y)
 }
 
 func (t Transform) TransFormAABB(b y3d.AABB) y3d.AABB {
-	world := t.Transform
-	b.Max = world.MulVec3(b.Max)
-	b.Min = world.MulVec3(b.Min)
+	(&b).Scale(t.Scale)
+	//no rotation yet.
+	(&b).Translate(t.Position)
 	return b
+}
+
+func (t *Transform) RotateToFoward(forward y3d.Vec3) {
+	dot := y3d.Dot(y3d.UNIT_Z, forward)
+	angle := math.Acos(float64(dot))
+	if dot > 0.9999 {
+		t.Rotation = y3d.IdenQuat()
+	} else if dot < -0.9999 {
+		t.Rotation = y3d.FromAngleAxis(y3d.UNIT_Y, math.Pi)
+	} else {
+		axis := y3d.Cross(y3d.UNIT_Z, forward)
+		axis = y3d.Normalize(axis)
+		t.Rotation = y3d.FromAngleAxis(axis, angle)
+	}
 }
