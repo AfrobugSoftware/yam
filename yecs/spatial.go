@@ -2,11 +2,10 @@ package yecs
 
 import gl "github.com/chsc/gogl/gl33"
 
-type Sprite struct {
+type Spatial struct {
 	Buffer         string
 	Program        string
 	Textures       string
 	CurTexture     int
-	IsCulled       bool
-	AssignUniforms func(e EntityId, program gl.Uint) error
+	AssignUniforms func(e EntityId, w *World, cam *Camera, program gl.Uint) error
 }

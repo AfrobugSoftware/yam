@@ -14,6 +14,7 @@ type Light struct {
 	Pos       y3d.Vec3
 	Intensity float32
 	Direction y3d.Vec3
-	Color     y3d.Color
-	SpecColor y3d.Color
+	Diffuse   y3d.Color
+	Ambient   y3d.Color
+	Specular  y3d.Color
 }

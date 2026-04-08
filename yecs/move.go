@@ -56,6 +56,11 @@ func (ms *MoveSystem) Run(w *World, dt float64, entites []EntityId) {
 		}
 		if recal {
 			(&transform).Recalulate()
+			if w.HasComponent(e, BoxComponent) {
+				box := w.GetComponent(e, BoxComponent).(Box)
+				box.World = transform.TransFormAABB(box.Local)
+				w.SetComponent(e, BoxComponent, box)
+			}
 			w.SetComponent(e, TransformComponent, transform)
 		}
 	}
@@ -63,11 +68,18 @@ func (ms *MoveSystem) Run(w *World, dt float64, entites []EntityId) {
 }
 
 func (ms *MoveSystem) Update(w *World, dt float64, entites []EntityId) {
-	brk := len(entites) / runtime.NumCPU()
-	for i := range runtime.NumCPU() {
+	cpu := runtime.NumCPU()
+	brk := len(entites) / cpu
+	if brk < cpu {
 		ms.Wg.Add(1)
-		offset := i * brk
-		go ms.Run(w, dt, entites[offset:offset+brk])
+		go ms.Run(w, dt, entites)
+	} else {
+		//does not work with odd entities
+		for i := range cpu {
+			ms.Wg.Add(1)
+			offset := i * brk
+			go ms.Run(w, dt, entites[offset:offset+brk])
+		}
 	}
 	ms.Wg.Wait()
 }

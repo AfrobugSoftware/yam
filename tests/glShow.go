@@ -1,6 +1,7 @@
 package yam
 
 import (
+	"math"
 	"math/rand"
 	"yam/y3d"
 	"yam/yecs"
@@ -22,23 +23,44 @@ func CreateObject(w *yecs.World, transform yecs.Transform, curText int) {
 		Enable:    true,
 		DepthFunc: gl.LESS,
 	}, yecs.BlendState{
-		Enable:    false,
+		Enable:    true,
 		SrcFactor: gl.SRC_ALPHA,
 		DstFactor: gl.ONE_MINUS_SRC_ALPHA,
 	})
-	sprite := yecs.Sprite{
-		Buffer:     "sprite",
-		Textures:   "sprite",
-		Program:    "sprite",
-		CurTexture: curText,
+	sprite := yecs.Spatial{
+		Buffer:         "sphere",
+		Program:        "sphere",
+		CurTexture:     curText,
+		AssignUniforms: AddUniforms,
 	}
 	move := yecs.Move{
-		AnglularSpeed: 5,
+		AnglularSpeed: 5 * math.Pi,
 		ForwardSpeed:  20,
 	}
-	w.AddComponent(ent, yecs.SpriteComponent, sprite)
+
+	material := yecs.Material{
+		Shininess: 32,
+		Diffuse: y3d.Color{
+			1.0, 0.5, 0.31, 1.0,
+		},
+		Ambient: y3d.Color{
+			1.0, 0.5, 0.31, 1.0,
+		},
+		Specular: y3d.Color{
+			0.5, 0.5, 0.5, 1.0,
+		},
+	}
+
+	// aabb := ygl.MakeAABBForSprite(ygl.SpriteData[:], ygl.SpriteFormat[0])
+	// box := yecs.Box{
+	// 	Local: aabb,
+	// 	World: aabb,
+	// }
+	//w.AddComponent(ent, yecs.BoxComponent, box)
+	w.AddComponent(ent, yecs.SpatialComponent, sprite)
 	w.AddComponent(ent, yecs.TransformComponent, transform)
 	w.AddComponent(ent, yecs.RenderStateComponent, renderState)
+	w.AddComponent(ent, yecs.MaterialComponent, material)
 	w.AddComponent(ent, yecs.MoveComponent, move)
 }
 
@@ -53,6 +75,19 @@ func CreateResources(g *ygame.Game) {
 		"assets/pear.png",
 		"assets/oats.png",
 	}, "sprite")
+	if err != nil {
+		panic(err)
+	}
+	buffer, indices, format := ygl.CreateSphere(36, 18, 1.0)
+	g.Gl3.AddVertexBuffer("sphere", buffer, indices, format)
+	err = g.Gl3.AddPrograms("sphere", []string{
+		"assets/shaders/simpleLight.vert",
+		"assets/shaders/simpleLight.frag",
+	},
+		[]gl.Enum{
+			gl.VERTEX_SHADER,
+			gl.FRAGMENT_SHADER,
+		})
 	if err != nil {
 		panic(err)
 	}
@@ -82,7 +117,7 @@ func randRange(min, max float32) float32 {
 }
 
 func CreateScene(w *yecs.World) {
-	for i := range 100000 {
+	for i := range 1000 {
 		x := randRange(-1000, 1000)
 		y := randRange(-1000, 1000)
 		z := randRange(-10, -1000)
@@ -110,8 +145,9 @@ func TestGame() {
 	}
 	CreateSystems(g.World)
 	CreateResources(g)
+	CreateLight(g.World)
 	CreateScene(g.World)
-	CreatePlayer(g.World)
+	//CreatePlayer(g.World)
 
 	g.Run()
 }

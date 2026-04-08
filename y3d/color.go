@@ -19,3 +19,11 @@ func FromBytes(r, g, b, a uint8) Color {
 		float32(a / 255),
 	}
 }
+
+func (c Color) AsVec3() Vec3 {
+	return Vec3{
+		X: c[0],
+		Y: c[1],
+		Z: c[2],
+	}
+}

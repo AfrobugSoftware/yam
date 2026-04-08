@@ -136,13 +136,31 @@ func (c Camera) GetScreenRay(screenWidth, screenHeight int) y3d.Ray {
 	}
 }
 
-func (c *Camera) Cull(aabb Box) bool {
-	return false
-}
+func (c *Camera) CullView(b Box, projView y3d.Mat4) bool {
+	w := b.World
+	p0 := w.Min
+	p1 := y3d.Vec3{X: w.Min.X, Y: w.Max.Y, Z: w.Min.Z}
+	p2 := y3d.Vec3{X: w.Min.X, Y: w.Max.Y, Z: w.Max.Z}
+	p3 := y3d.Vec3{X: w.Min.X, Y: w.Min.Y, Z: w.Max.Z}
+	p4 := y3d.Vec3{X: w.Max.X, Y: w.Max.Y, Z: w.Min.Z}
+	p5 := y3d.Vec3{X: w.Max.X, Y: w.Min.Y, Z: w.Min.Z}
+	p6 := y3d.Vec3{X: w.Max.X, Y: w.Min.Y, Z: w.Max.Z}
+	p7 := w.Max
 
-func (c *Camera) ConstructPlanes() {
-	//view := c.View
-
+	for _, p := range []y3d.Vec3{p0, p1, p2, p3, p4, p5, p6, p7} {
+		p4d := y3d.Vec4{X: p.X, Y: p.Y, Z: p.Z, W: 1}
+		clipSpace := projView.MulVec4(p4d)
+		isInside := (clipSpace.X <= clipSpace.W &&
+			clipSpace.X >= -clipSpace.W &&
+			clipSpace.Y <= clipSpace.W &&
+			clipSpace.Y >= -clipSpace.W &&
+			clipSpace.Z <= clipSpace.W &&
+			clipSpace.Z >= -clipSpace.W)
+		if isInside {
+			return false
+		}
+	}
+	return true
 }
 
 func (cam *Camera) UpdateFollow(w *World, dt float64, e EntityId) {

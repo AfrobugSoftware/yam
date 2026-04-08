@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"sync"
-	"time"
 	"yam/yecs"
 
 	gl "github.com/chsc/gogl/gl33"
@@ -84,7 +83,7 @@ func (g *Gl3) AddPrograms(name string, filePath []string, types []gl.Enum) error
 	shaders := []gl.Uint{}
 	for i, f := range filePath {
 		t := types[i]
-		s, err := CreateShader(f, t)
+		s, err := CreateShaderFromFile(f, t)
 		if err != nil {
 			return err
 		}
@@ -135,11 +134,11 @@ func (g *Gl3) AddVertexBuffer(name string, data []gl.Float, indx []uint16, forma
 }
 
 func (g *Gl3) DrawSprites(w *yecs.World) {
-	now := time.Now()
+	//now := time.Now()
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
 	camera := w.Query([]yecs.ComponentId{yecs.CameraComponent})
-	sprites := w.Query([]yecs.ComponentId{yecs.SpriteComponent, yecs.TransformComponent, yecs.RenderStateComponent})
+	sprites := w.Query([]yecs.ComponentId{yecs.SpatialComponent, yecs.TransformComponent, yecs.RenderStateComponent})
 	if len(camera) == 0 {
 		log.Println("no camera attached to scene")
 		return
@@ -147,15 +146,18 @@ func (g *Gl3) DrawSprites(w *yecs.World) {
 	MainCam := w.GetComponent(camera[0], yecs.CameraComponent).(yecs.Camera)
 	view := MainCam.GetViewTransformation()
 	proj := MainCam.GetProjectionTransformation()
+	projView := proj.Mul(view)
 	var curBuf, curProgram, curTexture string
 	var program gl.Uint
 	var drawBuffer VertBuffer
 	for _, e := range sprites {
-		s := w.GetComponent(e, yecs.SpriteComponent).(yecs.Sprite)
-		if s.IsCulled {
-			continue
+		s := w.GetComponent(e, yecs.SpatialComponent).(yecs.Spatial)
+		if w.HasComponent(e, yecs.BoxComponent) {
+			box := w.GetComponent(e, yecs.BoxComponent).(yecs.Box)
+			if MainCam.CullView(box, projView) {
+				continue
+			}
 		}
-		t := w.GetComponent(e, yecs.TransformComponent).(yecs.Transform)
 		r := w.GetComponent(e, yecs.RenderStateComponent).(yecs.RenderState)
 		if curBuf != s.Buffer {
 			b, ok := g.buffers[s.Buffer]
@@ -176,11 +178,7 @@ func (g *Gl3) DrawSprites(w *yecs.World) {
 			curProgram = s.Program
 			SetActiveProgram(p)
 			program = p
-			err := AssignUniformMat4(program, "view", view)
-			if err != nil {
-				log.Println(err)
-			}
-			err = AssignUniformMat4(program, "proj", proj)
+			err := AssignUniformMat4(program, "projView", projView)
 			if err != nil {
 				log.Println(err)
 			}
@@ -198,12 +196,13 @@ func (g *Gl3) DrawSprites(w *yecs.World) {
 				}
 			}
 		}
+		t := w.GetComponent(e, yecs.TransformComponent).(yecs.Transform)
 		err := AssignUniformMat4(program, "world", t.Transform)
 		if err != nil {
 			log.Println(err)
 		}
 		if s.AssignUniforms != nil {
-			err := s.AssignUniforms(e, program)
+			err := s.AssignUniforms(e, w, &MainCam, program)
 			if err != nil {
 				log.Println(err)
 			}
@@ -211,7 +210,7 @@ func (g *Gl3) DrawSprites(w *yecs.World) {
 		r.SetupRenderState()
 		drawBuffer.DrawBuffer()
 	}
-	elapsed := time.Since(now)
-	fmt.Println(elapsed)
+	//elapsed := time.Since(now)
+	//	fmt.Println(elapsed)
 	g.Window.GLSwap()
 }

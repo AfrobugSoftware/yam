@@ -18,13 +18,11 @@ var (
 		{
 			Count:  3,
 			Stride: int(uintptr(5) * unsafe.Sizeof(gl.Float(0))),
-			Length: 4,
 			Offset: 0,
 		},
 		{
 			Count:  2,
 			Stride: int(uintptr(5) * unsafe.Sizeof(gl.Float(0))),
-			Length: 4,
 			Offset: 3,
 		},
 	}
@@ -36,16 +34,15 @@ var (
 	 layout(location = 0) in vec3 pos;
 	 layout(location = 1) in vec2 uv;
 	 
-	 uniform mat4 proj;
+	 uniform mat4 projView;
 	 uniform mat4 world;
-	 uniform mat4 view;
 	 
 	 out vec2 frag_uv;
 	
 	 
 	 void main() {
 	 	frag_uv = uv;
-		gl_Position =  proj * view * world * vec4(pos, 1);								  
+		gl_Position =  projView * world * vec4(pos, 1);								  
 	 }`
 	SpriteFrag string = `#version 330
 	in vec2 frag_uv;
@@ -84,7 +81,7 @@ func MakeAABBForSprite(SpriteData []gl.Float, vertFormat DataFormat) y3d.AABB {
 		Min: firstPoint,
 		Max: firstPoint,
 	}
-	for i := range vertFormat.Length {
+	for i := range 4 {
 		point := y3d.Vec3{
 			X: float32(SpriteData[i*stride]),
 			Y: float32(SpriteData[i*stride+1]),

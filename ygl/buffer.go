@@ -16,7 +16,6 @@ type VertBuffer struct {
 type DataFormat struct {
 	Count  int // num of components of the vertex
 	Stride int //size of each vertex in bytes
-	Length int // num of vertices
 	Offset int // offset into the packed slice where the vertext starts
 }
 
