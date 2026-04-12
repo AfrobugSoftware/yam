@@ -82,6 +82,15 @@ func AssignUniformMat4(p gl.Uint, name string, mat y3d.Mat4) error {
 	return nil
 }
 
+func AssignUniformMat4Array(p gl.Uint, name string, count int, mat []float32) error {
+	loc := gl.GetUniformLocation(p, gl.GLString(name))
+	if loc == -1 {
+		return fmt.Errorf("no uniform mat4 with name: %s\n", name)
+	}
+	gl.UniformMatrix4fv(loc, gl.Sizei(count), gl.FALSE, (*gl.Float)(unsafe.Pointer(&mat[0])))
+	return nil
+}
+
 func AssignUniformVec(p gl.Uint, name string, v y3d.Vec3) error {
 	loc := gl.GetUniformLocation(p, gl.GLString(name))
 	if loc == -1 {

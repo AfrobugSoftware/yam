@@ -50,4 +50,5 @@ func (t *Transform) RotateToFoward(forward y3d.Vec3) {
 		axis = y3d.Normalize(axis)
 		t.Rotation = y3d.FromAngleAxis(axis, angle)
 	}
+	t.Recalulate()
 }

@@ -85,8 +85,15 @@ func ProdQuaternion(qin ...Quaternion) Quaternion {
 }
 
 func (qin Quaternion) Unit() Quaternion {
-	k := qin.Norm()
-	return Quaternion{qin.W / k, qin.X / k, qin.Y / k, qin.Z / k}
+	k2 := qin.Norm2()
+	if k2 < NearZero {
+		return qin
+	}
+	if math.Abs(k2-1) < NearZero {
+		return qin
+	}
+	k := 1 / math.Sqrt(k2)
+	return Quaternion{qin.W * k, qin.X * k, qin.Y * k, qin.Z * k}
 }
 
 func (qin Quaternion) Inv() Quaternion {
@@ -159,5 +166,31 @@ func (qin Quaternion) ToMat4() Mat4 {
 		m[3], m[4], m[5], 0,
 		m[6], m[7], m[8], 0,
 		0, 0, 0, 1,
+	}
+}
+
+func Slerp(a, b Quaternion, t float64) Quaternion {
+	dot := a.W*b.W + a.X*b.X + a.Y*b.Y + a.Z*b.Z
+	const threshold = 0.9995
+	if math.Abs(dot) > threshold {
+		q := Quaternion{
+			X: a.X*(1-t) + b.X*t,
+			Y: a.Y*(1-t) + b.Y*t,
+			Z: a.Z*(1-t) + b.Z*t,
+			W: a.W*(1-t) + b.W*t,
+		}
+		return q.Unit()
+	}
+	d := math.Acos(dot)
+	sinD := math.Sin(d)
+	ooSinD := 1 / sinD
+	t1 := math.Sin(d*(1-t)) * ooSinD
+	t2 := math.Sin(d*t) * ooSinD
+
+	return Quaternion{
+		X: a.X*t1 + b.X*t2,
+		Y: a.Y*t1 + b.Y*t2,
+		Z: a.Z*t1 + b.Z*t2,
+		W: a.W*t1 + b.W*t2,
 	}
 }

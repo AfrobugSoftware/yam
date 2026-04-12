@@ -29,7 +29,7 @@ func CreateObject(w *yecs.World, transform yecs.Transform, curText int) {
 	})
 	sprite := yecs.Spatial{
 		Buffer:         "sphere",
-		Program:        "sphere",
+		Program:        "simpleLight",
 		CurTexture:     curText,
 		AssignUniforms: AddUniforms,
 	}
@@ -80,7 +80,7 @@ func CreateResources(g *ygame.Game) {
 	}
 	buffer, indices, format := ygl.CreateSphere(36, 18, 1.0)
 	g.Gl3.AddVertexBuffer("sphere", buffer, indices, format)
-	err = g.Gl3.AddPrograms("sphere", []string{
+	err = g.Gl3.AddPrograms("simpleLight", []string{
 		"assets/shaders/simpleLight.vert",
 		"assets/shaders/simpleLight.frag",
 	},
@@ -134,7 +134,7 @@ func CreateScene(w *yecs.World) {
 func CreateSystems(w *yecs.World) {
 	w.AddSystem(ygame.GetGame().Audio)
 	w.AddSystem(ygame.GetGame().Input)
-
+	w.AddSystem(&yecs.CameraSystem{})
 	w.InitSystems()
 }
 

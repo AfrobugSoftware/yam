@@ -133,6 +133,15 @@ func Cross(v, q Vec3) Vec3 {
 	}
 }
 
+func Lerp(a, b Vec3, t float32) Vec3 {
+	t1 := 1 - t
+	return Vec3{
+		X: a.X*t1 + b.X*t,
+		Y: a.Y*t1 + b.Y*t,
+		Z: a.Z*t1 + b.Z*t,
+	}
+}
+
 // assumes N is normalised
 func ReflectVec3(I Vec3, N Vec3) Vec3 {
 	r := Sub(I, Smul(N, 2*Dot(I, N)))

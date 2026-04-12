@@ -133,12 +133,13 @@ func (g *Gl3) AddVertexBuffer(name string, data []gl.Float, indx []uint16, forma
 	g.buffers[name] = vbuf
 }
 
-func (g *Gl3) DrawSprites(w *yecs.World) {
+func (g *Gl3) DrawSpatial(w *yecs.World) {
 	//now := time.Now()
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
 	camera := w.Query([]yecs.ComponentId{yecs.CameraComponent})
 	sprites := w.Query([]yecs.ComponentId{yecs.SpatialComponent, yecs.TransformComponent, yecs.RenderStateComponent})
+	//animatedSpatials = w.Query([]yecs.ComponentId{yecs.AnimatedSpatialCompnent, yecs.TransformComponent, yecs.RenderStateComponent})
 	if len(camera) == 0 {
 		log.Println("no camera attached to scene")
 		return

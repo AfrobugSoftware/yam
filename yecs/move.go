@@ -78,6 +78,9 @@ func (ms *MoveSystem) Update(w *World, dt float64, entites []EntityId) {
 		for i := range cpu {
 			ms.Wg.Add(1)
 			offset := i * brk
+			if offset >= len(entites) {
+				break
+			}
 			go ms.Run(w, dt, entites[offset:offset+brk])
 		}
 	}

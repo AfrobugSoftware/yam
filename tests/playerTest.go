@@ -46,8 +46,8 @@ func CreatePlayer(w *yecs.World) {
 		DstFactor: gl.ONE_MINUS_SRC_ALPHA,
 	})
 	sprite := yecs.Spatial{
-		Buffer:         "sphere",
-		Program:        "sphere",
+		Buffer:         "sprite",
+		Program:        "simpleLight",
 		CurTexture:     -1,
 		AssignUniforms: AddUniforms,
 	}

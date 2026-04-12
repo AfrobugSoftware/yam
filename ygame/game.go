@@ -102,7 +102,7 @@ func (g *Game) ProcessInput() {
 }
 
 func (g *Game) Draw() {
-	g.Gl3.DrawSprites(g.World)
+	g.Gl3.DrawSpatial(g.World)
 
 }
 
