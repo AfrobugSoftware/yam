@@ -20,4 +20,5 @@ var (
 	TagComponent         = RegisterComponent[Tag]()
 	MaterialComponent    = RegisterComponent[Material]()
 	LightComponent       = RegisterComponent[Light]()
+	HierarchyComponent   = RegisterComponent[Hierarchy]()
 )

@@ -36,7 +36,7 @@ func (m Mat4) MulVec4(v Vec4) Vec4 {
 }
 
 func (m Mat4) MulVec3(v Vec3) Vec3 {
-	r := m.MulVec4(Vec4{v.X, v.Y, v.Z, 1})
+	r := m.MulVec4(Vec4{v.X, v.Y, v.Z, 0})
 	return Vec3{r.X, r.Y, r.Z}
 }
 

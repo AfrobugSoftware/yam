@@ -22,7 +22,9 @@ type DepthState struct {
 }
 
 type FaceState struct {
-	Enable bool
+	Enable    bool
+	FrontFace gl.Enum
+	CullFace  gl.Enum
 }
 
 type PolygonMode struct {
@@ -42,15 +44,23 @@ func (rs RenderState) SetupRenderState() {
 			if v.Enable {
 				gl.Enable(gl.BLEND)
 				gl.BlendFunc(v.SrcFactor, v.DstFactor)
+			} else {
+				gl.Disable(gl.BLEND)
 			}
 		case DepthState:
 			if v.Enable {
 				gl.Enable(gl.DEPTH_TEST)
 				gl.DepthFunc(v.DepthFunc)
+			} else {
+				gl.Disable(gl.DEPTH_TEST)
 			}
 		case FaceState:
 			if v.Enable {
 				gl.Enable(gl.CULL_FACE)
+				gl.CullFace(v.CullFace)
+				gl.FrontFace(v.FrontFace)
+			} else {
+				gl.Disable(gl.CULL_FACE)
 			}
 		}
 

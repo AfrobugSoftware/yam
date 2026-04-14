@@ -25,8 +25,8 @@ func CreateSphere(sectorCount, stackCount int, radius float64) ([]gl.Float, []ui
 		k2 := k1 + uint16(sectorCount+1)
 		for j := range sectorCount {
 			sectorAngle := float64(j) * sectorStep
-			x := xz * gl.Float(math.Sin(sectorAngle))
-			z := xz * gl.Float(math.Cos(sectorAngle))
+			x := xz * gl.Float(math.Cos(sectorAngle))
+			z := xz * gl.Float(math.Sin(sectorAngle))
 
 			nx := x * gl.Float(lengthInv)
 			ny := y * gl.Float(lengthInv)

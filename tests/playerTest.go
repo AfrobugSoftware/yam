@@ -2,7 +2,6 @@ package yam
 
 import (
 	"fmt"
-	"math"
 	"yam/y3d"
 	"yam/yecs"
 	"yam/ygame"
@@ -46,7 +45,7 @@ func CreatePlayer(w *yecs.World) {
 		DstFactor: gl.ONE_MINUS_SRC_ALPHA,
 	})
 	sprite := yecs.Spatial{
-		Buffer:         "sprite",
+		Buffer:         "sphere",
 		Program:        "simpleLight",
 		CurTexture:     -1,
 		AssignUniforms: AddUniforms,
@@ -62,9 +61,7 @@ func CreatePlayer(w *yecs.World) {
 	in := ygame.GetGame().Input.CreateInput()
 	in.Update = func(w *yecs.World, a yecs.EntityId) {
 		input := w.GetComponent(e, yecs.InputComponent).(yecs.Input)
-		move := yecs.Move{
-			AnglularSpeed: 5 * math.Pi,
-		}
+		move := yecs.Move{}
 
 		if input.GetKeyState(sdl.SCANCODE_W) == yecs.BUTTON_PRESSED || input.GetKeyState(sdl.SCANCODE_W) == yecs.BUTTON_HELD {
 			move.ForwardSpeed = 2000

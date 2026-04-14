@@ -9,6 +9,10 @@ import (
 	"sync"
 )
 
+const (
+	NullEntity EntityId = 0
+)
+
 var (
 	ErrorNoComponentInArchType = errors.New("no component in archtype")
 )
@@ -240,6 +244,7 @@ func NewWorld() *World {
 	}
 	w.AddSystem(&StateSystem{})
 	w.AddSystem(&MoveSystem{})
+	w.AddSystem(&TransformSystem{})
 	return w
 }
 

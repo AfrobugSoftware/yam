@@ -26,7 +26,12 @@ func CreateObject(w *yecs.World, transform yecs.Transform, curText int) {
 		Enable:    true,
 		SrcFactor: gl.SRC_ALPHA,
 		DstFactor: gl.ONE_MINUS_SRC_ALPHA,
-	})
+	},
+		yecs.FaceState{
+			Enable:    true,
+			CullFace:  gl.BACK,
+			FrontFace: gl.CCW,
+		})
 	sprite := yecs.Spatial{
 		Buffer:         "sphere",
 		Program:        "simpleLight",
@@ -78,7 +83,7 @@ func CreateResources(g *ygame.Game) {
 	if err != nil {
 		panic(err)
 	}
-	buffer, indices, format := ygl.CreateSphere(36, 18, 1.0)
+	buffer, indices, format := ygl.CreateSphere(56, 28, 1.0)
 	g.Gl3.AddVertexBuffer("sphere", buffer, indices, format)
 	err = g.Gl3.AddPrograms("simpleLight", []string{
 		"assets/shaders/simpleLight.vert",

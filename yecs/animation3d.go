@@ -73,15 +73,17 @@ func (j *Joint) GetLocal() y3d.Mat4 {
 }
 
 func (j *Joint) CalculateInverseBindPose() {
-	local := y3d.Translation(j.Position)
-	local = local.Mul(j.Rotation.ToMat4())
-	if j.Parent != nil {
-		j.GlobalTransform = j.Parent.GlobalTransform.Mul(local)
-	} else {
-		j.GlobalTransform = local
+	if j.Parent == nil {
+		j.GlobalTransform = j.GetLocal()
+		j.InvBindPose = j.GlobalTransform
+		(&j.InvBindPose).Invert()
 	}
-	j.InvBindPose = j.GlobalTransform
-	(&j.InvBindPose).Invert()
+	for _, i := range j.Children {
+		i.GlobalTransform = j.GlobalTransform.Mul(i.GetLocal())
+		i.InvBindPose = i.GlobalTransform
+		(&i.InvBindPose).Invert()
+		i.CalculateInverseBindPose()
+	}
 }
 
 func (j *Joint) ToMat4() y3d.Mat4 {
