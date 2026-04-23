@@ -1,6 +1,6 @@
 package yecs
 
-import gl "github.com/chsc/gogl/gl33"
+import "github.com/go-gl/gl/v4.3-core/gl"
 
 type RenderState struct {
 	States []any
@@ -11,24 +11,24 @@ func (rs *RenderState) AddState(s any) {
 }
 
 type BlendState struct {
-	SrcFactor gl.Enum
-	DstFactor gl.Enum
+	SrcFactor uint32
+	DstFactor uint32
 	Enable    bool
 }
 
 type DepthState struct {
-	DepthFunc gl.Enum
+	DepthFunc uint32
 	Enable    bool
 }
 
 type FaceState struct {
 	Enable    bool
-	FrontFace gl.Enum
-	CullFace  gl.Enum
+	FrontFace uint32
+	CullFace  uint32
 }
 
 type PolygonMode struct {
-	Mode gl.Enum
+	Mode uint32
 }
 
 func DisableRenderStates() {

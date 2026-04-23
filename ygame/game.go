@@ -74,7 +74,7 @@ func NewGame(title string, width, height int32) (*Game, error) {
 			ScreenHeight: height,
 		},
 		ShowGrid: true,
-		IGrid:    NewGrid(),
+		//IGrid:    NewGrid(),
 	}
 	return gGame, nil
 }
@@ -113,9 +113,9 @@ func (g *Game) ProcessInput() {
 }
 
 func (g *Game) Draw() {
-	if g.ShowGrid {
-		g.IGrid.Draw(g.World)
-	}
+	// if g.ShowGrid {
+	// 	g.IGrid.Draw(g.World)
+	// }
 	g.Gl3.DrawSpatial(g.World)
 
 }
