@@ -8,7 +8,7 @@ import (
 	"yam/ygame"
 	"yam/ygl"
 
-	gl "github.com/chsc/gogl/gl33"
+	"github.com/go-gl/gl/v4.3-core/gl"
 )
 
 const (
@@ -89,7 +89,7 @@ func CreateResources(g *ygame.Game) {
 		"assets/shaders/simpleLight.vert",
 		"assets/shaders/simpleLight.frag",
 	},
-		[]gl.Enum{
+		[]uint32{
 			gl.VERTEX_SHADER,
 			gl.FRAGMENT_SHADER,
 		})

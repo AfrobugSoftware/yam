@@ -14,22 +14,22 @@ var (
 )
 
 type Transform struct {
-	Position       y3d.Vec3
-	Rotation       y3d.Quaternion
-	Scale          y3d.Vec3
-	Transform      y3d.Mat4
-	WorldTransform y3d.Mat4
-	IsDirty        bool
+	Position y3d.Vec3
+	Rotation y3d.Quaternion
+	Scale    y3d.Vec3
+	Local    y3d.Mat4
+	World    y3d.Mat4
+	IsDirty  bool
 }
 
 func NewTransfromation() Transform {
 	return Transform{
-		Position:       y3d.Vec3{},
-		Rotation:       y3d.IdenQuat(),
-		Scale:          y3d.Vec3{X: 1.0, Y: 1.0, Z: 1.0},
-		Transform:      y3d.Identity,
-		WorldTransform: y3d.Identity,
-		IsDirty:        false,
+		Position: y3d.Vec3{},
+		Rotation: y3d.IdenQuat(),
+		Scale:    y3d.Vec3{X: 1.0, Y: 1.0, Z: 1.0},
+		Local:    y3d.Identity,
+		World:    y3d.Identity,
+		IsDirty:  false,
 	}
 }
 
@@ -37,7 +37,7 @@ func (trans *Transform) Recalulate() {
 	scale := y3d.Scale(trans.Scale)
 	rot := trans.Rotation.ToMat4()
 	translation := y3d.Translation(trans.Position)
-	trans.Transform = translation.Mul(rot).Mul(scale)
+	trans.Local = translation.Mul(rot).Mul(scale)
 	trans.IsDirty = true
 }
 
@@ -90,16 +90,16 @@ func (t *TransformSystem) Query() []ComponentId {
 	return []ComponentId{HierarchyComponent, TransformComponent}
 }
 
-func (t *TransformSystem) ProceeEntity(w *World, e EntityId, parentTransform *Transform) {
+func (t *TransformSystem) ProcessEntity(w *World, e EntityId, parentTransform *Transform) {
 	trans := w.GetComponent(e, TransformComponent).(Transform)
 	h := w.GetComponent(e, HierarchyComponent).(Hierarchy)
 	if trans.IsDirty {
-		trans.WorldTransform = parentTransform.WorldTransform.Mul(trans.Transform)
+		trans.World = parentTransform.World.Mul(trans.Local)
 		trans.IsDirty = false
 		w.SetComponent(e, TransformComponent, trans)
 	}
 	for _, c := range h.Children {
-		t.ProceeEntity(w, c, &trans)
+		t.ProcessEntity(w, c, &trans)
 	}
 }
 
@@ -108,12 +108,13 @@ func (t *TransformSystem) Run(w *World, dt float64, entites []EntityId) {
 		h := w.GetComponent(e, HierarchyComponent).(Hierarchy)
 		if h.Parent == NullEntity {
 			trans := w.GetComponent(e, TransformComponent).(Transform)
-			trans.WorldTransform = trans.Transform
+			trans.World = trans.Local
 			for _, c := range h.Children {
-				t.ProceeEntity(w, c, &trans)
+				t.ProcessEntity(w, c, &trans)
 			}
 		}
 	}
+	t.Wg.Done()
 }
 
 func (t *TransformSystem) Update(w *World, dt float64, entites []EntityId) {

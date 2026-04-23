@@ -3,12 +3,10 @@ package ygl
 import (
 	"math"
 	"unsafe"
-
-	gl "github.com/chsc/gogl/gl33"
 )
 
-func CreateSphere(sectorCount, stackCount int, radius float64) ([]gl.Float, []uint16, []DataFormat) {
-	buffer := make([]gl.Float, 0)
+func CreateSphere(sectorCount, stackCount int, radius float64) ([]byte, []uint16, []DataFormat) {
+	buffer := make([]float32, 0)
 	indices := make([]uint16, 0)
 	format := make([]DataFormat, 3)
 
@@ -18,22 +16,22 @@ func CreateSphere(sectorCount, stackCount int, radius float64) ([]gl.Float, []ui
 
 	for i := range stackCount {
 		stackAngle := math.Pi/2 - float64(i)*stackStep
-		xz := gl.Float(radius * math.Cos(float64(stackAngle)))
-		y := gl.Float(radius * math.Sin(float64(stackAngle)))
+		xz := float32(radius * math.Cos(float64(stackAngle)))
+		y := float32(radius * math.Sin(float64(stackAngle)))
 
 		k1 := uint16(i * (sectorCount + 1))
-		k2 := k1 + uint16(sectorCount+1)
+		k2 := k1 + uint16(sectorCount) + 1
 		for j := range sectorCount {
 			sectorAngle := float64(j) * sectorStep
-			x := xz * gl.Float(math.Cos(sectorAngle))
-			z := xz * gl.Float(math.Sin(sectorAngle))
+			x := xz * float32(math.Sin(sectorAngle))
+			z := xz * float32(math.Cos(sectorAngle))
 
-			nx := x * gl.Float(lengthInv)
-			ny := y * gl.Float(lengthInv)
-			nz := z * gl.Float(lengthInv)
+			nx := x * float32(lengthInv)
+			ny := y * float32(lengthInv)
+			nz := z * float32(lengthInv)
 
-			s := gl.Float(float32(i) / float32(sectorCount))
-			t := gl.Float(float32(j) / float32(stackCount))
+			s := float32(i) / float32(sectorCount)
+			t := float32(j) / float32(stackCount)
 
 			buffer = append(buffer, x, y, z, nx, ny, nz, s, t)
 
@@ -48,20 +46,23 @@ func CreateSphere(sectorCount, stackCount int, radius float64) ([]gl.Float, []ui
 		}
 	}
 	format[0] = DataFormat{
-		Count:  3,
-		Stride: int(uintptr(8) * unsafe.Sizeof(gl.Float(0))),
-		Offset: 0,
+		Count:         3,
+		Stride:        int32(uintptr(8) * unsafe.Sizeof(float32(0))),
+		Offset:        0,
+		ComponentType: ComponentTypeFloat32,
 	}
 	format[1] = DataFormat{
-		Count:  3,
-		Stride: int(uintptr(8) * unsafe.Sizeof(gl.Float(0))),
-		Offset: 3,
+		Count:         3,
+		Stride:        int32(uintptr(8) * unsafe.Sizeof(float32(0))),
+		Offset:        int32(uintptr(3) * unsafe.Sizeof(float32(0))),
+		ComponentType: ComponentTypeFloat32,
 	}
 	format[2] = DataFormat{
-		Count:  2,
-		Stride: int(uintptr(8) * unsafe.Sizeof(gl.Float(0))),
-		Offset: 6,
+		Count:         2,
+		Stride:        int32(uintptr(8) * unsafe.Sizeof(float32(0))),
+		Offset:        int32(uintptr(6) * unsafe.Sizeof(float32(0))),
+		ComponentType: ComponentTypeFloat32,
 	}
-
-	return buffer, indices, format
+	buf := unsafe.Slice((*byte)(unsafe.Pointer(&buffer[0])), len(buffer)*int(unsafe.Sizeof(float32(0))))
+	return buf, indices, format
 }

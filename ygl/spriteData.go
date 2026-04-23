@@ -3,27 +3,27 @@ package ygl
 import (
 	"unsafe"
 	"yam/y3d"
-
-	gl "github.com/chsc/gogl/gl33"
 )
 
 var (
-	SpriteData [20]gl.Float = [20]gl.Float{
+	SpriteData = [20]float32{
 		1.0, 1.0, 1.0, 1.0, 1.0, // top-right    [0]
 		1.0, -1.0, 1.0, 1.0, 0.0, // bottom-right [1]
 		-1.0, -1.0, 1.0, 0.0, 0.0, // bottom-left  [2]
 		-1.0, 1.0, 1.0, 0.0, 1.0, // top-left     [3]
 	}
-	SpriteFormat [2]DataFormat = [2]DataFormat{
+	SpriteFormat = [2]DataFormat{
 		{
-			Count:  3,
-			Stride: int(uintptr(5) * unsafe.Sizeof(gl.Float(0))),
-			Offset: 0,
+			Count:         3,
+			Stride:        int32(uintptr(5) * unsafe.Sizeof(float32(0))),
+			Offset:        0,
+			ComponentType: ComponentTypeFloat32,
 		},
 		{
-			Count:  2,
-			Stride: int(uintptr(5) * unsafe.Sizeof(gl.Float(0))),
-			Offset: 3,
+			Count:         2,
+			Stride:        int32(uintptr(5) * unsafe.Sizeof(float32(0))),
+			Offset:        int32(uintptr(3) * unsafe.Sizeof(float32(0))),
+			ComponentType: ComponentTypeFloat32,
 		},
 	}
 	SpriteIndices []uint16 = []uint16{
@@ -70,8 +70,8 @@ var (
 	`
 )
 
-func MakeAABBForSprite(SpriteData []gl.Float, vertFormat DataFormat) y3d.AABB {
-	stride := int(uintptr(vertFormat.Stride) / unsafe.Sizeof(gl.Float(0)))
+func MakeAABBForSprite(SpriteData []float32, vertFormat DataFormat) y3d.AABB {
+	stride := int(uintptr(vertFormat.Stride) / unsafe.Sizeof(float32(0)))
 	firstPoint := y3d.Vec3{
 		X: float32(SpriteData[0]),
 		Y: float32(SpriteData[1]),

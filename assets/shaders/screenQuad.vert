@@ -1,4 +1,4 @@
-#version 330
+#version 430 core
 
 const vec3 vertices[6] = vec3[6](
     vec3(-1.0, -1.0, 0.5),

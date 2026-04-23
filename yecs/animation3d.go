@@ -1,11 +1,8 @@
 package yecs
 
 import (
-	"log"
 	"runtime"
-	"sort"
 	"sync"
-	"time"
 	"yam/y3d"
 )
 
@@ -13,162 +10,140 @@ const (
 	ROOT = iota
 )
 
-var (
-	MatrixPalette           = map[int]y3d.Mat4{}
-	AnimatedSpatialCompnent = RegisterComponent[AnimatedSpatial]()
+type AnimTarget uint8
+
+const (
+	AnimTargetTranslation AnimTarget = 0x01
+	AnimTargetRotation    AnimTarget = 0x02
+	AnimTargetScale       AnimTarget = 0x04
 )
 
-type Joint struct {
-	Id              int
-	Parent          *Joint
-	Children        []*Joint
-	Position        y3d.Vec3
-	Rotation        y3d.Quaternion
-	GlobalTransform y3d.Mat4
-	InvBindPose     y3d.Mat4
-}
-
-type Skeleton []Joint
-
 type KeyFrame struct {
+	Target   AnimTarget
 	Position y3d.Vec3
+	Scale    y3d.Vec3
 	Rotation y3d.Quaternion
 }
 
-type Animation3D struct {
-	Name            string
-	Duration        time.Duration
-	FrameDuration   time.Duration
-	KeyFrames       map[int][]KeyFrame //int is the joint Id, and the []KeyFrames are the key frames or tracks of the joint
-	CurrentSkeleton Skeleton
-	NumJoints       int
-}
+type TimeStamps []float32
+type KeyFrames []KeyFrame
 
-type AnimatedSpatial struct {
-	Spatial
-	Animation     *Animation3D
-	PlayRate      float32
-	AnimationTime time.Duration
-	PoseCache     []float32
-}
-
-func (j *Joint) PropagateToLeaf() {
-	for _, i := range j.Children {
-		if i != nil {
-			i.GlobalTransform = j.GlobalTransform.Mul(i.GetLocal())
-			i.PropagateToLeaf()
-		}
-	}
-}
-
-func (j *Joint) UpdateTransform(position y3d.Vec3, rotation y3d.Quaternion) {
-	j.Position = position
-	j.Rotation = rotation
-}
-
-func (j *Joint) GetLocal() y3d.Mat4 {
-	local := y3d.Translation(j.Position)
-	local = local.Mul(j.Rotation.ToMat4())
-	return local
-}
-
-func (j *Joint) CalculateInverseBindPose() {
-	if j.Parent == nil {
-		j.GlobalTransform = j.GetLocal()
-		j.InvBindPose = j.GlobalTransform
-		(&j.InvBindPose).Invert()
-	}
-	for _, i := range j.Children {
-		i.GlobalTransform = j.GlobalTransform.Mul(i.GetLocal())
-		i.InvBindPose = i.GlobalTransform
-		(&i.InvBindPose).Invert()
-		i.CalculateInverseBindPose()
-	}
-}
-
-func (j *Joint) ToMat4() y3d.Mat4 {
-	return j.GlobalTransform.Mul(j.InvBindPose)
+func GetTimeFromStamps(max, min, current float32) float32 {
+	return (current - min) / (max - min)
 }
 
 func Interpolate(a, b *KeyFrame, t float32) KeyFrame {
-	return KeyFrame{
-		Rotation: y3d.Slerp(a.Rotation, b.Rotation, float64(t)),
-		Position: y3d.Lerp(a.Position, b.Position, t),
+	kf := KeyFrame{}
+	if a.Target&AnimTargetTranslation != 0 {
+		kf.Position = y3d.Lerp(a.Position, b.Position, t)
+	}
+	if a.Target&AnimTargetRotation != 0 {
+		kf.Rotation = y3d.Slerp(a.Rotation, b.Rotation, float64(t))
+	}
+	if a.Target&AnimTargetScale != 0 {
+		kf.Scale = y3d.Lerp(a.Scale, b.Scale, t)
+	}
+	kf.Target = a.Target
+	return kf
+}
+
+func SetTransform(a *KeyFrame, b *Transform) {
+	if a.Target&AnimTargetTranslation != 0 {
+		b.Position = a.Position
+	}
+	if a.Target&AnimTargetRotation != 0 {
+		b.Rotation = a.Rotation
+	}
+	if a.Target&AnimTargetScale != 0 {
+		b.Scale = a.Scale
+	}
+	b.Recalulate()
+}
+
+type Animation struct {
+	Id              int
+	Duration        float32
+	KeyFrames       KeyFrames
+	TimeStamps      TimeStamps
+	InverseBindPose *y3d.Mat4
+}
+
+func CalculateInverseBindPose(w *World, e EntityId, parentWorld y3d.Mat4) {
+	h := w.GetComponent(e, HierarchyComponent).(Hierarchy)
+	t := w.GetComponent(e, TransformComponent).(Transform)
+	a := w.GetComponent(e, AnimationComponent).(Animation)
+
+	t.World = parentWorld.Mul(t.Local)
+	a.InverseBindPose = &y3d.Mat4{}
+	*(a.InverseBindPose) = t.World
+	a.InverseBindPose.Invert()
+
+	w.SetComponent(e, TransformComponent, t)
+	w.SetComponent(e, AnimationComponent, a)
+	for _, i := range h.Children {
+		CalculateInverseBindPose(w, i, t.World)
 	}
 }
 
-func RegisterPalette(skeleton Skeleton) {
-	for _, s := range skeleton {
-		MatrixPalette[s.Id] = s.ToMat4()
-	}
-}
-
-func GatherMatrix(skeleton Skeleton) []float32 {
+// skeleton is sorted by Id
+func GatherMatrix(skeleton []y3d.Mat4) []float32 {
 	flat := make([]float32, len(skeleton)*16)
-	for _, s := range skeleton {
-		m := s.ToMat4()
-		copy(flat[s.Id*16:], m[:])
+	for i, m := range skeleton {
+		copy(flat[i*16:], m[:])
 	}
 	return flat
 }
 
-func (a *Animation3D) SortJoints() {
-	sort.Slice(a.CurrentSkeleton, func(i, j int) bool {
-		return a.CurrentSkeleton[i].Id < a.CurrentSkeleton[j].Id
-	})
-}
-
-func (a *Animation3D) GetPose(inTime time.Duration) []float32 {
-	if len(a.CurrentSkeleton) == 0 {
-		log.Printf("no skeleton for: %s\n", a.Name)
-		return nil
-	}
-	fd := a.FrameDuration.Seconds()
-	it := inTime.Seconds()
-	frame := int(it / fd)
-	nextFrame := frame + 1
-	pct := it / (fd - float64(frame))
-	for i := range a.CurrentSkeleton {
-		kf, ok := a.KeyFrames[i]
-		if ok {
-			f := kf[frame]
-			f2 := kf[nextFrame]
-			pf := Interpolate(&f, &f2, float32(pct))
-			(&a.CurrentSkeleton[i]).UpdateTransform(pf.Position, pf.Rotation)
-		} else {
-			(&a.CurrentSkeleton[i]).UpdateTransform(y3d.Vec3{}, y3d.IdenQuat())
-		}
-	}
-	a.CurrentSkeleton[ROOT].GlobalTransform = (&a.CurrentSkeleton[ROOT]).GetLocal()
-	a.CurrentSkeleton[ROOT].PropagateToLeaf()
-	return GatherMatrix(a.CurrentSkeleton)
-}
-
-type Animation3dSystem struct {
+type AnimationSystem struct {
 	Wg sync.WaitGroup
 }
 
-func (as *Animation3dSystem) Init()     {}
-func (as *Animation3dSystem) Shutdown() {}
-func (as *Animation3dSystem) Query() []ComponentId {
-	return []ComponentId{AnimatedSpatialCompnent}
+func (as *AnimationSystem) Init()     {}
+func (as *AnimationSystem) Shutdown() {}
+func (as *AnimationSystem) Query() []ComponentId {
+	return []ComponentId{AnimationComponent, TransformComponent}
 }
 
-func (as *Animation3dSystem) Run(w *World, dt float64, entites []EntityId) {
+func (as *AnimationSystem) Run(w *World, dt float64, entites []EntityId) {
 	for _, e := range entites {
-		as := w.GetComponent(e, AnimatedSpatialCompnent).(AnimatedSpatial)
-		as.AnimationTime += time.Duration((dt * float64(as.PlayRate)) * float64(time.Second))
-		for as.AnimationTime > as.Animation.Duration {
-			as.AnimationTime -= as.Animation.Duration
+		t := w.GetComponent(e, TransformComponent).(Transform)
+		a := w.GetComponent(e, AnimationComponent).(Animation)
+
+		var i int
+		a.Duration += float32(dt)
+		var found bool
+		for i = range a.TimeStamps {
+			if a.Duration <= a.TimeStamps[i] {
+				found = true
+				break
+			}
+		}
+		var kf KeyFrame
+		if i == 0 || !found {
+			//reached the end
+			a.Duration = 0
+			kf = a.KeyFrames[0]
+		} else {
+			if i >= len(a.KeyFrames) || i < 0 ||
+				i-1 < 0 {
+				continue //not sure what do here
+			}
+			frameB := a.KeyFrames[i]
+			frameA := a.KeyFrames[i-1]
+			timeB := a.TimeStamps[i]
+			timeA := a.TimeStamps[i-1]
+
+			pct := GetTimeFromStamps(timeB, timeA, a.Duration)
+			kf = Interpolate(&frameA, &frameB, pct)
 		}
 
-		as.PoseCache = as.Animation.GetPose(as.AnimationTime)
-
-		w.SetComponent(e, AnimatedSpatialCompnent, as)
+		SetTransform(&kf, &t)
+		w.SetComponent(e, TransformComponent, t)
+		w.SetComponent(e, AnimationComponent, a)
 	}
 }
 
-func (as *Animation3dSystem) Update(w *World, dt float64, entites []EntityId) {
+func (as *AnimationSystem) Update(w *World, dt float64, entites []EntityId) {
 	cpu := runtime.NumCPU()
 	brk := len(entites) / cpu
 	if brk < cpu {

@@ -1,4 +1,4 @@
-#version 330
+#version 430 core
 
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 normal;
@@ -26,7 +26,7 @@ void main() {
         totalLocalPos += localPostition * jointWeight[i];
 
     //joint transforms have no scale, no need to invert/transpose for normal
-        vec3 localNormal = mat3(jointTransforms[ids[i]]) * normal; 
+        vec3 localNormal = mat3(transpose(inverse(jointTransforms[ids[i]]))) * normal; 
         totalNormal += localNormal * jointWeight[i];
     }
 

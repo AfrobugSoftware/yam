@@ -7,11 +7,11 @@ import (
 	"yam/ygame"
 	"yam/ygl"
 
-	gl "github.com/chsc/gogl/gl33"
+	"github.com/go-gl/gl/v4.3-core/gl"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-func AddUniforms(e yecs.EntityId, w *yecs.World, cam *yecs.Camera, program gl.Uint) error {
+func AddUniforms(e yecs.EntityId, w *yecs.World, cam *yecs.Camera, program uint32) error {
 	lightEntity := w.Query([]yecs.ComponentId{yecs.LightComponent})
 	if len(lightEntity) == 0 {
 		return fmt.Errorf("no light in scene")
@@ -19,16 +19,16 @@ func AddUniforms(e yecs.EntityId, w *yecs.World, cam *yecs.Camera, program gl.Ui
 	light := w.GetComponent(lightEntity[0], yecs.LightComponent).(yecs.Light)
 	material := w.GetComponent(e, yecs.MaterialComponent).(yecs.Material)
 
-	ygl.AssignUniformVec(program, "cameraPos", cam.Pos)
+	ygl.AssignUniformVec3(program, "cameraPos", cam.Pos)
 
-	ygl.AssignUniformVec(program, "light.position", light.Pos)
-	ygl.AssignUniformVec(program, "light.diffuse", light.Diffuse.AsVec3())
-	ygl.AssignUniformVec(program, "light.ambient", light.Ambient.AsVec3())
-	ygl.AssignUniformVec(program, "light.specular", light.Specular.AsVec3())
+	ygl.AssignUniformVec3(program, "light.position", light.Pos)
+	ygl.AssignUniformVec3(program, "light.diffuse", light.Diffuse.AsVec3())
+	ygl.AssignUniformVec3(program, "light.ambient", light.Ambient.AsVec3())
+	ygl.AssignUniformVec3(program, "light.specular", light.Specular.AsVec3())
 
-	ygl.AssignUniformVec(program, "material.diffuse", material.Diffuse.AsVec3())
-	ygl.AssignUniformVec(program, "material.ambient", material.Ambient.AsVec3())
-	ygl.AssignUniformVec(program, "material.specular", material.Specular.AsVec3())
+	ygl.AssignUniformVec3(program, "material.diffuse", material.Diffuse.AsVec3())
+	ygl.AssignUniformVec3(program, "material.ambient", material.Ambient.AsVec3())
+	ygl.AssignUniformVec3(program, "material.specular", material.Specular.AsVec3())
 	ygl.AssignUniformFloat32(program, "material.shininess", material.Shininess)
 	return nil
 }
@@ -51,10 +51,10 @@ func CreatePlayer(w *yecs.World) {
 		AssignUniforms: AddUniforms,
 	}
 	transform := yecs.Transform{
-		Position:  y3d.Vec3{X: 0, Y: 0, Z: -100},
-		Scale:     y3d.Vec3{X: 64, Y: 64, Z: 1},
-		Rotation:  y3d.IdenQuat(),
-		Transform: y3d.Identity,
+		Position: y3d.Vec3{X: 0, Y: 0, Z: -100},
+		Scale:    y3d.Vec3{X: 64, Y: 64, Z: 1},
+		Rotation: y3d.IdenQuat(),
+		Local:    y3d.Identity,
 	}
 	(&transform).Recalulate()
 	move := yecs.Move{}

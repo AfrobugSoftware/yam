@@ -20,6 +20,8 @@ type Game struct {
 	Running    bool
 	Ticks      uint64
 	NeedsReset bool
+	ShowGrid   bool
+	IGrid      *Grid
 	DoReset    func()
 	OnExit     func() bool
 	logFile    *os.File
@@ -71,6 +73,8 @@ func NewGame(title string, width, height int32) (*Game, error) {
 			ScreenWidth:  width,
 			ScreenHeight: height,
 		},
+		ShowGrid: true,
+		IGrid:    NewGrid(),
 	}
 	return gGame, nil
 }
@@ -109,6 +113,9 @@ func (g *Game) ProcessInput() {
 }
 
 func (g *Game) Draw() {
+	if g.ShowGrid {
+		g.IGrid.Draw(g.World)
+	}
 	g.Gl3.DrawSpatial(g.World)
 
 }
@@ -119,12 +126,6 @@ func (g *Game) Run() {
 	g.Running = true
 	lastTime := time.Now()
 	for g.Running {
-		//how do I wait for 16ms to pass ??
-		// dt = float64(sdl.GetTicks64()-g.Ticks) * 0.001
-		// g.Ticks = sdl.GetTicks64()
-		// if dt > 0.05 {
-		// 	dt = 0.05
-		// }
 		now := time.Now()
 		dt = now.Sub(lastTime)
 		frameTime := dt.Seconds()

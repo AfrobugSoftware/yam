@@ -4,41 +4,44 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"unsafe"
+	"yam/y3d"
 	"yam/yecs"
 
-	gl "github.com/chsc/gogl/gl33"
+	"github.com/go-gl/gl/v4.3-core/gl"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
 type Gl3 struct {
 	Context      sdl.GLContext
 	Window       *sdl.Window
-	ClearColor   sdl.Color
+	ClearColor   y3d.Vec4
 	PixelDepth   uint8
 	DoubleBuffer bool
 	MinorVersion int
 	MajorVersion int
-	Height       int
-	Width        int
+	Height       int32
+	Width        int32
 
 	mu       sync.Mutex
 	buffers  map[string]VertBuffer
-	programs map[string]gl.Uint
-	textures map[string][]gl.Uint
+	programs map[string]uint32
+	textures map[string][]uint32
 }
 
 func NewYGL(window *sdl.Window, width, height int) (*Gl3, error) {
 	g := &Gl3{
 		Window:   window,
 		buffers:  make(map[string]VertBuffer),
-		programs: make(map[string]gl.Uint),
-		textures: make(map[string][]gl.Uint),
-		Height:   height,
-		Width:    width,
-		ClearColor: sdl.Color{
-			R: 0,
-			G: 0,
-			B: 0,
+		programs: make(map[string]uint32),
+		textures: make(map[string][]uint32),
+		Height:   int32(height),
+		Width:    int32(width),
+		ClearColor: y3d.Vec4{
+			X: 0,
+			Y: 0,
+			Z: 0,
+			W: 1,
 		},
 	}
 	context, err := g.Window.GLCreateContext()
@@ -46,9 +49,11 @@ func NewYGL(window *sdl.Window, width, height int) (*Gl3, error) {
 		return nil, err
 	}
 	g.Context = context
-	gl.Init()
-	gl.Viewport(0, 0, gl.Sizei(g.Width), gl.Sizei(g.Height))
-	gl.ClearColor(gl.Float(g.ClearColor.R/255), gl.Float(g.ClearColor.G/255), gl.Float(g.ClearColor.B/255), gl.Float(g.ClearColor.A/255))
+	if err = gl.Init(); err != nil {
+		panic(err)
+	}
+	gl.Viewport(0, 0, g.Width, g.Height)
+	gl.ClearColor(g.ClearColor.X, g.ClearColor.Y, g.ClearColor.Z, g.ClearColor.W)
 	return g, nil
 }
 
@@ -61,7 +66,7 @@ func (g *Gl3) ShutDownGL() {
 func (g *Gl3) AddTextures(filePath []string, name string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	texs := make([]gl.Uint, 0, len(filePath))
+	texs := make([]uint32, 0, len(filePath))
 	for _, f := range filePath {
 		t, err := CreateTex2D(f, gl.LINEAR, gl.LINEAR)
 		if err != nil {
@@ -73,14 +78,14 @@ func (g *Gl3) AddTextures(filePath []string, name string) error {
 	return nil
 }
 
-func (g *Gl3) AddPrograms(name string, filePath []string, types []gl.Enum) error {
+func (g *Gl3) AddPrograms(name string, filePath []string, types []uint32) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
 	if len(filePath) != len(types) {
 		return fmt.Errorf("invalid file to types")
 	}
-	shaders := []gl.Uint{}
+	shaders := []uint32{}
 	for i, f := range filePath {
 		t := types[i]
 		s, err := CreateShaderFromFile(f, t)
@@ -109,7 +114,7 @@ func (g *Gl3) AddProgramSource(name, vert, frag string) error {
 	if err != nil {
 		return nil
 	}
-	p, err := CreateProgram([]gl.Uint{v, f})
+	p, err := CreateProgram([]uint32{v, f})
 	if err != nil {
 		return err
 	}
@@ -121,11 +126,12 @@ func (g *Gl3) AddSprite(name string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	vbuf := CreateVextexBuffer(SpriteData[:], SpriteIndices, SpriteFormat[:])
+	buf := unsafe.Slice((*byte)(unsafe.Pointer(&SpriteData[0])), len(SpriteData)*int(unsafe.Sizeof(float32(0))))
+	vbuf := CreateVextexBuffer(buf, SpriteIndices, SpriteFormat[:])
 	g.buffers[name] = vbuf
 }
 
-func (g *Gl3) AddVertexBuffer(name string, data []gl.Float, indx []uint16, formats []DataFormat) {
+func (g *Gl3) AddVertexBuffer(name string, data []byte, indx []uint16, formats []DataFormat) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
@@ -149,7 +155,7 @@ func (g *Gl3) DrawSpatial(w *yecs.World) {
 	proj := MainCam.GetProjectionTransformation()
 	projView := proj.Mul(view)
 	var curBuf, curProgram, curTexture string
-	var program gl.Uint
+	var program uint32
 	var drawBuffer VertBuffer
 	for _, e := range sprites {
 		s := w.GetComponent(e, yecs.SpatialComponent).(yecs.Spatial)
@@ -190,7 +196,7 @@ func (g *Gl3) DrawSpatial(w *yecs.World) {
 				curTexture = s.Textures
 				if s.CurTexture == -1 {
 					for i, t := range tex {
-						SetActiveTex(t, i)
+						SetActiveTex(t, uint32(i))
 					}
 				} else {
 					SetActiveTex(tex[s.CurTexture], 0)
@@ -198,7 +204,7 @@ func (g *Gl3) DrawSpatial(w *yecs.World) {
 			}
 		}
 		t := w.GetComponent(e, yecs.TransformComponent).(yecs.Transform)
-		err := AssignUniformMat4(program, "world", t.Transform)
+		err := AssignUniformMat4(program, "world", t.Local)
 		if err != nil {
 			log.Println(err)
 		}

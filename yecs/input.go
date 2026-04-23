@@ -120,7 +120,7 @@ func (is *InputSystem) Init() {
 	sdl.ShowCursor(is.ShowCursor)
 }
 
-func convertToOpenGLCoords(is *InputSystem, x, y int32) y3d.Vec3 {
+func (is *InputSystem) convertToOpenGLCoords(x, y int32) y3d.Vec3 {
 	return y3d.Vec3{
 		X: float32(x) - float32(is.ScreenWidth)/2,
 		Y: float32(is.ScreenHeight)/2 - float32(y),
@@ -128,7 +128,7 @@ func convertToOpenGLCoords(is *InputSystem, x, y int32) y3d.Vec3 {
 }
 
 func (is *InputSystem) ProcessWheel(w *sdl.MouseWheelEvent) {
-	is.ScrollWheelPos = convertToOpenGLCoords(is, w.X, w.Y)
+	is.ScrollWheelPos = is.convertToOpenGLCoords(w.X, w.Y)
 	is.ScrollWheelDir = w.Direction
 }
 
@@ -140,7 +140,7 @@ func (is *InputSystem) UpdateMouse() {
 	} else {
 		x, y, state = sdl.GetMouseState()
 	}
-	is.MousePosition = convertToOpenGLCoords(is, x, y)
+	is.MousePosition = is.convertToOpenGLCoords(x, y)
 	is.CurMouseKeyState = state
 }
 

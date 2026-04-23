@@ -3,20 +3,64 @@ package ygl
 import (
 	"unsafe"
 
-	gl "github.com/chsc/gogl/gl33"
+	"github.com/go-gl/gl/v4.3-core/gl"
 )
 
 type VertBuffer struct {
-	Buf       gl.Uint
-	Indx      gl.Uint
-	VertArray gl.Uint
-	IndxCount int
+	Buf       uint32
+	Indx      uint32
+	VertArray uint32
+	IndxCount int32
+}
+
+type ComponentType int32
+
+const (
+	ComponentTypeFloat32 ComponentType = iota
+	ComponentTypeByte
+	ComponentTypeUint8
+	ComponentTypeInt16
+	ComponentTypeUint16
+	ComponentTypeUint32
+)
+
+func (c ComponentType) GlComponentType() uint32 {
+	switch c {
+	case ComponentTypeFloat32:
+		return gl.FLOAT
+	case ComponentTypeByte:
+		return gl.BYTE
+	case ComponentTypeUint8:
+		return gl.UNSIGNED_BYTE
+	case ComponentTypeInt16:
+		return gl.SHORT
+	case ComponentTypeUint16:
+		return gl.UNSIGNED_SHORT
+	case ComponentTypeUint32:
+		return gl.UNSIGNED_INT
+	}
+	return 0
+}
+
+func (c ComponentType) ByteSize() uintptr {
+	switch c {
+	case ComponentTypeFloat32:
+		return unsafe.Sizeof(float32(0))
+	case ComponentTypeUint16, ComponentTypeInt16:
+		return unsafe.Sizeof(uint16(0))
+	case ComponentTypeUint32:
+		return unsafe.Sizeof(uint32(0))
+	case ComponentTypeUint8, ComponentTypeByte:
+		return 1
+	}
+	return 0
 }
 
 type DataFormat struct {
-	Count  int // num of components of the vertex
-	Stride int //size of each vertex in bytes
-	Offset int // offset into the packed slice where the vertext starts
+	Count         int32         // num of components of the vertex
+	Stride        int32         //size of each vertex in bytes
+	Offset        int32         // offset into the packed slice where the vertext starts in byted
+	ComponentType ComponentType //the component type
 }
 
 func (b VertBuffer) SetActive() {
@@ -24,32 +68,35 @@ func (b VertBuffer) SetActive() {
 }
 
 func (b VertBuffer) DrawBuffer() {
-	gl.DrawElements(gl.TRIANGLES, gl.Sizei(b.IndxCount), gl.UNSIGNED_SHORT, nil)
+	gl.DrawElements(gl.TRIANGLES, b.IndxCount, gl.UNSIGNED_SHORT, nil)
 }
 
-func CreateVextexBuffer(data []gl.Float, indx []uint16, formats []DataFormat) VertBuffer {
-	var idx, vertArray, buf gl.Uint
-	byteSize := unsafe.Sizeof(gl.Float(0))
+func CreateVextexBuffer(data []byte, indx []uint16, formats []DataFormat) VertBuffer {
+	var idx, vertArray, buf uint32
 	gl.GenVertexArrays(1, &vertArray)
 	gl.BindVertexArray(vertArray)
 	gl.GenBuffers(1, &buf)
+
+	//gl.CreateBuffers(1, &buf)
+	//gl.NamedBufferStorageEXT(buf, len(data), gl.Ptr(&data[0]), gl.STATIC_DRAW)
+
 	gl.BindBuffer(gl.ARRAY_BUFFER, buf)
-	gl.BufferData(gl.ARRAY_BUFFER, gl.Sizeiptr(len(data)*int(byteSize)), gl.Pointer(&data[0]), gl.STATIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, len(data), gl.Ptr(&data[0]), gl.STATIC_DRAW)
 
 	for i, f := range formats {
-		gl.EnableVertexAttribArray(gl.Uint(i))
-		gl.VertexAttribPointer(gl.Uint(i), gl.Int(f.Count), gl.FLOAT, gl.FALSE, gl.Sizei(f.Stride), gl.Pointer(byteSize*uintptr(f.Offset)))
+		gl.EnableVertexAttribArray(uint32(i))
+		gl.VertexAttribPointer(uint32(i), f.Count, f.ComponentType.GlComponentType(), false, f.Stride, gl.Ptr(uintptr(f.Offset)))
 	}
 
 	gl.GenBuffers(1, &idx)
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, idx)
-	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, gl.Sizeiptr(uintptr(len(indx))*unsafe.Sizeof(uint16(0))), gl.Pointer(&indx[0]), gl.STATIC_DRAW)
+	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, int(uintptr(len(indx))*unsafe.Sizeof(uint16(0))), gl.Ptr(&indx[0]), gl.STATIC_DRAW)
 
 	return VertBuffer{
 		Buf:       buf,
 		Indx:      idx,
 		VertArray: vertArray,
-		IndxCount: len(indx),
+		IndxCount: int32(len(indx)),
 	}
 }
 

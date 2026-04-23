@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"unsafe"
 	"yam/y3d"
 
-	gl "github.com/chsc/gogl/gl33"
+	"github.com/go-gl/gl/v4.3-core/gl"
 )
 
 const (
@@ -15,7 +14,7 @@ const (
 	FRAGMENT = gl.FRAGMENT_SHADER
 )
 
-func CreateShaderFromFile(filename string, shaderType gl.Enum) (gl.Uint, error) {
+func CreateShaderFromFile(filename string, shaderType uint32) (uint32, error) {
 	source, err := os.ReadFile(filename)
 	if err != nil {
 		return 0, err
@@ -23,39 +22,41 @@ func CreateShaderFromFile(filename string, shaderType gl.Enum) (gl.Uint, error) 
 	return CreateShader(string(source), shaderType)
 }
 
-func CreateShader(source string, shaderType gl.Enum) (gl.Uint, error) {
+func CreateShader(source string, shaderType uint32) (uint32, error) {
 	s := gl.CreateShader(shaderType)
-	s_source := gl.GLString(source)
-	gl.ShaderSource(s, 1, &s_source, nil)
+	source = source + "\x00"
+	s_source, free := gl.Strs(source)
+	gl.ShaderSource(s, 1, s_source, nil)
+	free()
 	gl.CompileShader(s)
-	var s_status gl.Int
+	var s_status int32
 	gl.GetShaderiv(s, gl.COMPILE_STATUS, &s_status)
 	if s_status != gl.TRUE {
-		infoLog := make([]gl.Char, 2048)
-		var length gl.Sizei
-		gl.GetShaderInfoLog(s, gl.Sizei(len(infoLog)), &length, &infoLog[0])
+		infoLog := make([]uint8, 2048)
+		var length int32
+		gl.GetShaderInfoLog(s, int32(len(infoLog)), &length, &infoLog[0])
 		var sb strings.Builder
 		for _, c := range infoLog {
 			sb.WriteByte(byte(c))
 		}
-		return 0, fmt.Errorf("shader failed to compile: %s", sb.String())
+		return 0, fmt.Errorf("%d shader failed to compile: %s", shaderType, sb.String())
 	}
 	return s, nil
 }
 
-func CreateProgram(shaders []gl.Uint) (gl.Uint, error) {
+func CreateProgram(shaders []uint32) (uint32, error) {
 	p := gl.CreateProgram()
 	for _, s := range shaders {
 		gl.AttachShader(p, s)
 		gl.DeleteShader(s)
 	}
 	gl.LinkProgram(p)
-	var status gl.Int
+	var status int32
 	gl.GetProgramiv(p, gl.LINK_STATUS, &status)
 	if status != gl.TRUE {
-		infoLog := make([]gl.Char, 2048)
-		var length gl.Sizei
-		gl.GetProgramInfoLog(p, gl.Sizei(len(infoLog)), &length, &infoLog[0])
+		infoLog := make([]uint8, 2048)
+		var length int32
+		gl.GetProgramInfoLog(p, int32(len(infoLog)), &length, &infoLog[0])
 		var sb strings.Builder
 		for _, c := range infoLog {
 			sb.WriteByte(byte(c))
@@ -65,47 +66,56 @@ func CreateProgram(shaders []gl.Uint) (gl.Uint, error) {
 	return p, nil
 }
 
-func SetActiveProgram(p gl.Uint) {
+func SetActiveProgram(p uint32) {
 	gl.UseProgram(p)
 }
 
-func DestroyProgram(p gl.Uint) {
+func DestroyProgram(p uint32) {
 	gl.DeleteProgram(p)
 }
 
-func AssignUniformMat4(p gl.Uint, name string, mat y3d.Mat4) error {
-	loc := gl.GetUniformLocation(p, gl.GLString(name))
+func AssignUniformMat4(p uint32, name string, mat y3d.Mat4) error {
+	loc := gl.GetUniformLocation(p, gl.Str(name+"\x00"))
 	if loc == -1 {
 		return fmt.Errorf("no uniform mat4 with name: %s\n", name)
 	}
-	gl.UniformMatrix4fv(loc, 1, gl.FALSE, (*gl.Float)(unsafe.Pointer(&mat[0])))
+	gl.UniformMatrix4fv(loc, 1, false, &mat[0])
 	return nil
 }
 
-func AssignUniformMat4Array(p gl.Uint, name string, count int, mat []float32) error {
-	loc := gl.GetUniformLocation(p, gl.GLString(name))
+func AssignUniformMat4Array(p uint32, name string, count int, mat []float32) error {
+	loc := gl.GetUniformLocation(p, gl.Str(name+"\x00"))
 	if loc == -1 {
 		return fmt.Errorf("no uniform mat4 with name: %s\n", name)
 	}
-	gl.UniformMatrix4fv(loc, gl.Sizei(count), gl.FALSE, (*gl.Float)(unsafe.Pointer(&mat[0])))
+	gl.UniformMatrix4fv(loc, int32(count), false, &mat[0])
 	return nil
 }
 
-func AssignUniformVec(p gl.Uint, name string, v y3d.Vec3) error {
-	loc := gl.GetUniformLocation(p, gl.GLString(name))
+func AssignUniformVec3(p uint32, name string, v y3d.Vec3) error {
+	loc := gl.GetUniformLocation(p, gl.Str(name+"\x00"))
 	if loc == -1 {
 		return fmt.Errorf("no uniform vec3 with name: %s\n", name)
 	}
 	vs := v.ToSlice()
-	gl.Uniform3fv(loc, 1, (*gl.Float)(unsafe.Pointer(&vs[0])))
+	gl.Uniform3fv(loc, 1, &vs[0])
+	return nil
+}
+func AssignUniformVec4(p uint32, name string, v y3d.Vec4) error {
+	loc := gl.GetUniformLocation(p, gl.Str(name+"\x00"))
+	if loc == -1 {
+		return fmt.Errorf("no uniform vec3 with name: %s\n", name)
+	}
+	vs := v.ToSlice()
+	gl.Uniform4fv(loc, 1, &vs[0])
 	return nil
 }
 
-func AssignUniformFloat32(p gl.Uint, name string, f float32) error {
-	loc := gl.GetUniformLocation(p, gl.GLString(name))
+func AssignUniformFloat32(p uint32, name string, f float32) error {
+	loc := gl.GetUniformLocation(p, gl.Str(name+"\x00"))
 	if loc == -1 {
 		return fmt.Errorf("no uniform float with name: %s\n", name)
 	}
-	gl.Uniform1f(loc, gl.Float(f))
+	gl.Uniform1f(loc, f)
 	return nil
 }

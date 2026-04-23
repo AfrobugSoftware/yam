@@ -17,8 +17,6 @@ type Mat4 [16]float32
 type Mat3 [9]float32
 type Mat2 [4]float32
 
-type Vec4 struct{ X, Y, Z, W float32 }
-
 var Identity = Mat4{
 	1, 0, 0, 0,
 	0, 1, 0, 0,
