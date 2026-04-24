@@ -217,7 +217,16 @@ func (g *Gl3) DrawSpatial(w *yecs.World) {
 		r.SetupRenderState()
 		drawBuffer.DrawBuffer()
 	}
-	//elapsed := time.Since(now)
-	//	fmt.Println(elapsed)
 	g.Window.GLSwap()
+}
+
+func (g *Gl3) DrawScene(w *yecs.World, f *Framebuffer) {
+	if f != nil {
+		f.Bind()
+	}
+	gl.Viewport(0, 0, f.Width, f.Height)
+	g.DrawSpatial(w)
+	if f != nil {
+		f.Unbind()
+	}
 }

@@ -9,6 +9,13 @@ import (
 	"github.com/go-gl/gl/v4.3-core/gl"
 )
 
+// locations
+const (
+	POSITION_LOCAITON = iota
+	NORMAL_LOCATION
+	TEX_COORD_LOCATION
+)
+
 const (
 	VERTEX   = gl.VERTEX_SHADER
 	FRAGMENT = gl.FRAGMENT_SHADER

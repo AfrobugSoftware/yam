@@ -39,7 +39,7 @@ func NewGame(title string, width, height int32) (*Game, error) {
 	}
 	sdl.GLSetAttribute(sdl.GL_MULTISAMPLEBUFFERS, 1) // enable multisampling
 	sdl.GLSetAttribute(sdl.GL_MULTISAMPLESAMPLES, 4) // 4x MSAA (2, 4, 8, 16)
-	sdl.GLSetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 3)
+	sdl.GLSetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 4)
 	sdl.GLSetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, 3)
 	sdl.GLSetAttribute(sdl.GL_CONTEXT_PROFILE_MASK, sdl.GL_CONTEXT_PROFILE_CORE)
 	sdl.GLSetAttribute(sdl.GL_DOUBLEBUFFER, 1)

@@ -36,7 +36,7 @@ func CreateTex2D(filePath string, minFilter, maxFilter int32) (uint32, error) {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, minFilter)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, maxFilter)
-
+	EnableAnistropicFiltering()
 	gl.TexImage2D(
 		gl.TEXTURE_2D,
 		0,
@@ -48,7 +48,14 @@ func CreateTex2D(filePath string, minFilter, maxFilter int32) (uint32, error) {
 		gl.UNSIGNED_BYTE,
 		gl.Ptr(&rgba.Pix[0]),
 	)
+	gl.GenerateMipmap(gl.TEXTURE_2D)
 	return texId, nil
+}
+
+func EnableAnistropicFiltering() {
+	var v float32
+	gl.GetFloatv(gl.MAX_TEXTURE_MAX_ANISOTROPY, &v)
+	gl.TexParameterf(gl.TEXTURE_2D, gl.MAX_TEXTURE_MAX_ANISOTROPY, v)
 }
 
 func SetActiveTex(tex uint32, unit uint32) {
@@ -58,4 +65,24 @@ func SetActiveTex(tex uint32, unit uint32) {
 
 func DestroyTex2D(tex uint32) {
 	gl.DeleteTextures(1, &tex)
+}
+
+func CreateRenderTexture(width, height, internalFormat int32) uint32 {
+	var texId uint32
+	gl.GenTextures(1, &texId)
+	gl.BindTexture(gl.TEXTURE_2D, texId)
+	gl.TexImage2D(
+		gl.TEXTURE_2D,
+		0,
+		internalFormat,
+		width,
+		height,
+		0,
+		gl.RGB,
+		gl.FLOAT,
+		nil,
+	)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	return texId
 }
