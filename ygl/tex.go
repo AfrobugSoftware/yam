@@ -10,7 +10,7 @@ import (
 	"github.com/go-gl/gl/v4.3-core/gl"
 )
 
-func CreateTex2D(filePath string, minFilter, maxFilter int32) (uint32, error) {
+func CreateTex2D(filePath string, minFilter, maxFilter int32, useMipmap bool) (uint32, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return 0, fmt.Errorf("failed to open image file: %v", err)
@@ -36,7 +36,6 @@ func CreateTex2D(filePath string, minFilter, maxFilter int32) (uint32, error) {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, minFilter)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, maxFilter)
-	EnableAnistropicFiltering()
 	gl.TexImage2D(
 		gl.TEXTURE_2D,
 		0,
@@ -48,7 +47,10 @@ func CreateTex2D(filePath string, minFilter, maxFilter int32) (uint32, error) {
 		gl.UNSIGNED_BYTE,
 		gl.Ptr(&rgba.Pix[0]),
 	)
-	gl.GenerateMipmap(gl.TEXTURE_2D)
+	if useMipmap {
+		EnableAnistropicFiltering()
+		gl.GenerateMipmap(gl.TEXTURE_2D)
+	}
 	return texId, nil
 }
 

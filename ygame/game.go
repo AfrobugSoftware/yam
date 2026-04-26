@@ -8,6 +8,7 @@ import (
 	"yam/ygl"
 
 	"github.com/ebitengine/oto/v3"
+	"github.com/go-gl/gl/v4.3-core/gl"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -29,6 +30,9 @@ type Game struct {
 	Gl3        *ygl.Gl3
 	Audio      *yecs.AudioSystem
 	Input      *yecs.InputSystem
+
+	//for test
+	SpriteBatch *ygl.SpriteBatch
 }
 
 var gGame *Game
@@ -60,7 +64,8 @@ func NewGame(title string, width, height int32) (*Game, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	sb := ygl.CreateSpriteBatch("assets/jumpman.png", 2, 2, float32(width),
+		float32(height), 260, 260)
 	gGame = &Game{
 		logFile: file,
 		Log:     logger,
@@ -75,6 +80,7 @@ func NewGame(title string, width, height int32) (*Game, error) {
 		},
 		ShowGrid: true,
 		//IGrid:    NewGrid(),
+		SpriteBatch: sb,
 	}
 	return gGame, nil
 }
@@ -113,11 +119,15 @@ func (g *Game) ProcessInput() {
 }
 
 func (g *Game) Draw() {
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	// if g.ShowGrid {
 	// 	g.IGrid.Draw(g.World)
 	// }
-	g.Gl3.DrawSpatial(g.World)
+	//g.Gl3.DrawSpatial(g.World)
+	entities := g.World.Query([]yecs.ComponentId{yecs.SpriteComponent})
+	g.SpriteBatch.Draw(g.World, entities)
 
+	g.Gl3.Window.GLSwap()
 }
 
 func (g *Game) Run() {

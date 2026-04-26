@@ -12,6 +12,12 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+func glCheck(tag string) {
+	if err := gl.GetError(); err != gl.NO_ERROR {
+		log.Fatalf("[GL ERROR] at '%s': 0x%x", tag, err)
+	}
+}
+
 type Gl3 struct {
 	Context      sdl.GLContext
 	Window       *sdl.Window
@@ -68,7 +74,7 @@ func (g *Gl3) AddTextures(filePath []string, name string) error {
 	defer g.mu.Unlock()
 	texs := make([]uint32, 0, len(filePath))
 	for _, f := range filePath {
-		t, err := CreateTex2D(f, gl.LINEAR, gl.LINEAR)
+		t, err := CreateTex2D(f, gl.LINEAR, gl.LINEAR, true)
 		if err != nil {
 			return err
 		}
@@ -141,8 +147,6 @@ func (g *Gl3) AddVertexBuffer(name string, data []byte, indx []uint16, formats [
 
 func (g *Gl3) DrawSpatial(w *yecs.World) {
 	//now := time.Now()
-	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-
 	camera := w.Query([]yecs.ComponentId{yecs.CameraComponent})
 	sprites := w.Query([]yecs.ComponentId{yecs.SpatialComponent, yecs.TransformComponent, yecs.RenderStateComponent})
 	//animatedSpatials = w.Query([]yecs.ComponentId{yecs.AnimatedSpatialCompnent, yecs.TransformComponent, yecs.RenderStateComponent})
@@ -217,7 +221,6 @@ func (g *Gl3) DrawSpatial(w *yecs.World) {
 		r.SetupRenderState()
 		drawBuffer.DrawBuffer()
 	}
-	g.Window.GLSwap()
 }
 
 func (g *Gl3) DrawScene(w *yecs.World, f *Framebuffer) {

@@ -244,13 +244,13 @@ func RotationAxis(axis Vec3, angle float64) Mat4 {
 func Ortho(left, right, bottom, top, near, far float32) Mat4 {
 	rml := right - left
 	tmb := top - bottom
-	fmn := far - near
+	nmf := near - far
 
 	return Mat4{
 		2 / rml, 0, 0, 0,
 		0, 2 / tmb, 0, 0,
-		0, 0, 2 / fmn, 0,
-		(right + left) / rml, (top + bottom) / tmb, (far + near) / fmn, 1,
+		0, 0, 2 / nmf, 0,
+		(right + left) / (left - right), (top + bottom) / (bottom - top), (far + near) / (far - near), 1,
 	}
 }
 

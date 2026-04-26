@@ -22,4 +22,5 @@ var (
 	LightComponent       = RegisterComponent[Light]()
 	HierarchyComponent   = RegisterComponent[Hierarchy]()
 	AnimationComponent   = RegisterComponent[Animation]()
+	SpriteComponent      = RegisterComponent[Sprite]()
 )
