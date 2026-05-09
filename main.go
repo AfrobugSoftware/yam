@@ -6,8 +6,8 @@ import (
 )
 
 func main() {
-	fmt.Println("kiwi island!")
-	//yam.TestGame()
-	yam.TesPlayer()
+	fmt.Println("kiwi island 1.0.2!")
+	yam.TestGame()
+	//yam.TesPlayer()
 	//yam.TestSprites()
 }

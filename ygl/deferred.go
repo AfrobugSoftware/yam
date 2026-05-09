@@ -13,6 +13,7 @@ import (
 const (
 	MESS_PASS = iota
 	LIGHT_PASS
+	SCREEN_TEST
 )
 
 const (
@@ -61,13 +62,15 @@ func CreateDeferredRenderer(width, height, dwidth, dheight int32) *DeferredRende
 	}
 	depthTex := CreateDepthTexture(dwidth, dheight)
 	dr.Gbuf.AttachDepthTexture(depthTex)
+	dr.Gbuf.DrawBuffers()
+
 	if !dr.Gbuf.CheckComplete() {
 		DestoryFrameBuffer(dr.Gbuf)
 		panic("could not setup g-buffer")
 	}
-	dr.Gbuf.DrawBuffers()
-	dr.PassTechnique = append(dr.PassTechnique, AddProgramSource("assets/shaders/mesh.vert", "assets/shaders/gBufferWrite.frag")) //mesh pass
-	dr.PassTechnique = append(dr.PassTechnique, AddProgramSource("assets/shaders/screenQuad.vert", "assets/shaders/glight.frag")) //light pass
+	dr.PassTechnique = append(dr.PassTechnique, AddProgramSource("assets/shaders/mesh.vert", "assets/shaders/gbufferWrite.frag"))     //mesh pass
+	dr.PassTechnique = append(dr.PassTechnique, AddProgramSource("assets/shaders/screenQuad.vert", "assets/shaders/glight.frag"))     //light pass
+	dr.PassTechnique = append(dr.PassTechnique, AddProgramSource("assets/shaders/screenQuad.vert", "assets/shaders/screenQuad.frag")) //light pass
 	dr.SetupLightUBO()
 	dr.Gbuf.Unbind()
 	gl.CreateVertexArrays(1, &dr.emptyVao)
@@ -86,8 +89,53 @@ func (dr *DeferredRenderer) UpdateSpatialsSSBO(w *yecs.World) {
 	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, SPATIAL_SSBO_BINDING_INDEX, dr.SpatialSSBO)
 }
 
-func (dr *DeferredRenderer) Draw(w *yecs.World) {
+func (dr *DeferredRenderer) LightPass(w *yecs.World, camPos y3d.Vec3) {
+	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+	gl.UseProgram(dr.PassTechnique[LIGHT_PASS])
+
+	lights := w.Query([]yecs.ComponentId{yecs.LightComponent})
+	uploadSize := len(lights) * int(unsafe.Sizeof(yecs.Light{}))
+	if uploadSize > int(dr.LightBlockSize) {
+		uploadSize = int(dr.LightBlockSize)
+	}
+	gl.BindBuffer(gl.UNIFORM_BUFFER, dr.LightUBO)
+	ptr := gl.MapBufferRange(gl.UNIFORM_BUFFER, 0, uploadSize, gl.MAP_WRITE_BIT|gl.MAP_PERSISTENT_BIT|gl.MAP_COHERENT_BIT)
+	if ptr == nil {
+		panic(fmt.Errorf("cannot get mapped buffer"))
+	}
+	dst := unsafe.Slice((*[16]float32)(ptr), len(lights))
+	for i := range lights {
+		light := w.GetComponent(lights[i], yecs.LightComponent).(yecs.Light)
+		copy(dst[i][0:4], light.Diffuse.ToSlice())
+		copy(dst[i][4:8], light.Ambient.ToSlice())
+		copy(dst[i][8:12], light.Specular.ToSlice())
+		copy(dst[i][12:16], light.Pos.ToSlice())
+	}
+	gl.UnmapBuffer(gl.UNIFORM_BUFFER)
+	gl.BindBufferBase(gl.UNIFORM_BUFFER, 0, dr.LightUBO)
+
+	SetActiveTex(dr.Gbuf.Color[0], 0)
+	SetActiveTex(dr.Gbuf.Color[1], 1)
+	SetActiveTex(dr.Gbuf.Color[2], 2)
+
+	AssignUniformInt32(dr.PassTechnique[LIGHT_PASS], "surface.diffuse", 0)
+	AssignUniformInt32(dr.PassTechnique[LIGHT_PASS], "surface.position", 1)
+	AssignUniformInt32(dr.PassTechnique[LIGHT_PASS], "surface.normal", 2)
+	AssignUniformVec3(dr.PassTechnique[LIGHT_PASS], "cameraPos", camPos)
+	AssignUniformInt32(dr.PassTechnique[LIGHT_PASS], "lightCount", int32(len(lights)))
+
+	gl.Enable(gl.DEPTH_TEST)
+	gl.Disable(gl.BLEND)
+	gl.BindVertexArray(dr.emptyVao)
+	gl.DrawArrays(gl.TRIANGLES, 0, 6)
+	gl.BindVertexArray(0)
+	gl.UseProgram(0)
+}
+
+func (dr *DeferredRenderer) MeshPass(w *yecs.World) {
 	dr.Gbuf.Bind()
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	gl.UseProgram(dr.PassTechnique[MESS_PASS])
 	camera := w.Query([]yecs.ComponentId{yecs.CameraComponent})
 	spatials := w.Query([]yecs.ComponentId{yecs.SpatialComponent,
@@ -132,43 +180,14 @@ func (dr *DeferredRenderer) Draw(w *yecs.World) {
 		gl.DrawElements(gl.TRIANGLES, s.IndxCount, gl.UNSIGNED_SHORT, nil)
 		gl.BindVertexArray(0)
 	}
+	gl.UseProgram(0)
 	dr.Gbuf.Unbind()
 
-	gl.UseProgram(dr.PassTechnique[LIGHT_PASS])
-	lights := w.Query([]yecs.ComponentId{yecs.LightComponent})
-	uploadSize := len(lights) * int(unsafe.Sizeof(yecs.Light{}))
-	if uploadSize > int(dr.LightBlockSize) {
-		uploadSize = int(dr.LightBlockSize)
-	}
-	gl.BindBuffer(gl.UNIFORM_BUFFER, dr.LightUBO)
-	ptr := gl.MapBufferRange(gl.UNIFORM_BUFFER, 0, uploadSize, gl.MAP_WRITE_BIT|gl.MAP_PERSISTENT_BIT|gl.MAP_COHERENT_BIT)
-	if ptr == nil {
-		panic(fmt.Errorf("cannot get mapped buffer"))
-	}
-	dst := unsafe.Slice((*[16]float32)(ptr), len(lights))
-	for i := range lights {
-		light := w.GetComponent(lights[i], yecs.LightComponent).(yecs.Light)
-		copy(dst[i][0:4], light.Diffuse.ToSlice())
-		copy(dst[i][4:8], light.Ambient.ToSlice())
-		copy(dst[i][8:12], light.Specular.ToSlice())
-		copy(dst[i][12:16], light.Pos.ToSlice())
-	}
-	gl.UnmapBuffer(gl.UNIFORM_BUFFER)
-	gl.BindBufferBase(gl.UNIFORM_BUFFER, 0, dr.LightUBO)
-	SetActiveTex(dr.Gbuf.Color[0], 0)
-	SetActiveTex(dr.Gbuf.Color[1], 1)
-	SetActiveTex(dr.Gbuf.Color[2], 2)
-	AssignUniformInt32(dr.PassTechnique[LIGHT_PASS], "surface.diffuse", 0)
-	AssignUniformInt32(dr.PassTechnique[LIGHT_PASS], "surface.position", 1)
-	AssignUniformInt32(dr.PassTechnique[LIGHT_PASS], "surface.normal", 2)
-	AssignUniformVec3(dr.PassTechnique[LIGHT_PASS], "cameraPos", MainCam.Pos)
-	AssignUniformInt32(dr.PassTechnique[LIGHT_PASS], "lightCount", int32(len(lights)))
+	dr.LightPass(w, MainCam.Pos)
+}
 
-	gl.Disable(gl.DEPTH_TEST)
-	gl.Disable(gl.BLEND)
-	gl.BindVertexArray(dr.emptyVao)
-	gl.DrawArrays(gl.TRIANGLES, 0, 6)
-	gl.UseProgram(0)
+func (dr *DeferredRenderer) Draw(w *yecs.World) {
+	dr.MeshPass(w)
 }
 
 func (dr *DeferredRenderer) SetupLightUBO() {
@@ -179,6 +198,11 @@ func (dr *DeferredRenderer) SetupLightUBO() {
 	gl.CreateBuffers(1, &dr.LightUBO)
 	gl.GetActiveUniformBlockiv(p, blockId, gl.UNIFORM_BLOCK_DATA_SIZE, &dr.LightBlockSize)
 	gl.NamedBufferStorage(dr.LightUBO, int(dr.LightBlockSize), nil, gl.MAP_WRITE_BIT|gl.MAP_PERSISTENT_BIT|gl.MAP_COHERENT_BIT)
+}
+
+func (dr *DeferredRenderer) ShutDown() {
+	DestoryFrameBuffer(dr.Gbuf)
+	gl.DeleteBuffers(1, &dr.DrawCommandSSBO)
 }
 
 func ValidateProgram(shader uint32) {

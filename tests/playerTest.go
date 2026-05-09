@@ -40,7 +40,7 @@ func CreatePlayer(w *yecs.World, vbo ygl.VertBuffer) {
 		Enable:    true,
 		DepthFunc: gl.LESS,
 	}, yecs.BlendState{
-		Enable:    true,
+		Enable:    false,
 		SrcFactor: gl.SRC_ALPHA,
 		DstFactor: gl.ONE_MINUS_SRC_ALPHA,
 	})
@@ -109,15 +109,20 @@ func CreatePlayer(w *yecs.World, vbo ygl.VertBuffer) {
 	w.AddComponent(e, yecs.HierarchyComponent, h)
 }
 
-func CreateLight(w *yecs.World) {
-	e := w.NewEntity()
-	light := yecs.Light{
-		Pos:      y3d.Vec3{X: 100, Y: 10, Z: -20},
-		Diffuse:  y3d.Vec3{X: 0.5, Y: 0.5, Z: 0.5},
-		Ambient:  y3d.Vec3{X: 0.2, Y: 0.2, Z: 0.2},
-		Specular: y3d.Vec3{X: 1.0, Y: 1.0, Z: 1.0},
+func CreateLight(w *yecs.World, count int) {
+	for range count {
+		e := w.NewEntity()
+		x := randRange(-1000, 1000)
+		y := randRange(-1000, 1000)
+		z := randRange(-10, -1000)
+		light := yecs.Light{
+			Pos:      y3d.Vec3{X: x, Y: y, Z: z},
+			Diffuse:  y3d.Vec3{X: 0.5, Y: 0.5, Z: 0.5},
+			Ambient:  y3d.Vec3{X: 0.2, Y: 0.2, Z: 0.2},
+			Specular: y3d.Vec3{X: 1.0, Y: 1.0, Z: 1.0},
+		}
+		w.AddComponent(e, yecs.LightComponent, light)
 	}
-	w.AddComponent(e, yecs.LightComponent, light)
 }
 
 func TesPlayer() {
@@ -127,7 +132,7 @@ func TesPlayer() {
 		panic(err)
 	}
 	CreateSystems(g.World)
-	CreateLight(g.World)
+	CreateLight(g.World, 10)
 	buffer, indices, format := ygl.CreateSphere(56, 28, 1.0)
 	vbo := ygl.CreateVextexBuffer(buffer, indices, format)
 	CreatePlayer(g.World, vbo)

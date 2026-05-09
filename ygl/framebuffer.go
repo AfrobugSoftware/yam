@@ -56,7 +56,7 @@ func (f *Framebuffer) DrawBuffers() {
 	for i := range f.Color {
 		drawbuffer[i] = uint32(gl.COLOR_ATTACHMENT0 + i)
 	}
-	gl.NamedFramebufferDrawBuffers(f.fbo, int32(len(drawbuffer)), &drawbuffer[0])
+	gl.DrawBuffers(int32(len(drawbuffer)), &drawbuffer[0])
 }
 
 func (f *Framebuffer) BindFramebufferForWriting() {

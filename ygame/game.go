@@ -8,7 +8,6 @@ import (
 	"yam/ygl"
 
 	"github.com/ebitengine/oto/v3"
-	"github.com/go-gl/gl/v4.3-core/gl"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -123,9 +122,7 @@ func (g *Game) Draw() {
 	//entities := g.World.Query([]yecs.ComponentId{yecs.SpriteComponent})
 	//g.SpriteBatch.Draw(g.World, entities)
 
-	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	g.Gl3.DeferredRenderer.Draw(g.World)
-
 	g.Gl3.Window.GLSwap()
 }
 

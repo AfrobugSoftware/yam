@@ -23,6 +23,7 @@ struct Light {
 
 uniform Material material;
 uniform Light light;
+uniform sampler2D mdiffuse;
 
 vec3 caluatePhongLight() {
     vec3 ambient = light.ambient * material.ambient;
@@ -43,5 +44,5 @@ vec3 caluatePhongLight() {
 
 void main() {
     vec3 lighting = caluatePhongLight();
-    color = vec4(lighting, 1.0);
+    color = texture(mdiffuse, fragUv);
 }

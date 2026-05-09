@@ -16,13 +16,6 @@ struct Light {
     vec3 position;
 };
 
-struct Material {
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-    float shininess;
-};
-
 #define MAX_LIGHTS 100
 layout(std140, binding = 0) uniform LightSet {
     Light lights[MAX_LIGHTS];
@@ -48,15 +41,15 @@ vec3 caluatePhongLight(Light light, vec3 fragPos, vec3 fragNormal, float shinine
 }
 
 void main () {
-    vec3 diffuse  = (texture2D(surface.diffuse, fragUv.xy)).xyz;
-    vec3 position = (texture2D(surface.position, fragUv.xy)).xyz;
-    vec3 normal   = (texture2D(surface.normal, fragUv.xy)).xyz;
+    vec3 diffuse  = (texture(surface.diffuse, fragUv.xy)).xyz;
+    vec3 position = (texture(surface.position, fragUv.xy)).xyz;
+    vec3 normal   = (texture(surface.normal, fragUv.xy)).xyz;
 
     vec3 color = vec3(0.0);
     for (int i = 0; i < lightCount; i++) {
         vec3 phong = caluatePhongLight(lights[i], position, normal, 1);
         color += diffuse * phong;
     }
-    outColor = vec4(normal, 1.0);    
+    outColor = vec4(color, 1.0);    
 }
 

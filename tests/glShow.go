@@ -16,14 +16,14 @@ const (
 	width  = 1280
 )
 
-func CreateObject(w *yecs.World, vbo ygl.VertBuffer, transform yecs.Transform, curText int) {
+func CreateObject(w *yecs.World, vbo ygl.VertBuffer, transform yecs.Transform, curText int, surface *yecs.MaterialSurface) {
 	ent := w.NewEntity()
 	renderState := yecs.RenderState{}
 	renderState.States = append(renderState.States, yecs.DepthState{
 		Enable:    true,
 		DepthFunc: gl.LESS,
 	}, yecs.BlendState{
-		Enable:    true,
+		Enable:    false,
 		SrcFactor: gl.SRC_ALPHA,
 		DstFactor: gl.ONE_MINUS_SRC_ALPHA,
 	},
@@ -31,7 +31,8 @@ func CreateObject(w *yecs.World, vbo ygl.VertBuffer, transform yecs.Transform, c
 			Enable:    true,
 			CullFace:  gl.BACK,
 			FrontFace: gl.CCW,
-		})
+		},
+	)
 	sprite := yecs.Spatial{
 		Buf:            vbo.Buf,
 		Indx:           vbo.Indx,
@@ -45,6 +46,9 @@ func CreateObject(w *yecs.World, vbo ygl.VertBuffer, transform yecs.Transform, c
 		AnglularSpeed: 5 * math.Pi,
 		ForwardSpeed:  20,
 	}
+	h := yecs.Hierarchy{
+		Parent: yecs.NullEntity,
+	}
 
 	// aabb := ygl.MakeAABBForSprite(ygl.SpriteData[:], ygl.SpriteFormat[0])
 	// box := yecs.Box{
@@ -56,6 +60,8 @@ func CreateObject(w *yecs.World, vbo ygl.VertBuffer, transform yecs.Transform, c
 	w.AddComponent(ent, yecs.TransformComponent, transform)
 	w.AddComponent(ent, yecs.RenderStateComponent, renderState)
 	w.AddComponent(ent, yecs.MoveComponent, move)
+	w.AddComponent(ent, yecs.MaterialSurfaceComponent, *surface)
+	w.AddComponent(ent, yecs.HierarchyComponent, h)
 }
 
 func CreateCamera(w *yecs.World) {
@@ -84,7 +90,13 @@ func randRange(min, max float32) float32 {
 func CreateScene(w *yecs.World) {
 	buffer, indices, format := ygl.CreateSphere(56, 28, 1.0)
 	vbo := ygl.CreateVextexBuffer(buffer, indices, format)
-
+	tex, err := ygl.CreateTex2D("assets/earth.jpg", gl.LINEAR_MIPMAP_LINEAR, gl.LINEAR, true)
+	if err != nil {
+		panic(err)
+	}
+	surface := yecs.MaterialSurface{
+		Diffuse: tex,
+	}
 	for i := range 1000 {
 		x := randRange(-1000, 1000)
 		y := randRange(-1000, 1000)
@@ -94,7 +106,7 @@ func CreateScene(w *yecs.World) {
 			Scale:    y3d.Vec3{X: 64, Y: 64, Z: 1},
 			Rotation: y3d.IdenQuat(),
 		}
-		CreateObject(w, vbo, transform, i%3)
+		CreateObject(w, vbo, transform, i%3, &surface)
 	}
 	CreateCamera(w)
 }
@@ -112,7 +124,7 @@ func TestGame() {
 		panic(err)
 	}
 	CreateSystems(g.World)
-	CreateLight(g.World)
+	CreateLight(g.World, 3)
 	CreateScene(g.World)
 
 	g.Run()
