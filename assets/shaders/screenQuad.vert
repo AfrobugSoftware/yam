@@ -9,7 +9,7 @@ const vec3 vertices[6] = vec3[6](
     vec3(1.0, -1.0, 0.5)
 );
 
-out vec2 fragUv
+out vec2 fragUv;
 
 void main() {
     vec4 pos = vec4(vertices[gl_VertexID], 1.0);

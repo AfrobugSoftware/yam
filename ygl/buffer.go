@@ -77,9 +77,6 @@ func CreateVextexBuffer(data []byte, indx []uint16, formats []DataFormat) VertBu
 	gl.BindVertexArray(vertArray)
 	gl.GenBuffers(1, &buf)
 
-	//gl.CreateBuffers(1, &buf)
-	//gl.NamedBufferStorageEXT(buf, len(data), gl.Ptr(&data[0]), gl.STATIC_DRAW)
-
 	gl.BindBuffer(gl.ARRAY_BUFFER, buf)
 	gl.BufferData(gl.ARRAY_BUFFER, len(data), gl.Ptr(&data[0]), gl.STATIC_DRAW)
 

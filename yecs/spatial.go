@@ -1,9 +1,13 @@
 package yecs
 
 type Spatial struct {
-	Buffer         string
-	Program        string
-	Textures       string
+	Program   uint32
+	Textures  uint32
+	Buf       uint32
+	Indx      uint32
+	VertArray uint32
+	IndxCount int32
+
 	CurTexture     int
 	AssignUniforms func(e EntityId, w *World, cam *Camera, program uint32) error
 }

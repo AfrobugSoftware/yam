@@ -8,6 +8,6 @@ import (
 func main() {
 	fmt.Println("kiwi island!")
 	//yam.TestGame()
-	//yam.TesPlayer()
-	yam.TestSprites()
+	yam.TesPlayer()
+	//yam.TestSprites()
 }

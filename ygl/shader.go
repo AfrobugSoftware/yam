@@ -126,3 +126,11 @@ func AssignUniformFloat32(p uint32, name string, f float32) error {
 	gl.Uniform1f(loc, f)
 	return nil
 }
+func AssignUniformInt32(p uint32, name string, i int32) error {
+	loc := gl.GetUniformLocation(p, gl.Str(name+"\x00"))
+	if loc == -1 {
+		return fmt.Errorf("no uniform float with name: %s\n", name)
+	}
+	gl.Uniform1i(loc, i)
+	return nil
+}

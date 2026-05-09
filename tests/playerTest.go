@@ -22,18 +22,18 @@ func AddUniforms(e yecs.EntityId, w *yecs.World, cam *yecs.Camera, program uint3
 	ygl.AssignUniformVec3(program, "cameraPos", cam.Pos)
 
 	ygl.AssignUniformVec3(program, "light.position", light.Pos)
-	ygl.AssignUniformVec3(program, "light.diffuse", light.Diffuse.AsVec3())
-	ygl.AssignUniformVec3(program, "light.ambient", light.Ambient.AsVec3())
-	ygl.AssignUniformVec3(program, "light.specular", light.Specular.AsVec3())
+	ygl.AssignUniformVec3(program, "light.diffuse", light.Diffuse)
+	ygl.AssignUniformVec3(program, "light.ambient", light.Ambient)
+	ygl.AssignUniformVec3(program, "light.specular", light.Specular)
 
-	ygl.AssignUniformVec3(program, "material.diffuse", material.Diffuse.AsVec3())
-	ygl.AssignUniformVec3(program, "material.ambient", material.Ambient.AsVec3())
-	ygl.AssignUniformVec3(program, "material.specular", material.Specular.AsVec3())
+	ygl.AssignUniformVec3(program, "material.diffuse", material.Diffuse)
+	ygl.AssignUniformVec3(program, "material.ambient", material.Ambient)
+	ygl.AssignUniformVec3(program, "material.specular", material.Specular)
 	ygl.AssignUniformFloat32(program, "material.shininess", material.Shininess)
 	return nil
 }
 
-func CreatePlayer(w *yecs.World) {
+func CreatePlayer(w *yecs.World, vbo ygl.VertBuffer) {
 	e := w.NewEntity()
 	renderState := yecs.RenderState{}
 	renderState.States = append(renderState.States, yecs.DepthState{
@@ -45,8 +45,11 @@ func CreatePlayer(w *yecs.World) {
 		DstFactor: gl.ONE_MINUS_SRC_ALPHA,
 	})
 	sprite := yecs.Spatial{
-		Buffer:         "sphere",
-		Program:        "simpleLight",
+		Buf:            vbo.Buf,
+		Indx:           vbo.Indx,
+		VertArray:      vbo.VertArray,
+		IndxCount:      vbo.IndxCount,
+		Program:        0,
 		CurTexture:     -1,
 		AssignUniforms: AddUniforms,
 	}
@@ -87,49 +90,48 @@ func CreatePlayer(w *yecs.World) {
 	tag := yecs.Tag{
 		Name: "MainPlayer",
 	}
-
-	material := yecs.Material{
-		Shininess: 32,
-		Diffuse: y3d.Color{
-			1.0, 0.5, 0.31, 1.0,
-		},
-		Ambient: y3d.Color{
-			1.0, 0.5, 0.31, 1.0,
-		},
-		Specular: y3d.Color{
-			0.5, 0.5, 0.5, 1.0,
-		},
+	surface := yecs.MaterialSurface{}
+	tex, err := ygl.CreateTex2D("assets/earth.jpg", gl.LINEAR_MIPMAP_LINEAR, gl.LINEAR, true)
+	if err != nil {
+		panic(err)
 	}
-
+	surface.Diffuse = tex
+	h := yecs.Hierarchy{
+		Parent: yecs.NullEntity,
+	}
 	w.AddComponent(e, yecs.TagComponent, tag)
 	w.AddComponent(e, yecs.InputComponent, in)
 	w.AddComponent(e, yecs.MoveComponent, move)
 	w.AddComponent(e, yecs.SpatialComponent, sprite)
-	w.AddComponent(e, yecs.MaterialComponent, material)
 	w.AddComponent(e, yecs.TransformComponent, transform)
 	w.AddComponent(e, yecs.RenderStateComponent, renderState)
+	w.AddComponent(e, yecs.MaterialSurfaceComponent, surface)
+	w.AddComponent(e, yecs.HierarchyComponent, h)
 }
 
 func CreateLight(w *yecs.World) {
 	e := w.NewEntity()
 	light := yecs.Light{
 		Pos:      y3d.Vec3{X: 100, Y: 10, Z: -20},
-		Diffuse:  y3d.Color{0.5, 0.5, 0.5, 1.0},
-		Ambient:  y3d.Color{0.2, 0.2, 0.2, 1.0},
-		Specular: y3d.Color{1.0, 1.0, 1.0, 1.0},
+		Diffuse:  y3d.Vec3{X: 0.5, Y: 0.5, Z: 0.5},
+		Ambient:  y3d.Vec3{X: 0.2, Y: 0.2, Z: 0.2},
+		Specular: y3d.Vec3{X: 1.0, Y: 1.0, Z: 1.0},
 	}
 	w.AddComponent(e, yecs.LightComponent, light)
 }
 
 func TesPlayer() {
 	g, err := ygame.NewGame("Test scene", width, height)
+
 	if err != nil {
 		panic(err)
 	}
 	CreateSystems(g.World)
-	CreateResources(g)
 	CreateLight(g.World)
-	CreatePlayer(g.World)
+	buffer, indices, format := ygl.CreateSphere(56, 28, 1.0)
+	vbo := ygl.CreateVextexBuffer(buffer, indices, format)
+	CreatePlayer(g.World, vbo)
 	CreateCamera(g.World)
+
 	g.Run()
 }

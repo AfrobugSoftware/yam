@@ -112,6 +112,7 @@ func (t *TransformSystem) Run(w *World, dt float64, entites []EntityId) {
 			for _, c := range h.Children {
 				t.ProcessEntity(w, c, &trans)
 			}
+			w.SetComponent(e, TransformComponent, trans)
 		}
 	}
 	t.Wg.Done()

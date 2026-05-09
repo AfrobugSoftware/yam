@@ -57,7 +57,7 @@ func CreateTex2D(filePath string, minFilter, maxFilter int32, useMipmap bool) (u
 func EnableAnistropicFiltering() {
 	var v float32
 	gl.GetFloatv(gl.MAX_TEXTURE_MAX_ANISOTROPY, &v)
-	gl.TexParameterf(gl.TEXTURE_2D, gl.MAX_TEXTURE_MAX_ANISOTROPY, v)
+	gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAX_ANISOTROPY, v)
 }
 
 func SetActiveTex(tex uint32, unit uint32) {
@@ -73,18 +73,18 @@ func CreateRenderTexture(width, height, internalFormat int32) uint32 {
 	var texId uint32
 	gl.GenTextures(1, &texId)
 	gl.BindTexture(gl.TEXTURE_2D, texId)
-	gl.TexImage2D(
-		gl.TEXTURE_2D,
-		0,
-		internalFormat,
-		width,
-		height,
-		0,
-		gl.RGB,
-		gl.FLOAT,
-		nil,
-	)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TexStorage2D(gl.TEXTURE_2D, 1, uint32(internalFormat), width, height)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	return texId
+}
+
+func CreateDepthTexture(width, height int32) uint32 {
+	var texId uint32
+	gl.GenTextures(1, &texId)
+	gl.BindTexture(gl.TEXTURE_2D, texId)
+	gl.TexStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH_COMPONENT32F, width, height)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	return texId
 }

@@ -119,13 +119,12 @@ func (g *Game) ProcessInput() {
 }
 
 func (g *Game) Draw() {
+
+	//entities := g.World.Query([]yecs.ComponentId{yecs.SpriteComponent})
+	//g.SpriteBatch.Draw(g.World, entities)
+
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-	// if g.ShowGrid {
-	// 	g.IGrid.Draw(g.World)
-	// }
-	//g.Gl3.DrawSpatial(g.World)
-	entities := g.World.Query([]yecs.ComponentId{yecs.SpriteComponent})
-	g.SpriteBatch.Draw(g.World, entities)
+	g.Gl3.DeferredRenderer.Draw(g.World)
 
 	g.Gl3.Window.GLSwap()
 }

@@ -16,7 +16,7 @@ const (
 	width  = 1280
 )
 
-func CreateObject(w *yecs.World, transform yecs.Transform, curText int) {
+func CreateObject(w *yecs.World, vbo ygl.VertBuffer, transform yecs.Transform, curText int) {
 	ent := w.NewEntity()
 	renderState := yecs.RenderState{}
 	renderState.States = append(renderState.States, yecs.DepthState{
@@ -33,27 +33,17 @@ func CreateObject(w *yecs.World, transform yecs.Transform, curText int) {
 			FrontFace: gl.CCW,
 		})
 	sprite := yecs.Spatial{
-		Buffer:         "sphere",
-		Program:        "simpleLight",
+		Buf:            vbo.Buf,
+		Indx:           vbo.Indx,
+		VertArray:      vbo.VertArray,
+		IndxCount:      vbo.IndxCount,
+		Program:        0,
 		CurTexture:     curText,
 		AssignUniforms: AddUniforms,
 	}
 	move := yecs.Move{
 		AnglularSpeed: 5 * math.Pi,
 		ForwardSpeed:  20,
-	}
-
-	material := yecs.Material{
-		Shininess: 32,
-		Diffuse: y3d.Color{
-			1.0, 0.5, 0.31, 1.0,
-		},
-		Ambient: y3d.Color{
-			1.0, 0.5, 0.31, 1.0,
-		},
-		Specular: y3d.Color{
-			0.5, 0.5, 0.5, 1.0,
-		},
 	}
 
 	// aabb := ygl.MakeAABBForSprite(ygl.SpriteData[:], ygl.SpriteFormat[0])
@@ -65,45 +55,15 @@ func CreateObject(w *yecs.World, transform yecs.Transform, curText int) {
 	w.AddComponent(ent, yecs.SpatialComponent, sprite)
 	w.AddComponent(ent, yecs.TransformComponent, transform)
 	w.AddComponent(ent, yecs.RenderStateComponent, renderState)
-	w.AddComponent(ent, yecs.MaterialComponent, material)
 	w.AddComponent(ent, yecs.MoveComponent, move)
-}
-
-func CreateResources(g *ygame.Game) {
-	g.Gl3.AddSprite("sprite")
-	err := g.Gl3.AddProgramSource("sprite", ygl.SpriteVert, ygl.SpriteFrag)
-	if err != nil {
-		panic(err)
-	}
-	err = g.Gl3.AddTextures([]string{
-		"assets/orange.png",
-		"assets/pear.png",
-		"assets/oats.png",
-	}, "sprite")
-	if err != nil {
-		panic(err)
-	}
-	buffer, indices, format := ygl.CreateSphere(56, 28, 1.0)
-	g.Gl3.AddVertexBuffer("sphere", buffer, indices, format)
-	err = g.Gl3.AddPrograms("simpleLight", []string{
-		"assets/shaders/simpleLight.vert",
-		"assets/shaders/simpleLight.frag",
-	},
-		[]uint32{
-			gl.VERTEX_SHADER,
-			gl.FRAGMENT_SHADER,
-		})
-	if err != nil {
-		panic(err)
-	}
 }
 
 func CreateCamera(w *yecs.World) {
 	ent := w.NewEntity()
 	camera := yecs.Camera{
 		Pos:     y3d.ZEROV,
-		Up:      y3d.UNIT_Y,
-		LookAt:  y3d.UNIT_Z,
+		Up:      yecs.UP,
+		LookAt:  yecs.FORWARD,
 		Speed:   20,
 		Right:   1,
 		Left:    -1,
@@ -122,6 +82,9 @@ func randRange(min, max float32) float32 {
 }
 
 func CreateScene(w *yecs.World) {
+	buffer, indices, format := ygl.CreateSphere(56, 28, 1.0)
+	vbo := ygl.CreateVextexBuffer(buffer, indices, format)
+
 	for i := range 1000 {
 		x := randRange(-1000, 1000)
 		y := randRange(-1000, 1000)
@@ -131,7 +94,7 @@ func CreateScene(w *yecs.World) {
 			Scale:    y3d.Vec3{X: 64, Y: 64, Z: 1},
 			Rotation: y3d.IdenQuat(),
 		}
-		CreateObject(w, transform, i%3)
+		CreateObject(w, vbo, transform, i%3)
 	}
 	CreateCamera(w)
 }
@@ -149,10 +112,8 @@ func TestGame() {
 		panic(err)
 	}
 	CreateSystems(g.World)
-	CreateResources(g)
 	CreateLight(g.World)
 	CreateScene(g.World)
-	//CreatePlayer(g.World)
 
 	g.Run()
 }

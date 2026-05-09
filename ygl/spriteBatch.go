@@ -45,7 +45,7 @@ func CreateSpriteBatch(filename string,
 	if err != nil {
 		panic(err)
 	}
-	tex, err := CreateTex2D(filename, gl.NEAREST, gl.NEAREST, false)
+	tex, err := CreateTex2D(filename, gl.NEAREST, gl.NEAREST, true)
 	if err != nil {
 		panic(err)
 	}
