@@ -84,16 +84,30 @@ func ProdQuaternion(qin ...Quaternion) Quaternion {
 	return qout
 }
 
-func (qin Quaternion) Unit() Quaternion {
-	k2 := qin.Norm2()
-	if k2 < NearZero {
-		return qin
+// func (qin Quaternion) Unit() Quaternion {
+// 	k2 := qin.Norm2()
+// 	if k2 < NearZero {
+// 		return qin
+// 	}
+// 	if math.Abs(k2-1) < NearZero {
+// 		return qin
+// 	}
+// 	k := 1 / math.Sqrt(k2)
+// 	return Quaternion{qin.W * k, qin.X * k, qin.Y * k, qin.Z * k}
+// }
+
+func (q Quaternion) Unit() Quaternion {
+	mag := math.Sqrt(float64(q.W*q.W + q.X*q.X + q.Y*q.Y + q.Z*q.Z))
+	if mag == 0 {
+		return Quaternion{W: 1} // identity, avoid divide by zero
 	}
-	if math.Abs(k2-1) < NearZero {
-		return qin
+
+	return Quaternion{
+		W: q.W / mag,
+		X: q.X / mag,
+		Y: q.Y / mag,
+		Z: q.Z / mag,
 	}
-	k := 1 / math.Sqrt(k2)
-	return Quaternion{qin.W * k, qin.X * k, qin.Y * k, qin.Z * k}
 }
 
 func (qin Quaternion) Inv() Quaternion {
@@ -148,14 +162,14 @@ func FromEuler(phi, theta, psi float64) Quaternion {
 	return q
 }
 
-// role major
 func (qin Quaternion) RotMat() Mat3 {
 	q := qin.Unit()
-	w, x, y, z := float32(q.W), float32(q.X), float32(q.Y), float32(q.Z)
+	w, x, y, z := q.W, q.X, q.Y, q.Z
+
 	return Mat3{
-		1 - 2*y*y - 2*z*z, 2*x*y + 2*w*z, 2*x*z - 2*w*y,
-		2*x*y - 2*w*z, 1 - 2*x*x - 2*z*z, 2*y*z + 2*w*x,
-		2*x*z + 2*w*y, 2*y*z - 2*w*x, 1 - 2*x*x - 2*y*y,
+		float32(1 - 2*y*y - 2*z*z), float32(2*x*y + 2*w*z), float32(2*x*z - 2*w*y),
+		float32(2*x*y - 2*w*z), float32(1 - 2*x*x - 2*z*z), float32(2*y*z + 2*w*x),
+		float32(2*x*z + 2*w*y), float32(2*y*z + 2*w*x), float32(1 - 2*x*x - 2*y*y),
 	}
 }
 

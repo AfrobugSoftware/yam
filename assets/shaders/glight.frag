@@ -37,7 +37,7 @@ vec3 caluatePhongLight(Light light, vec3 fragPos, vec3 fragNormal, float shinine
     float specularFactor = max(dot(r, camDir), 0.0);
     vec3 specular        = pow(specularFactor, shininess) * light.specular;
 
-    return ambient + diffuse + specular;
+    return diffuse + ambient;
 }
 
 void main () {

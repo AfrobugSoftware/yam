@@ -2,6 +2,7 @@ package yam
 
 import (
 	"fmt"
+	"math"
 	"yam/y3d"
 	"yam/yecs"
 	"yam/ygame"
@@ -54,17 +55,21 @@ func CreatePlayer(w *yecs.World, vbo ygl.VertBuffer) {
 		AssignUniforms: AddUniforms,
 	}
 	transform := yecs.Transform{
-		Position: y3d.Vec3{X: 0, Y: 0, Z: -100},
-		Scale:    y3d.Vec3{X: 64, Y: 64, Z: 1},
+		Position: y3d.Vec3{X: 0, Y: 0, Z: 100},
+		Scale:    y3d.Vec3{X: 64, Y: 64, Z: 64},
 		Rotation: y3d.IdenQuat(),
 		Local:    y3d.Identity,
 	}
 	(&transform).Recalulate()
-	move := yecs.Move{}
+	move := yecs.Move{
+		AnglularSpeed: 15 * math.Pi,
+	}
 	in := ygame.GetGame().Input.CreateInput()
 	in.Update = func(w *yecs.World, a yecs.EntityId) {
 		input := w.GetComponent(e, yecs.InputComponent).(yecs.Input)
-		move := yecs.Move{}
+		move := yecs.Move{
+			AnglularSpeed: 15 * math.Pi,
+		}
 
 		if input.GetKeyState(sdl.SCANCODE_W) == yecs.BUTTON_PRESSED || input.GetKeyState(sdl.SCANCODE_W) == yecs.BUTTON_HELD {
 			move.ForwardSpeed = 2000
@@ -132,7 +137,7 @@ func TesPlayer() {
 		panic(err)
 	}
 	CreateSystems(g.World)
-	CreateLight(g.World, 10)
+	CreateLight(g.World, 3)
 	buffer, indices, format := ygl.CreateSphere(56, 28, 1.0)
 	vbo := ygl.CreateVextexBuffer(buffer, indices, format)
 	CreatePlayer(g.World, vbo)

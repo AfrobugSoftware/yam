@@ -43,8 +43,8 @@ func CreateObject(w *yecs.World, vbo ygl.VertBuffer, transform yecs.Transform, c
 		AssignUniforms: AddUniforms,
 	}
 	move := yecs.Move{
-		AnglularSpeed: 5 * math.Pi,
-		ForwardSpeed:  20,
+		AnglularSpeed: 15 * math.Pi,
+		ForwardSpeed:  0,
 	}
 	h := yecs.Hierarchy{
 		Parent: yecs.NullEntity,
@@ -67,16 +67,19 @@ func CreateObject(w *yecs.World, vbo ygl.VertBuffer, transform yecs.Transform, c
 func CreateCamera(w *yecs.World) {
 	ent := w.NewEntity()
 	camera := yecs.Camera{
-		Pos:     y3d.ZEROV,
-		Up:      yecs.UP,
-		LookAt:  yecs.FORWARD,
-		Speed:   20,
-		Right:   1,
-		Left:    -1,
-		Top:     0.75,
-		Bottom:  -0.75,
+		Pos:    y3d.ZEROV,
+		Up:     yecs.UP,
+		LookAt: yecs.FORWARD,
+		Speed:  20,
+		// Right:   1,
+		// Left:    -1,
+		// Top:     0.75,
+		// Bottom:  -0.75,
+		Width:   width,
+		Height:  height,
+		Fov:     90,
 		Near:    0.1,
-		Far:     1000,
+		Far:     10000,
 		CamType: yecs.CAM_TYPE_PERSPECTIVE,
 	}
 	camera.Recalulate()
@@ -97,13 +100,13 @@ func CreateScene(w *yecs.World) {
 	surface := yecs.MaterialSurface{
 		Diffuse: tex,
 	}
-	for i := range 1000 {
+	for i := range 100 {
 		x := randRange(-1000, 1000)
 		y := randRange(-1000, 1000)
-		z := randRange(-10, -1000)
+		z := randRange(10, 1000)
 		transform := yecs.Transform{
 			Position: y3d.Vec3{X: x, Y: y, Z: z},
-			Scale:    y3d.Vec3{X: 64, Y: 64, Z: 1},
+			Scale:    y3d.Vec3{X: 64, Y: 64, Z: 64},
 			Rotation: y3d.IdenQuat(),
 		}
 		CreateObject(w, vbo, transform, i%3, &surface)

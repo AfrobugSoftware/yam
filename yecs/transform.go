@@ -34,10 +34,7 @@ func NewTransfromation() Transform {
 }
 
 func (trans *Transform) Recalulate() {
-	scale := y3d.Scale(trans.Scale)
-	rot := trans.Rotation.ToMat4()
-	translation := y3d.Translation(trans.Position)
-	trans.Local = translation.Mul(rot).Mul(scale)
+	trans.Local = y3d.TRS(trans.Position, trans.Rotation, trans.Scale)
 	trans.IsDirty = true
 }
 
@@ -46,7 +43,8 @@ func (trans Transform) GetForward() y3d.Vec3 {
 }
 
 func (trans Transform) GetRight() y3d.Vec3 {
-	return trans.Rotation.RotateVec3(RIGHT)
+	t := trans.Rotation.RotateVec3(RIGHT)
+	return y3d.Normalize(t)
 }
 
 func (trans Transform) GetUp() y3d.Vec3 {

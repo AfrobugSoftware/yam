@@ -31,6 +31,9 @@ type Camera struct {
 	View                                                 y3d.Mat4
 	Proj                                                 y3d.Mat4
 	Speed                                                float32
+	Fov                                                  float64
+	Width                                                float32
+	Height                                               float32
 	CamType                                              int
 	CamMode                                              CameraMode
 	Entity                                               EntityId
@@ -58,16 +61,17 @@ func (c *Camera) Recalulate() {
 	y := y3d.Cross(z, x)
 	y = y3d.Normalize(y)
 	//[Z,U,X]
-	c.View = y3d.Mat4{x.X, y.X, z.X, 0.0,
-		x.Y, y.Y, z.Y, 0.0,
-		x.Z, y.Z, z.Z, 0.0,
+	c.View = y3d.Mat4{x.X, x.Y, x.Z, 0.0,
+		y.X, y.Y, y.Z, 0.0,
+		-z.X, -z.Y, -z.Z, 0.0,
 		-c.Pos.X, -c.Pos.Y, -c.Pos.Z, 1.0,
 	}
 	switch c.CamType {
 	case CAM_TYPE_ORTHOGRAPHIC:
 		c.Proj = y3d.Ortho(c.Left, c.Right, c.Bottom, c.Top, c.Near, c.Far)
 	case CAM_TYPE_PERSPECTIVE:
-		c.Proj = y3d.Frustum(c.Left, c.Right, c.Bottom, c.Top, c.Near, c.Far)
+		c.Proj = y3d.Perspective(float32(y3d.ToRadians(c.Fov)), c.Width/c.Height, c.Near, c.Far)
+		//c.Proj = y3d.Frustum(c.Left, c.Right, c.Bottom, c.Top, c.Near, c.Far)
 	default:
 		c.Proj = y3d.Identity
 	}

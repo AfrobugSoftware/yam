@@ -279,3 +279,41 @@ func (m1 Mat4) String() string {
 	w.Flush()
 	return buf.String()
 }
+
+func TRS(translate Vec3, rot Quaternion, scale Vec3) Mat4 {
+	m := rot.RotMat()
+	result := Mat4{
+		m[0], m[1], m[2], 0,
+		m[3], m[4], m[5], 0,
+		m[6], m[7], m[8], 0,
+		0, 0, 0, 1,
+	}
+	result[0] *= float32(scale.X)
+	result[1] *= float32(scale.X)
+	result[2] *= float32(scale.X)
+
+	result[4] *= float32(scale.Y)
+	result[5] *= float32(scale.Y)
+	result[6] *= float32(scale.Y)
+
+	result[8] *= float32(scale.Z)
+	result[9] *= float32(scale.Z)
+	result[10] *= float32(scale.Z)
+
+	result[12] = translate.X
+	result[13] = translate.Y
+	result[14] = translate.Z
+	return result
+}
+
+func Perspective(fovY, aspect, near, far float32) Mat4 {
+	f := float32(1.0 / math.Tan(float64(fovY)*0.5))
+	fmn := far - near
+
+	return Mat4{
+		f / aspect, 0, 0, 0,
+		0, f, 0, 0,
+		0, 0, -(far + near) / fmn, -1,
+		0, 0, (-2 * far * near) / fmn, 0,
+	}
+}

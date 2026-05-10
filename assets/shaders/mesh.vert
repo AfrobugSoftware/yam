@@ -13,6 +13,6 @@ uniform mat4 world;
 void main() {
     fragUv = uv;
     fragPos = vec3(world * vec4(pos, 1.0));
-    fragNormal = mat3(transpose(inverse(world))) * normal; 
+    fragNormal = vec3( world * vec4(normal, 0.0)); //mat3(transpose(inverse(world))) * normal; 
     gl_Position = projView * world * vec4(pos, 1.0);
 }
