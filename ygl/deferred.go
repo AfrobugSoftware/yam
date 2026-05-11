@@ -14,6 +14,7 @@ const (
 	MESS_PASS = iota
 	LIGHT_PASS
 	SCREEN_TEST
+	GLTF_TEST
 )
 
 const (
@@ -70,11 +71,41 @@ func CreateDeferredRenderer(width, height, dwidth, dheight int32) *DeferredRende
 	}
 	dr.PassTechnique = append(dr.PassTechnique, AddProgramSource("assets/shaders/mesh.vert", "assets/shaders/gbufferWrite.frag"))     //mesh pass
 	dr.PassTechnique = append(dr.PassTechnique, AddProgramSource("assets/shaders/screenQuad.vert", "assets/shaders/glight.frag"))     //light pass
-	dr.PassTechnique = append(dr.PassTechnique, AddProgramSource("assets/shaders/screenQuad.vert", "assets/shaders/screenQuad.frag")) //light pass
+	dr.PassTechnique = append(dr.PassTechnique, AddProgramSource("assets/shaders/screenQuad.vert", "assets/shaders/screenQuad.frag")) //screen test
+	dr.PassTechnique = append(dr.PassTechnique, AddProgramSource("assets/shaders/gltf.vert", "assets/shaders/gltf.frag"))             //screen test
 	dr.SetupLightUBO()
 	dr.Gbuf.Unbind()
 	gl.CreateVertexArrays(1, &dr.emptyVao)
 	return dr
+}
+
+func (dr *DeferredRenderer) DrawGLTF(w *yecs.World) {
+	entities := w.Query([]yecs.ComponentId{yecs.MeshEntryComponent, yecs.TransformComponent})
+	meshId := -1
+	var mesh *yecs.Mesh
+	gl.UseProgram(dr.PassTechnique[GLTF_TEST])
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+	for _, e := range entities {
+		me := w.GetComponent(e, yecs.MeshEntryComponent).([]yecs.MeshEntry)
+		for _, m := range me {
+			if meshId != m.MeshId {
+				mesh = w.GetMesh(m.MeshId)
+				if mesh == nil {
+					panic(fmt.Errorf("no mesh but this entry but has Id"))
+				}
+				meshId = m.MeshId
+				mesh.Bind()
+			}
+			gl.DrawElementsBaseVertex(gl.TRIANGLES,
+				int32(m.NumVertices),
+				gl.UNSIGNED_SHORT,
+				gl.Ptr(uintptr(m.BaseIndex)), int32(m.BaseVertex))
+		}
+	}
+	if mesh != nil {
+		mesh.Unbind()
+	}
+	gl.UseProgram(0)
 }
 
 func (dr *DeferredRenderer) UpdateSpatialsSSBO(w *yecs.World) {

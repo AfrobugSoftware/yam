@@ -24,4 +24,5 @@ var (
 	AnimationComponent       = RegisterComponent[Animation]()
 	SpriteComponent          = RegisterComponent[Sprite]()
 	MaterialSurfaceComponent = RegisterComponent[MaterialSurface]()
+	MeshEntryComponent       = RegisterComponent[[]MeshEntry]()
 )

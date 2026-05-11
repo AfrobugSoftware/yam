@@ -9,7 +9,6 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"unsafe"
 	"yam/y3d"
 	"yam/yecs"
 
@@ -22,27 +21,30 @@ var (
 	bufferCacheMu sync.Mutex
 )
 
-func (g *Gl3) LoadAsset(filename string, w *yecs.World) error {
+func LoadAsset(filename string, w *yecs.World) ([]yecs.EntityId, error) {
 	bufferCacheMu.Lock()
 	defer bufferCacheMu.Unlock()
 
 	doc, err := gltf.Open(filename)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	fmt.Print(doc.Asset)
+	fmt.Print(doc.Asset.Version)
 	if doc.Scene == nil {
-		return errors.New("no default scene in asset")
+		return nil, errors.New("no default scene in asset")
 	}
 	scene := doc.Scenes[*doc.Scene]
+	mesh := w.NewMesh()
+	ents := make([]yecs.EntityId, 0)
 	for _, n := range scene.Nodes {
 		node := doc.Nodes[n]
 		e := w.NewEntity()
-		g.processNode(node, doc, w, e, yecs.NullEntity)
+		processNode(node, doc, w, mesh, e, yecs.NullEntity)
+		ents = append(ents, e)
 	}
-
+	mesh.Setup()
 	clear(bufferCache)
-	return err
+	return ents, err
 }
 
 func isValidURL(str string) bool {
@@ -59,7 +61,7 @@ func loadBufferURI(doc *gltf.Document, accessor *gltf.Accessor) ([]byte, error) 
 
 	d, ok := bufferCache[bv.Buffer]
 	if ok {
-		return d, nil
+		return d[bv.ByteOffset : bv.ByteLength+bv.ByteOffset], nil
 	}
 
 	if buffer.IsEmbeddedResource() {
@@ -73,7 +75,7 @@ func loadBufferURI(doc *gltf.Document, accessor *gltf.Accessor) ([]byte, error) 
 
 		}
 		bufferCache[bv.Buffer] = decoded
-		return decoded, nil
+		return decoded[bv.ByteOffset : bv.ByteLength+bv.ByteOffset], nil
 	} else {
 		if isValidURL(buffer.URI) {
 			return nil, errors.New("cannot get data from endpoint, not supported")
@@ -92,23 +94,23 @@ func loadBufferURI(doc *gltf.Document, accessor *gltf.Accessor) ([]byte, error) 
 			return nil, errors.New("could not read the buffer data given in the buffer view")
 		}
 		bufferCache[bv.Buffer] = decoded
-		return decoded, nil
+		return decoded[bv.ByteOffset : bv.ByteLength+bv.ByteOffset], nil
 	}
 }
 
-func createFormart(accessor *gltf.Accessor) DataFormat {
-	df := DataFormat{}
-	df.Count = int32(accessor.Type.Components())
-	df.ComponentType = ComponentType(accessor.ComponentType)
-
+func createFormart(accessor *gltf.Accessor) yecs.GltfDataFormat {
+	df := yecs.GltfDataFormat{}
+	df.ComponentType = accessor.ComponentType
+	df.ValueCount = accessor.Count
+	df.ValueType = accessor.Type
 	return df
 }
 
-func (g *Gl3) loadAnimation(doc *gltf.Document, w *yecs.World) {
+func loadAnimation(doc *gltf.Document, w *yecs.World) {
 
 }
 
-func (g *Gl3) processNode(node *gltf.Node, doc *gltf.Document, w *yecs.World, e yecs.EntityId, parent yecs.EntityId) {
+func processNode(node *gltf.Node, doc *gltf.Document, w *yecs.World, ms *yecs.Mesh, e yecs.EntityId, parent yecs.EntityId) {
 	if node.Camera != nil {
 		//camera node
 
@@ -116,39 +118,55 @@ func (g *Gl3) processNode(node *gltf.Node, doc *gltf.Document, w *yecs.World, e 
 	transfrom := yecs.NewTransfromation()
 	if node.Mesh != nil {
 		mesh := doc.Meshes[*node.Mesh]
-		meshSilo := map[string][]byte{}
-		indicesData := make([]uint16, 0)
+		meshEntries := make([]yecs.MeshEntry, 0)
 		for _, p := range mesh.Primitives {
+			meshEntry := yecs.MeshEntry{
+				MeshId: ms.MeshId,
+			}
 			attrib := p.Attributes
 			ap, ok := attrib[gltf.POSITION]
-			if ok {
-				//mesh position attributes
-				accessor := doc.Accessors[ap]
-				buffer, err := loadBufferURI(doc, accessor)
-				if err != nil {
-					log.Println(err)
-					continue
+			if !ok {
+				//at least the position is neccessary to load a mesh primitive
+				continue
+			}
+			//mesh position attributes
+			accessor := doc.Accessors[ap]
+			buffer, err := loadBufferURI(doc, accessor)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+			bv := doc.BufferViews[*accessor.BufferView]
+			if bv.ByteStride == 0 {
+				ms.Positions.Write(buffer[accessor.ByteOffset:])
+			} else {
+				//packdata
+				for i := range accessor.Count {
+					tcount := accessor.ComponentType.ByteSize() * accessor.Type.Components()
+					start := accessor.ByteOffset + (i * bv.ByteStride)
+					ms.Positions.Write(buffer[start : start+tcount])
 				}
-				meshSilo[gltf.POSITION] = buffer
-				if accessor.Max != nil && accessor.Min != nil {
-					box := yecs.Box{
-						Local: y3d.AABB{
-							Min: y3d.Vec3{
-								X: float32(accessor.Min[0]),
-								Y: float32(accessor.Min[1]),
-								Z: float32(accessor.Min[2]),
-							},
-							Max: y3d.Vec3{
-								X: float32(accessor.Max[0]),
-								Y: float32(accessor.Max[1]),
-								Z: float32(accessor.Max[2]),
-							},
+			}
+			meshEntry.NumVertices = uint32(accessor.Count)
+			meshEntry.BaseVertex = ms.NumVertices
+			ms.NumVertices += uint32(accessor.Count)
+			meshEntries = append(meshEntries, meshEntry)
+			if accessor.Max != nil && accessor.Min != nil {
+				box := yecs.Box{
+					Local: y3d.AABB{
+						Min: y3d.Vec3{
+							X: float32(accessor.Min[0]),
+							Y: float32(accessor.Min[1]),
+							Z: float32(accessor.Min[2]),
 						},
-					}
-					w.AddComponent(e, yecs.BoxComponent, box)
+						Max: y3d.Vec3{
+							X: float32(accessor.Max[0]),
+							Y: float32(accessor.Max[1]),
+							Z: float32(accessor.Max[2]),
+						},
+					},
 				}
-
-				//how to handle sparse accessor
+				w.AddComponent(e, yecs.BoxComponent, box)
 			}
 			an, ok := attrib[gltf.NORMAL]
 			if ok {
@@ -159,7 +177,37 @@ func (g *Gl3) processNode(node *gltf.Node, doc *gltf.Document, w *yecs.World, e 
 					log.Println(err)
 					continue
 				}
-				meshSilo[gltf.NORMAL] = buffer
+				bv := doc.BufferViews[*accessor.BufferView]
+				if bv.ByteStride == 0 {
+					ms.Normals.Write(buffer[accessor.ByteOffset:])
+				} else {
+					//packdata
+					for i := range accessor.Count {
+						tcount := accessor.ComponentType.ByteSize() * accessor.Type.Components()
+						start := accessor.ByteOffset + (i * bv.ByteStride)
+						ms.Normals.Write(buffer[start : start+tcount])
+					}
+				}
+			}
+			at, ok := attrib[gltf.TEXCOORD_0]
+			if ok {
+				accessor := doc.Accessors[at]
+				buffer, err := loadBufferURI(doc, accessor)
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+				bv := doc.BufferViews[*accessor.BufferView]
+				if bv.ByteStride == 0 {
+					ms.TexCoords.Write(buffer[accessor.ByteOffset:])
+				} else {
+					//packdata
+					for i := range accessor.Count {
+						tcount := accessor.ComponentType.ByteSize() * accessor.Type.Components()
+						start := accessor.ByteOffset + (i * bv.ByteStride)
+						ms.TexCoords.Write(buffer[start : start+tcount])
+					}
+				}
 			}
 			if p.Indices != nil {
 				accessor := doc.Accessors[*p.Indices]
@@ -167,11 +215,14 @@ func (g *Gl3) processNode(node *gltf.Node, doc *gltf.Document, w *yecs.World, e 
 				if err != nil {
 					continue
 				}
-				bufAsUint16 := unsafe.Slice((*uint16)(unsafe.Pointer(&buffer[0])), len(buffer)/int(unsafe.Sizeof(uint16(0))))
-				indicesData = append(indicesData, bufAsUint16...)
-			}
-		}
 
+				ms.Indices.Write(buffer[accessor.ByteOffset:])
+				meshEntry.NumIndices = uint32(accessor.Count)
+				ms.NumIndices += uint32(accessor.Count)
+			}
+			//material
+		}
+		w.AddComponent(e, yecs.MeshEntryComponent, meshEntries)
 		transfrom.Rotation = y3d.Quaternion{
 			X: node.Rotation[0],
 			Y: node.Rotation[1],
@@ -194,7 +245,7 @@ func (g *Gl3) processNode(node *gltf.Node, doc *gltf.Document, w *yecs.World, e 
 	for _, c := range node.Children {
 		ne := w.NewEntity()
 		children = append(children, ne)
-		g.processNode(doc.Nodes[c], doc, w, ne, e)
+		processNode(doc.Nodes[c], doc, w, ms, ne, e)
 	}
 	hc := yecs.Hierarchy{
 		Parent:   parent,

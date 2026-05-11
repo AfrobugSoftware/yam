@@ -227,7 +227,8 @@ type entityRecord struct {
 }
 
 type World struct {
-	mu sync.RWMutex
+	mu     sync.RWMutex
+	meshes []*Mesh
 
 	nextEntity    EntityId
 	nextArchetype ArchetypeId
@@ -256,6 +257,25 @@ func (w *World) NewEntity() EntityId {
 	id := w.nextEntity
 	w.entities[id] = nil
 	return id
+}
+
+func (w *World) NewMesh() *Mesh {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	m := CreateMesh()
+	m.MeshId = len(w.meshes)
+	w.meshes = append(w.meshes, m)
+	return m
+}
+
+func (w *World) GetMesh(i int) *Mesh {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if i < 0 || i >= len(w.meshes) {
+		return nil
+	}
+	return w.meshes[i]
 }
 
 func (w *World) DestroyEntity(entity EntityId) {

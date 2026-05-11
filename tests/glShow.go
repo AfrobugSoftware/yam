@@ -121,6 +121,17 @@ func CreateSystems(w *yecs.World) {
 	w.InitSystems()
 }
 
+func TestLoadAssets() {
+	g, err := ygame.NewGame("Test scene", width, height)
+	if err != nil {
+		panic(err)
+	}
+	_, err = ygl.LoadAsset("assets/gltf/testgltf.gltf", g.World)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func TestGame() {
 	g, err := ygame.NewGame("Test scene", width, height)
 	if err != nil {
@@ -129,6 +140,11 @@ func TestGame() {
 	CreateSystems(g.World)
 	CreateLight(g.World, 3)
 	CreateScene(g.World)
+
+	_, err = ygl.LoadAsset("assets/gltf/testgltf.gltf", g.World)
+	if err != nil {
+		panic(err)
+	}
 
 	g.Run()
 }

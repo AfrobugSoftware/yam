@@ -122,7 +122,8 @@ func (g *Game) Draw() {
 	//entities := g.World.Query([]yecs.ComponentId{yecs.SpriteComponent})
 	//g.SpriteBatch.Draw(g.World, entities)
 
-	g.Gl3.DeferredRenderer.Draw(g.World)
+	//g.Gl3.DeferredRenderer.Draw(g.World)
+	g.Gl3.DeferredRenderer.DrawGLTF(g.World)
 	g.Gl3.Window.GLSwap()
 }
 
