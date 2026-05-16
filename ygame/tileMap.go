@@ -1,6 +1,9 @@
 package ygame
 
-import "yam/yecs"
+import (
+	"yam/yecs"
+	"yam/ygl"
+)
 
 type TileMap struct {
 	Level       []yecs.EntityId
@@ -8,6 +11,7 @@ type TileMap struct {
 	LevelHeight int
 	TileWidth   int
 	TileHeight  int
+	SpriteData  *ygl.SpriteBatch
 }
 
 const (

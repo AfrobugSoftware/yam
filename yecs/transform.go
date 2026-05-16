@@ -14,22 +14,24 @@ var (
 )
 
 type Transform struct {
-	Position y3d.Vec3
-	Rotation y3d.Quaternion
-	Scale    y3d.Vec3
-	Local    y3d.Mat4
-	World    y3d.Mat4
-	IsDirty  bool
+	Position  y3d.Vec3
+	Rotation  y3d.Quaternion
+	Scale     y3d.Vec3
+	Local     y3d.Mat4
+	World     y3d.Mat4
+	IsDirty   bool
+	IsCurrent bool
 }
 
 func NewTransfromation() Transform {
 	return Transform{
-		Position: y3d.Vec3{},
-		Rotation: y3d.IdenQuat(),
-		Scale:    y3d.Vec3{X: 1.0, Y: 1.0, Z: 1.0},
-		Local:    y3d.Identity,
-		World:    y3d.Identity,
-		IsDirty:  false,
+		Position:  y3d.Vec3{},
+		Rotation:  y3d.IdenQuat(),
+		Scale:     y3d.Vec3{X: 1.0, Y: 1.0, Z: 1.0},
+		Local:     y3d.Identity,
+		World:     y3d.Identity,
+		IsDirty:   false,
+		IsCurrent: false,
 	}
 }
 
@@ -71,6 +73,12 @@ func (t *Transform) RotateToFoward(forward y3d.Vec3) {
 		t.Rotation = y3d.FromAngleAxis(axis, angle)
 	}
 	t.Recalulate()
+}
+
+func (t *Transform) FromKeyFrame(k *KeyFrame) {
+	t.Local = y3d.TRS(k.Position, k.Rotation, k.Scale)
+	t.IsDirty = true
+	t.IsCurrent = true
 }
 
 type Hierarchy struct {

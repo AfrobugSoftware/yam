@@ -35,7 +35,7 @@ func (ms *MoveSystem) Run(w *World, dt float64, entites []EntityId) {
 		if math.Abs(float64(move.AnglularSpeed)) > y3d.NearZero {
 			angle := move.AnglularSpeed * float32(dt)
 			angle = float32(y3d.ToRadians(float64(angle)))
-			inc := y3d.FromAngleAxis(transform.GetUp(), float64(angle))
+			inc := y3d.FromAngleAxis(transform.GetForward(), float64(angle))
 			transform.Rotation = y3d.ProdQuaternion(inc, transform.Rotation)
 			recal = true
 		}

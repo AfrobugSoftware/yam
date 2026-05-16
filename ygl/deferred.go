@@ -97,7 +97,7 @@ func (dr *DeferredRenderer) DrawGLTF(w *yecs.World) {
 				mesh.Bind()
 			}
 			gl.DrawElementsBaseVertex(gl.TRIANGLES,
-				int32(m.NumVertices),
+				int32(m.NumIndices),
 				gl.UNSIGNED_SHORT,
 				gl.Ptr(uintptr(m.BaseIndex)), int32(m.BaseVertex))
 		}
@@ -169,7 +169,7 @@ func (dr *DeferredRenderer) MeshPass(w *yecs.World) {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	gl.UseProgram(dr.PassTechnique[MESS_PASS])
 	camera := w.Query([]yecs.ComponentId{yecs.CameraComponent})
-	spatials := w.Query([]yecs.ComponentId{yecs.SpatialComponent,
+	spatials := w.Query([]yecs.ComponentId{yecs.MeshEntryComponent,
 		yecs.TransformComponent,
 		yecs.RenderStateComponent,
 		yecs.MaterialSurfaceComponent})
@@ -185,19 +185,21 @@ func (dr *DeferredRenderer) MeshPass(w *yecs.World) {
 	if err != nil {
 		log.Println(err)
 	}
+	meshId := -1
+	var mesh *yecs.Mesh
 	for _, e := range spatials {
-		s := w.GetComponent(e, yecs.SpatialComponent).(yecs.Spatial)
 		if w.HasComponent(e, yecs.BoxComponent) {
 			box := w.GetComponent(e, yecs.BoxComponent).(yecs.Box)
 			if MainCam.CullView(box, projView) {
 				continue
 			}
 		}
+		me := w.GetComponent(e, yecs.MeshEntryComponent).([]yecs.MeshEntry)
 		r := w.GetComponent(e, yecs.RenderStateComponent).(yecs.RenderState)
-		gl.BindVertexArray(s.VertArray)
-		m := w.GetComponent(e, yecs.MaterialSurfaceComponent).(yecs.MaterialSurface)
+		r.SetupRenderState()
+		ms := w.GetComponent(e, yecs.MaterialSurfaceComponent).(yecs.MaterialSurface)
 		gl.ActiveTexture(gl.TEXTURE0)
-		gl.BindTexture(gl.TEXTURE_2D, m.Diffuse)
+		gl.BindTexture(gl.TEXTURE_2D, ms.Diffuse)
 		err := AssignUniformInt32(dr.PassTechnique[MESS_PASS], "material.diffuse", 0)
 		if err != nil {
 			log.Println(err)
@@ -207,9 +209,21 @@ func (dr *DeferredRenderer) MeshPass(w *yecs.World) {
 		if err != nil {
 			log.Println(err)
 		}
-		r.SetupRenderState()
-		gl.DrawElements(gl.TRIANGLES, s.IndxCount, gl.UNSIGNED_SHORT, nil)
-		gl.BindVertexArray(0)
+		for _, m := range me {
+			if meshId != m.MeshId {
+				mesh = w.GetMesh(m.MeshId)
+				if mesh == nil {
+					panic(fmt.Errorf("no mesh but this entry but has Id"))
+				}
+				meshId = m.MeshId
+				mesh.Bind()
+			}
+
+			gl.DrawElementsBaseVertex(gl.TRIANGLES,
+				int32(m.NumIndices),
+				gl.UNSIGNED_INT,
+				gl.Ptr(uintptr(m.BaseIndex)), int32(m.BaseVertex))
+		}
 	}
 	gl.UseProgram(0)
 	dr.Gbuf.Unbind()
