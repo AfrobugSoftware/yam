@@ -16,7 +16,7 @@ const (
 	width  = 1280
 )
 
-func CreateObject(w *yecs.World, me yecs.MeshEntry, transform yecs.Transform, curText int, surface *yecs.MaterialSurface) {
+func CreateObject(w *yecs.World, me yecs.MeshEntry, transform yecs.Transform, curText int, surface *yecs.MaterialSurface) yecs.EntityId {
 	ent := w.NewEntity()
 	renderState := yecs.RenderState{}
 	renderState.States = append(renderState.States, yecs.DepthState{
@@ -47,9 +47,10 @@ func CreateObject(w *yecs.World, me yecs.MeshEntry, transform yecs.Transform, cu
 	w.AddComponent(ent, yecs.MoveComponent, move)
 	w.AddComponent(ent, yecs.MaterialSurfaceComponent, *surface)
 	w.AddComponent(ent, yecs.HierarchyComponent, h)
+	return ent
 }
 
-func CreateCamera(w *yecs.World) {
+func CreateCamera(w *yecs.World, follow yecs.EntityId) {
 	ent := w.NewEntity()
 	camera := yecs.Camera{
 		Pos:    y3d.ZEROV,
@@ -60,14 +61,20 @@ func CreateCamera(w *yecs.World) {
 		// Left:    -1,
 		// Top:     0.75,
 		// Bottom:  -0.75,
-		Width:   width,
-		Height:  height,
-		Fov:     90,
-		Near:    0.1,
-		Far:     10000,
-		CamType: yecs.CAM_TYPE_PERSPECTIVE,
+		Width:          width,
+		Height:         height,
+		Fov:            90,
+		Near:           0.1,
+		Far:            10000,
+		CamType:        yecs.CAM_TYPE_PERSPECTIVE,
+		CamMode:        yecs.CAMERA_FOLLOW,
+		Entity:         follow,
+		SpringConstant: 5.0,
+		Offset:         y3d.Vec3{X: 0.0, Y: 10, Z: 10},
+		TargetDistance: y3d.Vec3{X: 10, Y: 10, Z: 10},
 	}
-	camera.Recalulate()
+	//camera.Recalulate()
+	camera.SnapToIdeal(w)
 	w.AddComponent(ent, yecs.CameraComponent, camera)
 }
 
@@ -86,7 +93,8 @@ func CreateScene(w *yecs.World) {
 	surface := yecs.MaterialSurface{
 		Diffuse: tex,
 	}
-	for i := range 10000 {
+	var e yecs.EntityId
+	for i := range 100 {
 		x := randRange(-1000, 1000)
 		y := randRange(-1000, 1000)
 		z := randRange(10, 1000)
@@ -95,9 +103,10 @@ func CreateScene(w *yecs.World) {
 			Scale:    y3d.Vec3{X: 64, Y: 64, Z: 64},
 			Rotation: y3d.IdenQuat(),
 		}
-		CreateObject(w, me, transform, i%3, &surface)
+		e = CreateObject(w, me, transform, i%3, &surface)
 	}
-	CreateCamera(w)
+	CreateCamera(w, e)
+
 }
 
 func CreateSystems(w *yecs.World) {

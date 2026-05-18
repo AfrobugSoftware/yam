@@ -21,7 +21,6 @@ type Game struct {
 	Ticks      uint64
 	NeedsReset bool
 	ShowGrid   bool
-	IGrid      *Grid
 	DoReset    func()
 	OnExit     func() bool
 	logFile    *os.File
@@ -77,8 +76,7 @@ func NewGame(title string, width, height int32) (*Game, error) {
 			ScreenWidth:  width,
 			ScreenHeight: height,
 		},
-		ShowGrid: true,
-		//IGrid:    NewGrid(),
+		ShowGrid:    true,
 		SpriteBatch: sb,
 	}
 	return gGame, nil

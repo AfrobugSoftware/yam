@@ -141,7 +141,7 @@ func TesPlayer() {
 	buffer, indices, format := ygl.CreateSphere(56, 28, 1.0)
 	vbo := ygl.CreateVextexBuffer(buffer, indices, format)
 	CreatePlayer(g.World, vbo)
-	CreateCamera(g.World)
+	CreateCamera(g.World, g.World.NewEntity())
 
 	g.Run()
 }

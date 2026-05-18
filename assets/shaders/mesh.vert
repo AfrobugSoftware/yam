@@ -7,8 +7,8 @@ out vec2 fragUv;
 out vec3 fragNormal;
 out vec3 fragPos;
 
-uniform mat4 projView;
-uniform mat4 world;
+layout (location = 0) uniform mat4 projView;
+layout (location = 1) uniform mat4 world;
 
 void main() {
     fragUv = uv;

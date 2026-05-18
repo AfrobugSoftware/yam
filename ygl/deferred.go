@@ -48,6 +48,8 @@ type DeferredRenderer struct {
 	LightBlockSize  int32
 	SpatialSSBO     uint32
 	DrawCommandSSBO uint32
+	IGrid           *Grid
+	DrawGrid        bool
 
 	emptyVao uint32
 }
@@ -76,6 +78,8 @@ func CreateDeferredRenderer(width, height, dwidth, dheight int32) *DeferredRende
 	dr.SetupLightUBO()
 	dr.Gbuf.Unbind()
 	gl.CreateVertexArrays(1, &dr.emptyVao)
+	dr.IGrid = NewGrid()
+	dr.DrawGrid = true
 	return dr
 }
 
@@ -167,6 +171,9 @@ func (dr *DeferredRenderer) LightPass(w *yecs.World, camPos y3d.Vec3) {
 func (dr *DeferredRenderer) MeshPass(w *yecs.World) {
 	dr.Gbuf.Bind()
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+	if dr.DrawGrid {
+		dr.IGrid.Draw(w, dr.emptyVao)
+	}
 	gl.UseProgram(dr.PassTechnique[MESS_PASS])
 	camera := w.Query([]yecs.ComponentId{yecs.CameraComponent})
 	spatials := w.Query([]yecs.ComponentId{yecs.MeshEntryComponent,
@@ -181,10 +188,7 @@ func (dr *DeferredRenderer) MeshPass(w *yecs.World) {
 	view := MainCam.GetViewTransformation()
 	proj := MainCam.GetProjectionTransformation()
 	projView := proj.Mul(view)
-	err := AssignUniformMat4(dr.PassTechnique[MESS_PASS], "projView", projView)
-	if err != nil {
-		log.Println(err)
-	}
+	gl.UniformMatrix4fv(0, 1, false, &projView[0])
 	meshId := -1
 	var mesh *yecs.Mesh
 	for _, e := range spatials {
@@ -205,10 +209,7 @@ func (dr *DeferredRenderer) MeshPass(w *yecs.World) {
 			log.Println(err)
 		}
 		t := w.GetComponent(e, yecs.TransformComponent).(yecs.Transform)
-		err = AssignUniformMat4(dr.PassTechnique[MESS_PASS], "world", t.World)
-		if err != nil {
-			log.Println(err)
-		}
+		gl.UniformMatrix4fv(1, 1, false, &t.World[0])
 		for _, m := range me {
 			if meshId != m.MeshId {
 				mesh = w.GetMesh(m.MeshId)

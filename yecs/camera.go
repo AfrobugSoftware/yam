@@ -25,30 +25,30 @@ type ICamera interface {
 }
 
 type Camera struct {
-	Pos                                                  y3d.Vec3
-	Up                                                   y3d.Vec3
-	LookAt                                               y3d.Vec3
-	View                                                 y3d.Mat4
-	Proj                                                 y3d.Mat4
-	Speed                                                float32
-	Fov                                                  float64
-	Width                                                float32
-	Height                                               float32
-	CamType                                              int
-	CamMode                                              CameraMode
-	Entity                                               EntityId
-	Right, Left, Top, Bottom, Near, Far                  float32
-	PitchSpeed, MaxPitch, Pitch                          float32 //pitch is in degrees
-	VerticalDistance, HorizontalDistance, TargetDistance float32
-	SpringConstant                                       float32
-	ActualPos, Velocity                                  y3d.Vec3
-	YawSpeed                                             float32 //in radians/seconds
-	Offset                                               y3d.Vec3
-	Path                                                 y3d.Spline
-	Indx                                                 int
-	T                                                    float32
-	Paused                                               bool
-	Planes                                               []y3d.Plane
+	Pos                                 y3d.Vec3
+	Up                                  y3d.Vec3
+	LookAt                              y3d.Vec3
+	View                                y3d.Mat4
+	Proj                                y3d.Mat4
+	Speed                               float32
+	Fov                                 float64
+	Width                               float32
+	Height                              float32
+	CamType                             int
+	CamMode                             CameraMode
+	Entity                              EntityId
+	Right, Left, Top, Bottom, Near, Far float32
+	PitchSpeed, MaxPitch, Pitch         float32 //pitch is in degrees
+	TargetDistance                      y3d.Vec3
+	SpringConstant                      float32
+	Velocity                            y3d.Vec3
+	YawSpeed                            float32 //in radians/seconds
+	Offset                              y3d.Vec3
+	Path                                y3d.Spline
+	Indx                                int
+	T                                   float32
+	Paused                              bool
+	Planes                              []y3d.Plane
 }
 
 func (c *Camera) Recalulate() {
@@ -170,17 +170,15 @@ func (c *Camera) CullView(b Box, projView y3d.Mat4) bool {
 func (cam *Camera) UpdateFollow(w *World, dt float64, e EntityId) {
 	dampening := 2.0 * math.Sqrt(float64(cam.SpringConstant))
 	pos, targetPos := cam.ComputeFollowPosition(w)
-	diff := y3d.Sub(cam.ActualPos, pos)
+	diff := y3d.Sub(cam.Pos, pos)
 
 	acel := y3d.Sub(y3d.Smul(diff, -cam.SpringConstant), y3d.Smul(cam.Velocity, float32(dampening)))
 	cam.Velocity = y3d.Add(cam.Velocity, y3d.Smul(acel, float32(dt)))
-	cam.ActualPos = y3d.Add(cam.ActualPos, y3d.Smul(cam.Velocity, float32(dt)))
-
+	cam.Pos = y3d.Add(cam.Pos, y3d.Smul(cam.Velocity, float32(dt)))
 	cam.LookAt = targetPos
-	cam.Pos = cam.ActualPos
 	cam.Up = y3d.UNIT_Y
 	cam.Recalulate()
-	w.SetComponent(e, CameraComponent, cam)
+	w.SetComponent(e, CameraComponent, *cam)
 }
 
 func (cam *Camera) UpdateOrbit(w *World, dt float64, e EntityId) {
@@ -203,7 +201,7 @@ func (cam *Camera) UpdateOrbit(w *World, dt float64, e EntityId) {
 	cam.LookAt = transform.Position
 
 	cam.Recalulate()
-	w.SetComponent(e, CameraComponent, cam)
+	w.SetComponent(e, CameraComponent, *cam)
 }
 
 func (cam *Camera) UpdateSpline(w *World, dt float64, e EntityId) {
@@ -224,22 +222,22 @@ func (cam *Camera) UpdateSpline(w *World, dt float64, e EntityId) {
 	cam.Up = y3d.UNIT_Y
 
 	cam.Recalulate()
-	w.SetComponent(e, CameraComponent, cam)
+	w.SetComponent(e, CameraComponent, *cam)
 }
 
 func (c *Camera) ComputeFollowPosition(w *World) (pos, targetPos y3d.Vec3) {
 	transform := w.GetComponent(c.Entity, TransformComponent).(Transform)
 	pos = transform.Position
-	pos = y3d.Sub(c.Pos, y3d.Smul(transform.GetForward(), c.HorizontalDistance))
-	pos = y3d.Add(c.Pos, y3d.Smul(transform.GetUp(), c.VerticalDistance))
-	targetPos = y3d.Add(transform.Position, y3d.Smul(transform.GetForward(), c.TargetDistance))
+	pos = y3d.Sub(c.Pos, y3d.Smul(transform.GetForward(), c.TargetDistance.X))
+	pos = y3d.Add(c.Pos, y3d.Smul(transform.GetUp(), c.TargetDistance.Y))
+	targetPos = y3d.Add(transform.Position, y3d.Smul(transform.GetForward(), c.TargetDistance.Z))
 
 	return
 }
 
 func (c *Camera) SnapToIdeal(w *World) {
 	pos, target := c.ComputeFollowPosition(w)
-	c.ActualPos = pos
+	c.Pos = pos
 	c.LookAt = target
 	c.Velocity = y3d.ZEROV
 
