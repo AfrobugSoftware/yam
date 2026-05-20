@@ -122,7 +122,7 @@ func CreateLight(w *yecs.World, count int) {
 		z := randRange(-10, -1000)
 		light := yecs.Light{
 			Pos:      y3d.Vec3{X: x, Y: y, Z: z},
-			Diffuse:  y3d.Vec3{X: 0.5, Y: 0.5, Z: 0.5},
+			Diffuse:  y3d.Vec3{X: 1.0, Y: 1.0, Z: 1.0},
 			Ambient:  y3d.Vec3{X: 0.2, Y: 0.2, Z: 0.2},
 			Specular: y3d.Vec3{X: 1.0, Y: 1.0, Z: 1.0},
 		}
