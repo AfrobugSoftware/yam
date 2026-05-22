@@ -21,7 +21,7 @@ func CreateObject(w *yecs.World, me yecs.MeshEntry, transform yecs.Transform, cu
 	renderState := yecs.RenderState{}
 	renderState.States = append(renderState.States, yecs.DepthState{
 		Enable:    true,
-		DepthFunc: gl.LESS,
+		DepthFunc: gl.LEQUAL,
 	}, yecs.BlendState{
 		Enable:    false,
 		SrcFactor: gl.SRC_ALPHA,
@@ -34,7 +34,7 @@ func CreateObject(w *yecs.World, me yecs.MeshEntry, transform yecs.Transform, cu
 		},
 	)
 	move := yecs.Move{
-		AnglularSpeed: 15 * math.Pi,
+		AnglularSpeed: 10 * math.Pi,
 		ForwardSpeed:  10,
 	}
 	h := yecs.Hierarchy{
@@ -88,13 +88,13 @@ func CreateScene(w *yecs.World) {
 		panic(err)
 	}
 	mesh := w.NewMesh()
-	me := ygl.CreateSphereNew(56, 28, 1.0, mesh)
+	me := ygl.CreateSphereNew(560, 280, 1.0, mesh)
 	mesh.Setup()
 	surface := yecs.MaterialSurface{
 		Diffuse: tex,
 	}
 	var e yecs.EntityId
-	for i := range 100 {
+	for i := range 1000 {
 		x := randRange(-1000, 1000)
 		y := randRange(-1000, 1000)
 		z := randRange(10, 1000)
@@ -103,6 +103,7 @@ func CreateScene(w *yecs.World) {
 			Scale:    y3d.Vec3{X: 64, Y: 64, Z: 64},
 			Rotation: y3d.IdenQuat(),
 		}
+		(&transform).Recalulate()
 		e = CreateObject(w, me, transform, i%3, &surface)
 	}
 	CreateCamera(w, e)

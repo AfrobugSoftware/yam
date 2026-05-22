@@ -52,8 +52,12 @@ type DeferredRenderer struct {
 
 	LightUBO    uint32
 	LightBuffer [][16]float32
-	ClearColor  []float32
-	emptyVao    uint32
+
+	TransformUBO    uint32
+	TransfromBuffer [][16]float32
+
+	ClearColor []float32
+	emptyVao   uint32
 }
 
 func CreateDeferredRenderer(width, height, dwidth, dheight int32) *DeferredRenderer {
@@ -77,7 +81,9 @@ func CreateDeferredRenderer(width, height, dwidth, dheight int32) *DeferredRende
 	dr.PassTechnique = append(dr.PassTechnique, AddProgramSource("assets/shaders/screenQuad.vert", "assets/shaders/glight.frag"))     //light pass
 	dr.PassTechnique = append(dr.PassTechnique, AddProgramSource("assets/shaders/screenQuad.vert", "assets/shaders/screenQuad.frag")) //screen test
 	dr.PassTechnique = append(dr.PassTechnique, AddProgramSource("assets/shaders/gltf.vert", "assets/shaders/gltf.frag"))             //screen test
+	dr.SetupTransformUBO()
 	dr.SetupLightUBO()
+
 	dr.Gbuf.Unbind()
 	gl.CreateVertexArrays(1, &dr.emptyVao)
 	dr.IGrid = NewGrid()
@@ -114,18 +120,6 @@ func (dr *DeferredRenderer) DrawGLTF(w *yecs.World) {
 	gl.UseProgram(0)
 }
 
-func (dr *DeferredRenderer) UpdateSpatialsSSBO(w *yecs.World) {
-	spatials := w.Query([]yecs.ComponentId{yecs.SpatialComponent, yecs.TransformComponent})
-	buffer := make([]y3d.Mat4, len(spatials))
-	for i, e := range spatials {
-		transform := w.GetComponent(e, yecs.TransformComponent).(yecs.Transform)
-		buffer[i] = transform.World
-	}
-	b := unsafe.Slice((*byte)(unsafe.Pointer(&buffer[0])), len(buffer)*16*int(unsafe.Sizeof(float32(0))))
-	gl.NamedBufferSubData(dr.SpatialSSBO, 0, len(b), gl.Ptr(&b[0]))
-	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, SPATIAL_SSBO_BINDING_INDEX, dr.SpatialSSBO)
-}
-
 func (dr *DeferredRenderer) LightPass(w *yecs.World, camPos y3d.Vec3) {
 	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
@@ -137,12 +131,9 @@ func (dr *DeferredRenderer) LightPass(w *yecs.World, camPos y3d.Vec3) {
 			break
 		}
 		light := w.GetComponent(lights[i], yecs.LightComponent).(yecs.Light)
-		copy(dr.LightBuffer[i][0:4], light.Diffuse.ToSlice())
-		copy(dr.LightBuffer[i][4:8], light.Ambient.ToSlice())
-		copy(dr.LightBuffer[i][8:12], light.Specular.ToSlice())
-		copy(dr.LightBuffer[i][12:16], light.Pos.ToSlice())
+		lighData := light.ToUBO()
+		copy(dr.LightBuffer[i][0:16], lighData[:])
 	}
-
 	SetActiveTex(dr.Gbuf.Color[0], 0)
 	SetActiveTex(dr.Gbuf.Color[1], 1)
 	SetActiveTex(dr.Gbuf.Color[2], 2)
@@ -182,16 +173,10 @@ func (dr *DeferredRenderer) MeshPass(w *yecs.World) {
 	view := MainCam.GetViewTransformation()
 	proj := MainCam.GetProjectionTransformation()
 	projView := proj.Mul(view)
-	gl.UniformMatrix4fv(0, 1, false, &projView[0])
+	copy(dr.TransfromBuffer[0][0:16], projView[0:16])
 	meshId := -1
 	var mesh *yecs.Mesh
 	for _, e := range spatials {
-		if w.HasComponent(e, yecs.BoxComponent) {
-			box := w.GetComponent(e, yecs.BoxComponent).(yecs.Box)
-			if MainCam.CullView(box, projView) {
-				continue
-			}
-		}
 		me := w.GetComponent(e, yecs.MeshEntryComponent).([]yecs.MeshEntry)
 		r := w.GetComponent(e, yecs.RenderStateComponent).(yecs.RenderState)
 		r.SetupRenderState()
@@ -203,7 +188,7 @@ func (dr *DeferredRenderer) MeshPass(w *yecs.World) {
 			log.Println(err)
 		}
 		t := w.GetComponent(e, yecs.TransformComponent).(yecs.Transform)
-		gl.UniformMatrix4fv(1, 1, false, &t.World[0])
+		copy(dr.TransfromBuffer[1][:], t.World[:])
 		for _, m := range me {
 			if meshId != m.MeshId {
 				mesh = w.GetMesh(m.MeshId)
@@ -218,11 +203,12 @@ func (dr *DeferredRenderer) MeshPass(w *yecs.World) {
 				int32(m.NumIndices),
 				gl.UNSIGNED_INT,
 				gl.Ptr(uintptr(m.BaseIndex)), int32(m.BaseVertex))
+			gl.Finish()
+
 		}
 	}
 	gl.UseProgram(0)
 	dr.Gbuf.Unbind()
-
 	dr.LightPass(w, MainCam.Pos)
 }
 
@@ -245,7 +231,23 @@ func (dr *DeferredRenderer) SetupLightUBO() {
 		panic(fmt.Errorf("cannot get mapped buffer"))
 	}
 	dr.LightBuffer = unsafe.Slice((*[16]float32)(ptr), 100)
+	gl.BindBuffer(gl.UNIFORM_BUFFER, 0)
 	gl.BindBufferBase(gl.UNIFORM_BUFFER, 0, dr.LightUBO)
+}
+
+func (dr *DeferredRenderer) SetupTransformUBO() {
+	blocksize := 192 //size should be big enough for 3 mat4 64 bytes each at 16 byte boundires
+	gl.CreateBuffers(1, &dr.TransformUBO)
+	gl.NamedBufferStorage(dr.TransformUBO, int(blocksize), nil, gl.MAP_WRITE_BIT|gl.MAP_PERSISTENT_BIT|gl.MAP_COHERENT_BIT)
+	gl.BindBuffer(gl.UNIFORM_BUFFER, dr.TransformUBO)
+
+	ptr := gl.MapBuffer(gl.UNIFORM_BUFFER, gl.WRITE_ONLY)
+	if ptr == nil {
+		panic(fmt.Errorf("cannot get mapped buffer"))
+	}
+	dr.TransfromBuffer = unsafe.Slice((*[16]float32)(ptr), 2)
+	gl.BindBuffer(gl.UNIFORM_BUFFER, 0)
+	gl.BindBufferBase(gl.UNIFORM_BUFFER, 1, dr.TransformUBO)
 }
 
 func (dr *DeferredRenderer) ShutDown() {

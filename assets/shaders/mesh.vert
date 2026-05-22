@@ -7,12 +7,15 @@ out vec2 fragUv;
 out vec3 fragNormal;
 out vec3 fragPos;
 
-layout (location = 0) uniform mat4 projView;
-layout (location = 1) uniform mat4 world;
+layout(std140, binding = 1) uniform Transform {
+    mat4 projView;
+    mat4 world;
+};
 
 void main() {
     fragUv = uv;
     fragPos = vec3(world * vec4(pos, 1.0));
     fragNormal = vec3( world * vec4(normal, 0.0)); //mat3(transpose(inverse(world))) * normal; 
-    gl_Position = projView * world * vec4(pos, 1.0);
+    mat4 t = projView * world;
+    gl_Position = t * vec4(pos, 1.0);
 }
