@@ -21,7 +21,7 @@ func CreateObject(w *yecs.World, me yecs.MeshEntry, transform yecs.Transform, cu
 	renderState := yecs.RenderState{}
 	renderState.States = append(renderState.States, yecs.DepthState{
 		Enable:    true,
-		DepthFunc: gl.LEQUAL,
+		DepthFunc: gl.LESS,
 	}, yecs.BlendState{
 		Enable:    false,
 		SrcFactor: gl.SRC_ALPHA,
@@ -35,7 +35,7 @@ func CreateObject(w *yecs.World, me yecs.MeshEntry, transform yecs.Transform, cu
 	)
 	move := yecs.Move{
 		AnglularSpeed: 10 * math.Pi,
-		ForwardSpeed:  10,
+		ForwardSpeed:  0,
 	}
 	h := yecs.Hierarchy{
 		Parent: yecs.NullEntity,
@@ -88,7 +88,7 @@ func CreateScene(w *yecs.World) {
 		panic(err)
 	}
 	mesh := w.NewMesh()
-	me := ygl.CreateSphereNew(560, 280, 1.0, mesh)
+	me := ygl.CreateSphereNew(56, 28, 1.0, mesh)
 	mesh.Setup()
 	surface := yecs.MaterialSurface{
 		Diffuse: tex,

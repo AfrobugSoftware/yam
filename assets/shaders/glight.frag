@@ -3,12 +3,6 @@ layout (location = 0) out vec4 outColor;
 
 in vec2 fragUv;
 
-struct SurfaceProperties {
-    sampler2D diffuse;
-    sampler2D position;
-    sampler2D normal;
-};
-
 struct Light {
     vec3 diffuse;
     vec3 ambient;
@@ -20,9 +14,12 @@ struct Light {
 layout(std140, binding = 0) uniform LightSet {
     Light lights[MAX_LIGHTS];
 };
-uniform vec3 cameraPos;
-uniform int lightCount;
-uniform SurfaceProperties surface;
+layout(location = 3) uniform vec3 cameraPos;
+layout(location = 4) uniform int lightCount;
+
+layout(binding = 0) uniform sampler2D udiffuse;
+layout(binding = 1) uniform sampler2D uposition;
+layout(binding = 2) uniform sampler2D unormal;
 
 vec3 caluatePhongLight(Light light, vec3 fragPos, vec3 fragNormal, float shininess) {
     vec3 ambient = light.ambient;
@@ -41,9 +38,9 @@ vec3 caluatePhongLight(Light light, vec3 fragPos, vec3 fragNormal, float shinine
 }
 
 void main () {
-    vec3 diffuse  = (texture(surface.diffuse, fragUv.xy)).xyz;
-    vec3 position = (texture(surface.position, fragUv.xy)).xyz;
-    vec3 normal   = (texture(surface.normal, fragUv.xy)).xyz;
+    vec3 diffuse  = (texture(udiffuse, fragUv.xy)).xyz;
+    vec3 position = (texture(uposition, fragUv.xy)).xyz;
+    vec3 normal   = (texture(unormal, fragUv.xy)).xyz;
 
     vec3 color = vec3(0.0);
     for (int i = 0; i < lightCount; i++) {

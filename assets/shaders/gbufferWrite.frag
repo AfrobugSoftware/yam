@@ -8,14 +8,17 @@ in vec3 fragPos;
 in vec3 fragNormal;
 in vec2 fragUv;
 
-struct Material {
-    sampler2D diffuse;
-};
+in VS_OUT {
+    vec3 fragPos;
+    vec3 fragNormal;
+    vec2 fragUv;
+}fs_in;
 
-uniform Material material;
+
+layout(binding = 0) uniform sampler2D mdiffuse;
 
 void main() {
-    outDiffuse = texture(material.diffuse, fragUv.xy).xyz;
-    outWolrdPos = fragPos;
-    outWorldNormal = fragNormal;
+    outDiffuse = texture(mdiffuse, fs_in.fragUv.xy).xyz;
+    outWolrdPos = fs_in.fragPos;
+    outWorldNormal = fs_in.fragNormal;
 }

@@ -134,15 +134,13 @@ func (dr *DeferredRenderer) LightPass(w *yecs.World, camPos y3d.Vec3) {
 		lighData := light.ToUBO()
 		copy(dr.LightBuffer[i][0:16], lighData[:])
 	}
-	SetActiveTex(dr.Gbuf.Color[0], 0)
-	SetActiveTex(dr.Gbuf.Color[1], 1)
-	SetActiveTex(dr.Gbuf.Color[2], 2)
+	gl.BindTextureUnit(0, dr.Gbuf.Color[0])
+	gl.BindTextureUnit(1, dr.Gbuf.Color[1])
+	gl.BindTextureUnit(2, dr.Gbuf.Color[2])
 
-	AssignUniformInt32(dr.PassTechnique[LIGHT_PASS], "surface.diffuse", 0)
-	AssignUniformInt32(dr.PassTechnique[LIGHT_PASS], "surface.position", 1)
-	AssignUniformInt32(dr.PassTechnique[LIGHT_PASS], "surface.normal", 2)
-	AssignUniformVec3(dr.PassTechnique[LIGHT_PASS], "cameraPos", camPos)
-	AssignUniformInt32(dr.PassTechnique[LIGHT_PASS], "lightCount", int32(len(lights)))
+	c := camPos.ToSlice()
+	gl.Uniform4fv(3, 1, &c[0])
+	gl.Uniform1i(4, int32(len(lights)))
 
 	gl.Enable(gl.DEPTH_TEST)
 	gl.Disable(gl.BLEND)
@@ -173,22 +171,26 @@ func (dr *DeferredRenderer) MeshPass(w *yecs.World) {
 	view := MainCam.GetViewTransformation()
 	proj := MainCam.GetProjectionTransformation()
 	projView := proj.Mul(view)
-	copy(dr.TransfromBuffer[0][0:16], projView[0:16])
+	gl.UniformMatrix4fv(0, 1, false, &projView[0])
 	meshId := -1
 	var mesh *yecs.Mesh
+
+	//upload world
+	// for id, e := range spatials {
+	// 	t := w.GetComponent(e, yecs.TransformComponent).(yecs.Transform)
+	// 	copy(dr.TransfromBuffer[id][:], t.World[:])
+	// }
+
 	for _, e := range spatials {
 		me := w.GetComponent(e, yecs.MeshEntryComponent).([]yecs.MeshEntry)
 		r := w.GetComponent(e, yecs.RenderStateComponent).(yecs.RenderState)
 		r.SetupRenderState()
 		ms := w.GetComponent(e, yecs.MaterialSurfaceComponent).(yecs.MaterialSurface)
-		gl.ActiveTexture(gl.TEXTURE0)
-		gl.BindTexture(gl.TEXTURE_2D, ms.Diffuse)
-		err := AssignUniformInt32(dr.PassTechnique[MESS_PASS], "material.diffuse", 0)
-		if err != nil {
-			log.Println(err)
-		}
+		gl.BindTextureUnit(0, ms.Diffuse)
+
+		//gl.Uniform1ui(1, uint32(id))
 		t := w.GetComponent(e, yecs.TransformComponent).(yecs.Transform)
-		copy(dr.TransfromBuffer[1][:], t.World[:])
+		gl.UniformMatrix4fv(1, 1, false, &t.World[0])
 		for _, m := range me {
 			if meshId != m.MeshId {
 				mesh = w.GetMesh(m.MeshId)
@@ -203,8 +205,6 @@ func (dr *DeferredRenderer) MeshPass(w *yecs.World) {
 				int32(m.NumIndices),
 				gl.UNSIGNED_INT,
 				gl.Ptr(uintptr(m.BaseIndex)), int32(m.BaseVertex))
-			gl.Finish()
-
 		}
 	}
 	gl.UseProgram(0)
@@ -236,7 +236,7 @@ func (dr *DeferredRenderer) SetupLightUBO() {
 }
 
 func (dr *DeferredRenderer) SetupTransformUBO() {
-	blocksize := 192 //size should be big enough for 3 mat4 64 bytes each at 16 byte boundires
+	blocksize := 16000
 	gl.CreateBuffers(1, &dr.TransformUBO)
 	gl.NamedBufferStorage(dr.TransformUBO, int(blocksize), nil, gl.MAP_WRITE_BIT|gl.MAP_PERSISTENT_BIT|gl.MAP_COHERENT_BIT)
 	gl.BindBuffer(gl.UNIFORM_BUFFER, dr.TransformUBO)
@@ -245,7 +245,7 @@ func (dr *DeferredRenderer) SetupTransformUBO() {
 	if ptr == nil {
 		panic(fmt.Errorf("cannot get mapped buffer"))
 	}
-	dr.TransfromBuffer = unsafe.Slice((*[16]float32)(ptr), 2)
+	dr.TransfromBuffer = unsafe.Slice((*[16]float32)(ptr), 1000)
 	gl.BindBuffer(gl.UNIFORM_BUFFER, 0)
 	gl.BindBufferBase(gl.UNIFORM_BUFFER, 1, dr.TransformUBO)
 }

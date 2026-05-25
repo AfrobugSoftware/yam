@@ -60,11 +60,6 @@ func EnableAnistropicFiltering() {
 	gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAX_ANISOTROPY, v)
 }
 
-func SetActiveTex(tex uint32, unit uint32) {
-	gl.ActiveTexture(gl.TEXTURE0 + unit)
-	gl.BindTexture(gl.TEXTURE_2D, tex)
-}
-
 func DestroyTex2D(tex uint32) {
 	gl.DeleteTextures(1, &tex)
 }
