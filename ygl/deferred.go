@@ -91,35 +91,6 @@ func CreateDeferredRenderer(width, height, dwidth, dheight int32) *DeferredRende
 	return dr
 }
 
-func (dr *DeferredRenderer) DrawGLTF(w *yecs.World) {
-	entities := w.Query([]yecs.ComponentId{yecs.MeshEntryComponent, yecs.TransformComponent})
-	meshId := -1
-	var mesh *yecs.Mesh
-	gl.UseProgram(dr.PassTechnique[GLTF_TEST])
-	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-	for _, e := range entities {
-		me := w.GetComponent(e, yecs.MeshEntryComponent).([]yecs.MeshEntry)
-		for _, m := range me {
-			if meshId != m.MeshId {
-				mesh = w.GetMesh(m.MeshId)
-				if mesh == nil {
-					panic(fmt.Errorf("no mesh but this entry but has Id"))
-				}
-				meshId = m.MeshId
-				mesh.Bind()
-			}
-			gl.DrawElementsBaseVertex(gl.TRIANGLES,
-				int32(m.NumIndices),
-				gl.UNSIGNED_SHORT,
-				gl.Ptr(uintptr(m.BaseIndex)), int32(m.BaseVertex))
-		}
-	}
-	if mesh != nil {
-		mesh.Unbind()
-	}
-	gl.UseProgram(0)
-}
-
 func (dr *DeferredRenderer) LightPass(w *yecs.World, camPos y3d.Vec3) {
 	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
@@ -138,8 +109,7 @@ func (dr *DeferredRenderer) LightPass(w *yecs.World, camPos y3d.Vec3) {
 	gl.BindTextureUnit(1, dr.Gbuf.Color[1])
 	gl.BindTextureUnit(2, dr.Gbuf.Color[2])
 
-	c := camPos.ToSlice()
-	gl.Uniform4fv(3, 1, &c[0])
+	gl.Uniform3f(3, camPos.X, camPos.Y, camPos.Z)
 	gl.Uniform1i(4, int32(len(lights)))
 
 	gl.Enable(gl.DEPTH_TEST)
@@ -264,19 +234,4 @@ func (dr *DeferredRenderer) ShutDown() {
 func (dr *DeferredRenderer) ClearBuffers() {
 	gl.ClearBufferfv(gl.COLOR, 0, &dr.ClearColor[0])
 	gl.ClearBufferfi(gl.DEPTH_STENCIL, 0, 1.0, 0)
-}
-
-func ValidateProgram(shader uint32) {
-	gl.ValidateProgram(shader)
-
-	var status int32
-	gl.GetProgramiv(shader, gl.VALIDATE_STATUS, &status)
-	if status == gl.FALSE {
-		var logLen int32
-		gl.GetProgramiv(shader, gl.INFO_LOG_LENGTH, &logLen)
-		logBuf := make([]byte, logLen)
-		gl.GetProgramInfoLog(shader, logLen, nil, &logBuf[0])
-		log.Fatalf("[SHADER] validation failed: %s", string(logBuf))
-	}
-	log.Printf("[SHADER] validation OK")
 }

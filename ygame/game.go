@@ -1,7 +1,6 @@
 package ygame
 
 import (
-	"log/slog"
 	"os"
 	"time"
 	"yam/yecs"
@@ -24,7 +23,6 @@ type Game struct {
 	DoReset    func()
 	OnExit     func() bool
 	logFile    *os.File
-	Log        *slog.Logger
 	Gl3        *ygl.Gl3
 	Audio      *yecs.AudioSystem
 	Input      *yecs.InputSystem
@@ -51,33 +49,25 @@ func NewGame(title string, width, height int32) (*Game, error) {
 	if err != nil {
 		return nil, err
 	}
-	file, err := os.OpenFile("yam.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		return nil, err
-	}
-	handler := slog.NewJSONHandler(file, nil)
-	logger := slog.New(handler)
 
 	gl3, err := ygl.NewYGL(window, int(width), int(height))
 	if err != nil {
 		return nil, err
 	}
-	sb := ygl.CreateSpriteBatch("assets/jumpman.png", 2, 2, float32(width),
-		float32(height), 260, 260)
+	// sb := ygl.CreateSpriteBatch("assets/jumpman.png", 2, 2, float32(width),
+	// 	float32(height), 260, 260)
 	gGame = &Game{
-		logFile: file,
-		Log:     logger,
-		Ticks:   sdl.GetTicks64(),
-		Gl3:     gl3,
-		World:   yecs.NewWorld(),
-		Audio:   yecs.NewAudioSystem(yecs.STEREO, 44000, oto.FormatFloat32LE),
+		Ticks: sdl.GetTicks64(),
+		Gl3:   gl3,
+		World: yecs.NewWorld(),
+		Audio: yecs.NewAudioSystem(yecs.STEREO, 44000, oto.FormatFloat32LE),
 		Input: &yecs.InputSystem{
 			ShowCursor:   1,
 			ScreenWidth:  width,
 			ScreenHeight: height,
 		},
-		ShowGrid:    true,
-		SpriteBatch: sb,
+		ShowGrid: true,
+		//SpriteBatch: sb,
 	}
 	return gGame, nil
 }
@@ -121,7 +111,6 @@ func (g *Game) Draw() {
 	//g.SpriteBatch.Draw(g.World, entities)
 
 	g.Gl3.DeferredRenderer.Draw(g.World)
-	//g.Gl3.DeferredRenderer.DrawGLTF(g.World)
 	g.Gl3.Window.GLSwap()
 }
 

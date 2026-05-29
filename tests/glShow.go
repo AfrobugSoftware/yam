@@ -1,7 +1,6 @@
 package yam
 
 import (
-	"math"
 	"math/rand"
 	"yam/y3d"
 	"yam/yecs"
@@ -34,8 +33,9 @@ func CreateObject(w *yecs.World, me yecs.MeshEntry, transform yecs.Transform, cu
 		},
 	)
 	move := yecs.Move{
-		AnglularSpeed: 10 * math.Pi,
+		AnglularSpeed: 0,
 		ForwardSpeed:  0,
+		StrafeSpeed:   10,
 	}
 	h := yecs.Hierarchy{
 		Parent: yecs.NullEntity,
@@ -53,27 +53,23 @@ func CreateObject(w *yecs.World, me yecs.MeshEntry, transform yecs.Transform, cu
 func CreateCamera(w *yecs.World, follow yecs.EntityId) {
 	ent := w.NewEntity()
 	camera := yecs.Camera{
-		Pos:    y3d.ZEROV,
-		Up:     yecs.UP,
-		LookAt: yecs.FORWARD,
-		Speed:  20,
-		// Right:   1,
-		// Left:    -1,
-		// Top:     0.75,
-		// Bottom:  -0.75,
-		Width:   width,
-		Height:  height,
-		Fov:     90,
-		Near:    0.1,
-		Far:     10000,
-		CamType: yecs.CAM_TYPE_PERSPECTIVE,
-		//CamMode:        yecs.CAMERA_FOLLOW,
+		Pos:            y3d.ZEROV,
+		Up:             yecs.UP,
+		LookAt:         yecs.FORWARD,
+		Speed:          20,
+		Width:          width,
+		Height:         height,
+		Fov:            90,
+		Near:           0.1,
+		Far:            10000,
+		CamType:        yecs.CAM_TYPE_PERSPECTIVE,
+		CamMode:        yecs.CAMERA_FOLLOW,
 		Entity:         follow,
 		SpringConstant: 5.0,
-		Offset:         y3d.Vec3{X: 0.0, Y: 10, Z: 10},
-		TargetDistance: y3d.Vec3{X: 10, Y: 10, Z: 10},
+		Offset:         y3d.Vec3{X: 0.0, Y: 0, Z: 0},
+		TargetDistance: y3d.Vec3{X: 0, Y: 0, Z: 5},
 	}
-	//camera.Recalulate()
+	camera.Recalulate()
 	camera.SnapToIdeal(w)
 	w.AddComponent(ent, yecs.CameraComponent, camera)
 }
@@ -88,13 +84,13 @@ func CreateScene(w *yecs.World) {
 		panic(err)
 	}
 	mesh := w.NewMesh()
-	me := ygl.CreateSphereNew(56, 28, 1.0, mesh)
+	me := ygl.CreateSphere(56, 28, 1.0, mesh)
 	mesh.Setup()
 	surface := yecs.MaterialSurface{
 		Diffuse: tex,
 	}
 	var e yecs.EntityId
-	for i := range 1000 {
+	for i := range 100 {
 		x := randRange(-1000, 1000)
 		y := randRange(-1000, 1000)
 		z := randRange(10, 1000)
@@ -106,8 +102,28 @@ func CreateScene(w *yecs.World) {
 		(&transform).Recalulate()
 		e = CreateObject(w, me, transform, i%3, &surface)
 	}
+	w.SetComponent(e, yecs.MoveComponent, yecs.Move{
+		AnglularSpeed: 0,
+		ForwardSpeed:  30,
+	})
 	CreateCamera(w, e)
 
+}
+
+func CreateLight(w *yecs.World, count int) {
+	for range count {
+		e := w.NewEntity()
+		x := randRange(-1000, 1000)
+		y := randRange(-1000, 1000)
+		z := randRange(-10, -1000)
+		light := yecs.Light{
+			Pos:      y3d.Vec3{X: x, Y: y, Z: z},
+			Diffuse:  y3d.Vec3{X: 1.0, Y: 1.0, Z: 1.0},
+			Ambient:  y3d.Vec3{X: 0.2, Y: 0.2, Z: 0.2},
+			Specular: y3d.Vec3{X: 1.0, Y: 1.0, Z: 1.0},
+		}
+		w.AddComponent(e, yecs.LightComponent, light)
+	}
 }
 
 func CreateSystems(w *yecs.World) {
@@ -115,6 +131,21 @@ func CreateSystems(w *yecs.World) {
 	w.AddSystem(ygame.GetGame().Input)
 	w.AddSystem(&yecs.CameraSystem{})
 	w.InitSystems()
+}
+
+func CreateTeapot(w *yecs.World) {
+	teapot, err := ygl.LoadAsset("assets/gltf/teapot.gltf", w)
+	if err != nil {
+		panic(err)
+	}
+
+	transform := yecs.Transform{
+		Position: y3d.Vec3{X: 0, Y: 0, Z: 200},
+		Scale:    y3d.Vec3{X: 64, Y: 64, Z: 64},
+		Rotation: y3d.IdenQuat(),
+	}
+	(&transform).Recalulate()
+	w.AddComponent(teapot[0], yecs.TransformComponent, transform)
 }
 
 func TestLoadAssets() {
@@ -126,6 +157,7 @@ func TestLoadAssets() {
 	if err != nil {
 		panic(err)
 	}
+
 }
 
 func TestGame() {
@@ -135,6 +167,7 @@ func TestGame() {
 	}
 	CreateSystems(g.World)
 	CreateLight(g.World, 3)
+	//CreateTeapot(g.World)
 	CreateScene(g.World)
 
 	_, err = ygl.LoadAsset("assets/gltf/testgltf.gltf", g.World)

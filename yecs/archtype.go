@@ -417,6 +417,19 @@ func (w *World) SetComponent(entity EntityId, cid ComponentId, comp Component) {
 	record.archetype.setComponent(record.row, cid, comp)
 }
 
+func (w *World) UpdateComponent(entity EntityId, component ComponentId,
+	updater func(comp Component)) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	record := w.entities[entity]
+	if record == nil {
+		return
+	}
+	store := reflect.ValueOf(record.archetype.storageBuffer[component]).Elem()
+	slc := store.Field(0)
+	updater(slc.Index(record.row).Addr())
+}
+
 // returns all entities that has at least the given component ids
 func (w *World) Query(cids []ComponentId) []EntityId {
 	w.mu.RLock()

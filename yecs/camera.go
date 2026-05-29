@@ -228,7 +228,7 @@ func (cam *Camera) UpdateSpline(w *World, dt float64, e EntityId) {
 func (c *Camera) ComputeFollowPosition(w *World) (pos, targetPos y3d.Vec3) {
 	transform := w.GetComponent(c.Entity, TransformComponent).(Transform)
 	pos = transform.Position
-	pos = y3d.Sub(c.Pos, y3d.Smul(transform.GetForward(), c.TargetDistance.X))
+	pos = y3d.Sub(c.Pos, y3d.Smul(transform.GetRight(), c.TargetDistance.X))
 	pos = y3d.Add(c.Pos, y3d.Smul(transform.GetUp(), c.TargetDistance.Y))
 	targetPos = y3d.Add(transform.Position, y3d.Smul(transform.GetForward(), c.TargetDistance.Z))
 

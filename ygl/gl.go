@@ -49,19 +49,13 @@ type Gl3 struct {
 	Width            int32
 	DeferredRenderer *DeferredRenderer
 	mu               sync.Mutex
-	buffers          map[string]VertBuffer
-	programs         map[string]uint32
-	textures         map[string][]uint32
 }
 
 func NewYGL(window *sdl.Window, width, height int) (*Gl3, error) {
 	g := &Gl3{
-		Window:   window,
-		buffers:  make(map[string]VertBuffer),
-		programs: make(map[string]uint32),
-		textures: make(map[string][]uint32),
-		Height:   int32(height),
-		Width:    int32(width),
+		Window: window,
+		Height: int32(height),
+		Width:  int32(width),
 		ClearColor: y3d.Vec4{
 			X: 0,
 			Y: 0,
