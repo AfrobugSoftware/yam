@@ -11,16 +11,13 @@ out VS_OUT {
 
 layout (location = 0) uniform mat4 projView; 
 layout (location = 1) uniform mat4 world;
-
-//layout(std140, binding = 1) uniform Transform {
-  //  mat4 world[];
-//};
+layout (location = 2) uniform mat3 normalMat;
 
 
 void main() {
     vs_out.fragUv = uv;
     vs_out.fragPos = vec3(world * vec4(pos, 1.0));
-    vs_out.fragNormal = mat3(inverse(transpose(world))) * normal; 
+    vs_out.fragNormal = normalMat * normal; 
    
     gl_Position = projView * world * vec4(pos, 1.0);
 }

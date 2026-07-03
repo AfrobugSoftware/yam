@@ -52,6 +52,16 @@ func (a Mat4) Mul(b Mat4) Mat4 {
 	return out
 }
 
+func (m1 *Mat4) CalulateNormalMatrix() Mat3 {
+	m1.Invert()
+	m1.Transpose()
+	return Mat3{
+		m1[0], m1[1], m1[2],
+		m1[4], m1[5], m1[6],
+		m1[8], m1[9], m1[10],
+	}
+}
+
 func (m1 *Mat4) MulWith(c float32) {
 	m1[0] *= c
 	m1[1] *= c

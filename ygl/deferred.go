@@ -191,6 +191,8 @@ func (dr *DeferredRenderer) MeshPass(w *yecs.World) {
 		//gl.Uniform1ui(1, uint32(id))
 		t := w.GetComponent(e, yecs.TransformComponent).(yecs.Transform)
 		gl.UniformMatrix4fv(1, 1, false, &t.World[0])
+		normalMat := t.World.CalulateNormalMatrix()
+		gl.UniformMatrix4fv(2, 1, false, &normalMat[0])
 		for _, m := range me {
 			if meshId != m.MeshId {
 				mesh = w.GetMesh(m.MeshId)
