@@ -43,8 +43,9 @@ func CreateShader(source string, shaderType uint32) (uint32, error) {
 		var length int32
 		gl.GetShaderInfoLog(s, int32(len(infoLog)), &length, &infoLog[0])
 		var sb strings.Builder
-		for _, c := range infoLog {
-			sb.WriteByte(byte(c))
+		_, err := sb.Write([]byte(infoLog))
+		if err != nil {
+			return 0, fmt.Errorf("failed to write info log: %v", err)
 		}
 		return 0, fmt.Errorf("%d shader failed to compile: %s", shaderType, sb.String())
 	}
