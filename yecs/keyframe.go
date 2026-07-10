@@ -26,7 +26,9 @@ func GetTimeFromStamps(max, min, current float32) float32 {
 
 // t  = [0, 1]
 func Interpolate(a, b *KeyFrame, t float32) KeyFrame {
-	kf := KeyFrame{}
+	kf := KeyFrame{
+		Target: a.Target,
+	}
 	if a.Target&AnimTargetTranslation != 0 {
 		kf.Position = y3d.Lerp(a.Position, b.Position, t)
 	}
@@ -36,6 +38,5 @@ func Interpolate(a, b *KeyFrame, t float32) KeyFrame {
 	if a.Target&AnimTargetScale != 0 {
 		kf.Scale = y3d.Lerp(a.Scale, b.Scale, t)
 	}
-	kf.Target = a.Target
 	return kf
 }

@@ -4,10 +4,6 @@ layout (location = 0) out vec3 outDiffuse;
 layout (location = 1) out vec3 outWolrdPos;
 layout (location = 2) out vec3 outWorldNormal;
 
-in vec3 fragPos;
-in vec3 fragNormal;
-in vec2 fragUv;
-
 in VS_OUT {
     vec3 fragPos;
     vec3 fragNormal;
