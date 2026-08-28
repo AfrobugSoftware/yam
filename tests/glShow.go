@@ -84,7 +84,7 @@ func CreateScene(w *yecs.World) {
 		panic(err)
 	}
 	mesh := w.NewMesh()
-	me := ygl.CreateSphere(56, 28, 1.0, mesh)
+	me := ygl.CreateCube(mesh) //ygl.CreateSphere(56, 28, 1.0, mesh)
 	mesh.Setup()
 	surface := yecs.MaterialSurface{
 		Diffuse: tex,
