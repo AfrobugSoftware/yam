@@ -5,8 +5,9 @@ import (
 )
 
 type AABB struct {
-	Min Vec3
-	Max Vec3
+	Min    Vec3
+	Max    Vec3
+	Center Vec3
 }
 
 func (a AABB) Overlaps(b AABB) bool {
