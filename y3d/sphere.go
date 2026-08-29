@@ -24,7 +24,7 @@ func (s Sphere) WhichSide(p Plane) Side {
 	case d < -s.R:
 		return BACK
 	}
-	return INTERSECTS
+	return PLANER
 }
 
 //finds, if possible the exact point in which two spheres intersects between 2 frames
