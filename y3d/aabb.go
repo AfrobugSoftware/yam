@@ -5,9 +5,36 @@ import (
 )
 
 type AABB struct {
-	Min    Vec3
-	Max    Vec3
-	Center Vec3
+	Min Vec3
+	Max Vec3
+}
+
+func FromOBB(obb OBB) AABB {
+	var a [3]Vec3
+	ex := obb.Extents.ToSlice()
+	for i := range 3 {
+		a[i] = Smul(obb.Axes[i], ex[i])
+	}
+	xMax := max(a[0].X, a[1].X, a[2].X)
+	yMax := max(a[0].Y, a[1].Y, a[2].Y)
+	zMax := max(a[0].Z, a[1].Z, a[2].Z)
+
+	xMin := -xMax
+	yMin := -yMax
+	zMin := -zMax
+
+	return AABB{
+		Max: Add(Vec3{
+			X: xMax,
+			Y: yMax,
+			Z: zMax,
+		}, obb.Center),
+		Min: Add(Vec3{
+			X: xMin,
+			Y: yMin,
+			Z: zMin,
+		}, obb.Center),
+	}
 }
 
 func (a AABB) Overlaps(b AABB) bool {
@@ -36,7 +63,7 @@ func (box AABB) GetHalfSize() Vec3 {
 	}
 }
 
-func (b AABB) TestPlane(p Plane) bool {
+func (b AABB) CullPlane(p Plane) bool {
 	c := Smul(Add(b.Max, b.Min), 0.5)
 	e := Sub(b.Max, c)
 
@@ -47,6 +74,10 @@ func (b AABB) TestPlane(p Plane) bool {
 	s := Dot(p.N, c) - p.D
 
 	return math.Abs(float64(s)) <= r
+}
+
+func (aabb AABB) Cull(planes []Plane) int {
+	return 0
 }
 
 func (b AABB) WhichSide(p Plane) int {
