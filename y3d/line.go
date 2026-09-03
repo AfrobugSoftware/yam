@@ -10,6 +10,13 @@ type LineSegment struct {
 	End   Vec3
 }
 
+func LineSegmentFromRay(r Ray, t float32) LineSegment {
+	var l LineSegment
+	l.Start = r.O
+	l.End = Add(r.O, Smul(r.D, t))
+	return l
+}
+
 func (ls LineSegment) PointOnLine(t float32) Vec3 {
 	return Add(ls.Start, Smul(Sub(ls.End, ls.Start), t))
 }

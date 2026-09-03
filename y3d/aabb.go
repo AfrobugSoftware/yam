@@ -80,6 +80,46 @@ func (aabb AABB) Cull(planes []Plane) int {
 	return 0
 }
 
+func (aabb AABB) GetPlanes() []Plane {
+	planes := make([]Plane, 0)
+	//right
+	planes = append(planes, Plane{
+		N: UNIT_X,
+		D: -Dot(UNIT_X, aabb.Max),
+	})
+	//left
+	planes = append(planes, Plane{
+		N: NegateVec3(UNIT_X),
+		D: -Dot(NegateVec3(UNIT_X), aabb.Min),
+	})
+	//top
+	planes = append(planes, Plane{
+		N: UNIT_Y,
+		D: -Dot(UNIT_Y, aabb.Max),
+	})
+	//bottom
+	planes = append(planes, Plane{
+		N: NegateVec3(UNIT_Y),
+		D: -Dot(NegateVec3(UNIT_Y), aabb.Min),
+	})
+	//front
+	planes = append(planes, Plane{
+		N: UNIT_Z,
+		D: -Dot(UNIT_Z, aabb.Min),
+	})
+	//back
+	planes = append(planes, Plane{
+		N: NegateVec3(UNIT_Z),
+		D: -Dot(NegateVec3(UNIT_Z), aabb.Max),
+	})
+	return planes
+}
+
+func (a AABB) ContainRay(r Ray, len float32) bool {
+	end := Add(r.O, Smul(r.D, len))
+	return (a.Contains(end) && a.Contains(r.O))
+}
+
 func (b AABB) WhichSide(p Plane) int {
 	c := b.GetCenter()
 	e := b.GetHalfSize()

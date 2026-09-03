@@ -5,9 +5,12 @@ import "math"
 type Side int
 
 const (
-	BACK   Side = -1
-	PLANER Side = 0
-	FRONT  Side = 1
+	BACK    Side = -1
+	PLANER  Side = 0
+	FRONT   Side = 1
+	CLIPPED      = 2
+	CULLED       = 3
+	VISIBLE      = 4
 )
 
 type Plane struct {
@@ -45,6 +48,17 @@ func (p Plane) Classify(v Vec3) Side {
 	default:
 		return PLANER
 	}
+}
+
+func (p Plane) ClassifyPolygon(polygon Polygon) Side {
+	s := p.Classify(polygon.Points[0])
+	for i := 1; i < len(polygon.Points); i++ {
+		s1 := p.Classify(polygon.Points[i])
+		if s != s1 {
+			return CLIPPED
+		}
+	}
+	return s
 }
 
 func (p Plane) IntersectTriangle(a, b, c Vec3) bool {
