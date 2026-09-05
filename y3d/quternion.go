@@ -84,18 +84,6 @@ func ProdQuaternion(qin ...Quaternion) Quaternion {
 	return qout
 }
 
-// func (qin Quaternion) Unit() Quaternion {
-// 	k2 := qin.Norm2()
-// 	if k2 < NearZero {
-// 		return qin
-// 	}
-// 	if math.Abs(k2-1) < NearZero {
-// 		return qin
-// 	}
-// 	k := 1 / math.Sqrt(k2)
-// 	return Quaternion{qin.W * k, qin.X * k, qin.Y * k, qin.Z * k}
-// }
-
 func (q Quaternion) Unit() Quaternion {
 	mag := math.Sqrt(float64(q.W*q.W + q.X*q.X + q.Y*q.Y + q.Z*q.Z))
 	if mag == 0 {
@@ -149,17 +137,28 @@ func (q Quaternion) Euler() (float64, float64, float64) {
 	return phi, theta, psi
 }
 
-func FromEuler(phi, theta, psi float64) Quaternion {
-	q := Quaternion{}
-	q.W = math.Cos(phi/2)*math.Cos(theta/2)*math.Cos(psi/2) +
-		math.Sin(phi/2)*math.Sin(theta/2)*math.Sin(psi/2)
-	q.X = math.Sin(phi/2)*math.Cos(theta/2)*math.Cos(psi/2) -
-		math.Cos(phi/2)*math.Sin(theta/2)*math.Sin(psi/2)
-	q.Y = math.Cos(phi/2)*math.Sin(theta/2)*math.Cos(psi/2) +
-		math.Sin(phi/2)*math.Cos(theta/2)*math.Sin(psi/2)
-	q.Z = math.Cos(phi/2)*math.Cos(theta/2)*math.Sin(psi/2) -
-		math.Sin(phi/2)*math.Sin(theta/2)*math.Cos(psi/2)
-	return q
+func FromEuler(fpitch, fyaw, froll float64) Quaternion {
+	pitch := fpitch * 0.5
+	yaw := fyaw * 0.5
+	roll := froll * 0.5
+	cX := math.Cos(pitch)
+	cY := math.Cos(yaw)
+	cZ := math.Cos(roll)
+	sX := math.Sin(pitch)
+	sY := math.Sin(yaw)
+	sZ := math.Sin(roll)
+
+	cYcZ := cY * cZ
+	sYsZ := sY * sZ
+	cYsZ := cY * sZ
+	sYcZ := sY * cZ
+
+	return Quaternion{
+		W: cX*cYcZ + sX*sYsZ,
+		X: sX*cYcZ - cX*sYsZ,
+		Y: cX*sYcZ + sX*cYsZ,
+		Z: cX*cYsZ - sX*sYcZ,
+	}
 }
 
 func (qin Quaternion) RotMat() Mat3 {

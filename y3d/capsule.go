@@ -11,7 +11,7 @@ func (c Capsule) Contains(point Vec3) bool {
 }
 
 func (c Capsule) Intersects(d Capsule) bool {
-	distSq := MinLineSegmentDistSq(c.Line, d.Line)
+	distSq := c.Line.MinLineSegmentDistSq(d.Line)
 	sumRadii := c.Radius + d.Radius
 	return distSq <= (sumRadii * sumRadii)
 }

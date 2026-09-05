@@ -181,3 +181,61 @@ func (p Polygon) Clip(plane Plane) (front Polygon, back Polygon) {
 	}
 	return front, back
 }
+
+func (p Polygon) Cull(aabb AABB) int {
+	if !p.BoundingBox.Overlaps(aabb) {
+		return CULLED
+	}
+	inside := 0
+	for _, point := range p.Points {
+		if aabb.Contains(point) {
+			inside++
+		}
+	}
+	if inside == len(p.Points) {
+		return VISIBLE
+	}
+	planes := aabb.GetPlanes()
+	var current int
+	for _, pl := range planes {
+		for loop := 1; loop < len(p.Points)+1; loop++ {
+			if loop == len(p.Points) {
+				current = 0
+			} else {
+				current = loop
+			}
+			line := LineSegment{
+				Start: p.Points[loop-1],
+				End:   p.Points[current],
+			}
+			_, intersects := line.IntersectsPlane(pl)
+			if intersects {
+				return CLIPPED
+			}
+
+		}
+	}
+	return CULLED
+}
+
+func (p Polygon) IntersectsRay(r Ray, cull bool) (float32, bool) {
+	for i := 0; i < len(p.Indices); i += 3 {
+		intersects, t := r.IntersectsTriangle(
+			p.Points[p.Indices[i]],
+			p.Points[p.Indices[i+1]],
+			p.Points[p.Indices[i+2]], false)
+		if intersects {
+			return t, intersects
+		}
+		if !cull {
+			intersects, t := r.IntersectsTriangle(
+				p.Points[p.Indices[i+2]],
+				p.Points[p.Indices[i+1]],
+				p.Points[p.Indices[i]], false)
+			if intersects {
+				return t, intersects
+			}
+		}
+	}
+	return 0, false
+}

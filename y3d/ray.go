@@ -207,3 +207,24 @@ func (r Ray) IntersectsTriangle(a, b, c Vec3, cull bool) (bool, float32) {
 	t *= fInvDet
 	return true, t
 }
+
+func (r Ray) IntersectsSphere(s Sphere) (count float32, t [2]float32) {
+	pc := Sub(r.O, s.C)
+	a := Dot(r.D, r.D)
+	b := 2 * Dot(r.D, pc)
+	c := Dot(pc, pc) - (s.R * s.R)
+	discrim := b*b - 4*a*c
+	if discrim > 0 {
+		t[0] = (-b + float32(math.Sqrt(float64(discrim)))) / (2 * a)
+		t[1] = (-b - float32(math.Sqrt(float64(discrim)))) / (2 * a)
+		count = 2
+		return
+	} else if discrim == 0 {
+		t[0] = -b / (2 * a)
+		count = 1
+		return
+	} else {
+		count = 0
+		return
+	}
+}

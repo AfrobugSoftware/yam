@@ -2,12 +2,6 @@ package y3d
 
 import "math"
 
-const (
-	CULLED  = 1
-	CLIPPED = 2
-	VISIBLE = 3
-)
-
 type OBB struct {
 	Center  Vec3
 	Extents Vec3 //half extents

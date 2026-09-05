@@ -39,7 +39,7 @@ func (ls LineSegment) MinDistSq(point Vec3) float32 {
 	}
 }
 
-func MinLineSegmentDistSq(p, q LineSegment) float32 {
+func (p LineSegment) MinLineSegmentDistSq(q LineSegment) float32 {
 	d1 := Sub(p.End, p.Start)
 	d2 := Sub(p.End, q.Start)
 	r := Sub(p.Start, q.Start)
@@ -88,6 +88,7 @@ func (l LineSegment) IntersectsPlane(p Plane) (float32, bool) {
 	d1 := Sub(l.End, l.Start)
 	denom := Dot(d1, p.N)
 	if denom < NearZero {
+		//both points exists on the plane
 		if Dot(l.Start, p.N)-p.D < NearZero {
 			return 0, true
 		} else {
