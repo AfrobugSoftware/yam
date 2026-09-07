@@ -10,13 +10,16 @@ const (
 )
 
 type Light struct {
-	Type      int
-	Pos       y3d.Vec3
-	Intensity float32
-	Direction y3d.Vec3
-	Diffuse   y3d.Vec3
-	Ambient   y3d.Vec3
-	Specular  y3d.Vec3
+	Type        int
+	Pos         y3d.Vec3
+	Intensity   float32
+	Direction   y3d.Vec3
+	Diffuse     y3d.Vec3
+	Ambient     y3d.Vec3
+	Specular    y3d.Vec3
+	Attenuation [3]float32
+	Range       float32
+	FallOff     float32
 }
 
 func (l *Light) ToUBO() [16]float32 {
@@ -39,7 +42,9 @@ func (l *Light) ToUBO() [16]float32 {
 	buf[12] = l.Pos.X
 	buf[13] = l.Pos.Y
 	buf[14] = l.Pos.Z
-	buf[15] = 0.0
+	buf[15] = l.Intensity //use
+
+	//need to put in the direction
 
 	return buf
 }

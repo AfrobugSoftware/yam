@@ -2,6 +2,8 @@ package yecs
 
 import "yam/y3d"
 
+type MaterialID int
+
 type Material struct {
 	Diffuse   y3d.Vec3
 	Ambient   y3d.Vec3

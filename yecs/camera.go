@@ -49,6 +49,7 @@ type Camera struct {
 	T                                   float32
 	Paused                              bool
 	Planes                              []y3d.Plane
+	Orientation                         y3d.Quaternion
 }
 
 func (c *Camera) Recalulate() {

@@ -51,6 +51,7 @@ func CreateTex2D(filePath string, minFilter, maxFilter int32, useMipmap bool) (u
 		EnableAnistropicFiltering()
 		gl.GenerateMipmap(gl.TEXTURE_2D)
 	}
+	gl.BindTexture(gl.TEXTURE_2D, 0)
 	return texId, nil
 }
 

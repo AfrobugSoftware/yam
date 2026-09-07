@@ -6,6 +6,7 @@ import (
 	"unsafe"
 	"yam/y3d"
 	"yam/yecs"
+	"yam/ymanager"
 
 	"github.com/go-gl/gl/v4.3-core/gl"
 )
@@ -40,6 +41,7 @@ type DrawCommand struct {
 
 type DeferredRenderer struct {
 	Gbuf            *Framebuffer
+	SkinManager     *ymanager.SkinManager
 	PassTechnique   []uint32
 	TotalLights     uint32
 	MeshVBO         uint32
