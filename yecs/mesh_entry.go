@@ -7,4 +7,5 @@ type MeshEntry struct {
 	BaseIndex   uint32
 
 	MeshId int
+	SkinId int
 }

@@ -112,4 +112,14 @@ func (r *RenderManager) SetClippingPlanes(near, far float32) {
 	r.ProjO[2][14] = X
 	r.ProjO[3][14] = X
 
+	Q *= r.Far
+	X = -Q * r.Near
+	r.ProjP[0][10] = Q
+	r.ProjP[1][10] = Q
+	r.ProjP[2][10] = Q
+	r.ProjP[3][10] = Q
+	r.ProjP[0][14] = X
+	r.ProjP[1][14] = X
+	r.ProjP[2][14] = X
+	r.ProjP[3][14] = X
 }

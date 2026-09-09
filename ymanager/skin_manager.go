@@ -21,6 +21,13 @@ const (
 	SLOT_8 int = 0
 )
 
+var (
+	EmptySkin = Skin{
+		Material: -1,
+	}
+	EmptyTexture = -1
+)
+
 type TextureData struct {
 	Handle       uint32
 	Size         uint32
@@ -36,39 +43,71 @@ type Skin struct {
 
 type SkinManager struct {
 	TotalTextureSizeInMemeory uint
-	Skins                     []Skin
-	Textures                  []TextureData
-	Materials                 []yecs.Material
+	Skins                     map[int]Skin
+	Textures                  map[int]TextureData
+	Materials                 map[int]yecs.Material
 }
 
 func NewSkinManager() *SkinManager {
 	return &SkinManager{
-		Skins:     make([]Skin, 0),
-		Textures:  make([]TextureData, 0),
-		Materials: make([]yecs.Material, 0),
+		Skins:     make(map[int]Skin),
+		Textures:  make(map[int]TextureData),
+		Materials: make(map[int]yecs.Material),
 	}
 }
+func generateRandomId() int {
+	return int(time.Now().UnixNano())
+}
 
-func (s *SkinManager) AddTexture(skin int, slot int, filename string, minFilter, maxFilter int32, useMipmap bool) {
-	if skin >= len(s.Skins) {
-		panic("invalid skin id")
+func (s *SkinManager) AddSkin(mat yecs.Material) int {
+	skin := Skin{}
+	for i := range skin.Texture {
+		skin.Texture[i] = EmptyTexture
 	}
-	fileInfo, err := os.Stat(filename)
-	if err != nil {
-		panic(err)
-	}
-	texSize := fileInfo.Size()
-	s.TotalTextureSizeInMemeory += uint(texSize)
-	//need to check if the size if bigger than the budget
+	id := generateRandomId()
+	skinId := generateRandomId()
+	s.Materials[id] = mat
+	skin.Material = id
+	s.Skins[skinId] = skin
+	return skinId
+}
 
+func (s *SkinManager) FindTextureByFile(filename string) (int, bool) {
+	for id, tex := range s.Textures {
+		if tex.FileOnDisc == filename {
+			return id, true
+		}
+	}
+	return 0, false
+}
+
+func (s *SkinManager) AddTexture(skin int, filename string, minFilter, maxFilter int32, useMipmap bool) error {
+	if _, exists := s.Skins[skin]; !exists {
+		return errors.New("invalid skin id")
+	}
+	if s.Skins[skin].Texture[SLOT_7] != EmptyTexture {
+		return errors.New("skin texture slots are full")
+	}
+	id, found := s.FindTextureByFile(filename)
+	if found {
+		sk := s.Skins[skin]
+		for slot := range sk.Texture {
+			if sk.Texture[slot] == EmptyTexture {
+				sk.Texture[slot] = id
+				break
+			}
+		}
+		s.Skins[skin] = sk
+		return nil
+	}
 	file, err := os.Open(filename)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer file.Close()
 	img, _, err := image.Decode(file)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	bounds := img.Bounds()
@@ -78,6 +117,8 @@ func (s *SkinManager) AddTexture(skin int, slot int, filename string, minFilter,
 			rgba.Set(x, y, img.At(x, y))
 		}
 	}
+	texSize := len(rgba.Pix)
+	s.TotalTextureSizeInMemeory += uint(texSize)
 	var texId uint32
 	gl.GenTextures(1, &texId)
 	gl.BindTexture(gl.TEXTURE_2D, texId)
@@ -110,16 +151,80 @@ func (s *SkinManager) AddTexture(skin int, slot int, filename string, minFilter,
 		LastAccessed: time.Now(),
 		FileOnDisc:   filename,
 	}
-	s.Textures = append(s.Textures, td)
-	sk := &s.Skins[skin]
-	sk.Texture[slot] = len(s.Textures) - 1
+	id = generateRandomId()
+	s.Textures[id] = td
+	sk := s.Skins[skin]
+	for slot := range sk.Texture {
+		if sk.Texture[slot] == EmptyTexture {
+			sk.Texture[slot] = id
+			break
+		}
+	}
+	s.Skins[skin] = sk
+	return nil
 }
 
 func (s *SkinManager) GetTexture(skin int, slot int) (uint32, error) {
-	if skin >= len(s.Skins) {
+	if _, exists := s.Skins[skin]; !exists {
 		return 0, errors.New("invalid skin id")
 	}
-	sk := &s.Skins[skin]
+	sk := s.Skins[skin]
 	tex := s.Textures[sk.Texture[slot]]
 	return tex.Handle, nil
+}
+
+func (s *SkinManager) GetMaterial(skin int) (yecs.Material, error) {
+	if _, exists := s.Skins[skin]; !exists {
+		return yecs.Material{}, errors.New("invalid skin id")
+	}
+	sk := s.Skins[skin]
+	return s.Materials[sk.Material], nil
+}
+
+func (s *SkinManager) GetSkin(skin int) (Skin, error) {
+	if _, exists := s.Skins[skin]; !exists {
+		return Skin{}, errors.New("invalid skin id")
+	}
+	return s.Skins[skin], nil
+}
+
+func (s *SkinManager) RemoveTexture(skin int, slot int) error {
+	if _, exists := s.Skins[skin]; !exists {
+		return errors.New("invalid skin id")
+	}
+	sk := s.Skins[skin]
+	if sk.Texture[slot] == EmptyTexture {
+		return errors.New("texture slot is empty")
+	}
+	handle := s.Textures[sk.Texture[slot]].Handle
+	gl.DeleteTextures(1, &handle)
+	s.TotalTextureSizeInMemeory -= uint(s.Textures[sk.Texture[slot]].Size)
+	delete(s.Textures, sk.Texture[slot])
+	sk.Texture[slot] = EmptyTexture
+	s.Skins[skin] = sk
+	return nil
+}
+
+func (s *SkinManager) RemoveSkin(skin int) {
+	if _, exists := s.Skins[skin]; !exists {
+		return
+	}
+	for _, texId := range s.Skins[skin].Texture {
+		if texId != EmptyTexture {
+			handle := s.Textures[texId].Handle
+			gl.DeleteTextures(1, &handle)
+			s.TotalTextureSizeInMemeory -= uint(s.Textures[texId].Size)
+			delete(s.Textures, texId)
+		}
+	}
+	delete(s.Skins, skin)
+}
+
+func (s *SkinManager) Destory() {
+	clear(s.Materials)
+	for _, t := range s.Textures {
+		gl.DeleteTextures(1, &t.Handle)
+	}
+	clear(s.Textures)
+	clear(s.Skins)
 }
