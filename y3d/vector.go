@@ -158,3 +158,14 @@ func ReflectVec3(I Vec3, N Vec3) Vec3 {
 func (v Vec3) String() string {
 	return fmt.Sprintf("[X:%.2f Y:%.2f Z:%.2f]\n", v.X, v.Y, v.Z)
 }
+
+func SDiv(v Vec3, s float32) Vec3 {
+	if math.Abs(float64(s)) < NearZero {
+		panic("divide by zero")
+	}
+	return Vec3{
+		X: v.X / s,
+		Y: v.Y / s,
+		Z: v.Z / s,
+	}
+}

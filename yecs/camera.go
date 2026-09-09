@@ -61,11 +61,17 @@ func (c *Camera) Recalulate() {
 
 	y := y3d.Cross(z, x)
 	y = y3d.Normalize(y)
+
+	p := y3d.Vec3{
+		X: -c.Pos.X, //-y3d.Dot(x, c.Pos),
+		Y: -c.Pos.Y, //-y3d.Dot(y, c.Pos),
+		Z: -c.Pos.Z, //-y3d.Dot(z, c.Pos),
+	}
 	//[Z,U,X]
 	c.View = y3d.Mat4{x.X, x.Y, x.Z, 0.0,
 		y.X, y.Y, y.Z, 0.0,
-		-z.X, -z.Y, -z.Z, 0.0,
-		-c.Pos.X, -c.Pos.Y, -c.Pos.Z, 1.0,
+		z.X, z.Y, z.Z, 0.0,
+		p.X, p.Y, p.Z, 1.0,
 	}
 	switch c.CamType {
 	case CAM_TYPE_ORTHOGRAPHIC:

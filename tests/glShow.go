@@ -61,7 +61,7 @@ func CreateCamera(w *yecs.World, follow yecs.EntityId) {
 		Height:         height,
 		Fov:            90,
 		Near:           0.1,
-		Far:            10000,
+		Far:            100,
 		CamType:        yecs.CAM_TYPE_PERSPECTIVE,
 		CamMode:        yecs.CAMERA_FOLLOW,
 		Entity:         follow,

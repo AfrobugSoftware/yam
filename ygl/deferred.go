@@ -60,6 +60,9 @@ type DeferredRenderer struct {
 
 	ClearColor []float32
 	emptyVao   uint32
+
+	//viewing stages
+
 }
 
 func CreateDeferredRenderer(width, height, dwidth, dheight int32) *DeferredRenderer {
