@@ -4,16 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"yam/y3d"
 
 	"github.com/go-gl/gl/v4.3-core/gl"
-)
-
-// locations
-const (
-	POSITION_LOCAITON = iota
-	NORMAL_LOCATION
-	TEX_COORD_LOCATION
 )
 
 const (
@@ -72,66 +64,4 @@ func CreateProgram(shaders []uint32) (uint32, error) {
 		return 0, fmt.Errorf("program failed to link: %s", sb.String())
 	}
 	return p, nil
-}
-
-func SetActiveProgram(p uint32) {
-	gl.UseProgram(p)
-}
-
-func DestroyProgram(p uint32) {
-	gl.DeleteProgram(p)
-}
-
-func AssignUniformMat4(p uint32, name string, mat y3d.Mat4) error {
-	loc := gl.GetUniformLocation(p, gl.Str(name+"\x00"))
-	if loc == -1 {
-		return fmt.Errorf("no uniform mat4 with name: %s\n", name)
-	}
-	gl.UniformMatrix4fv(loc, 1, false, &mat[0])
-	return nil
-}
-
-func AssignUniformMat4Array(p uint32, name string, count int, mat []float32) error {
-	loc := gl.GetUniformLocation(p, gl.Str(name+"\x00"))
-	if loc == -1 {
-		return fmt.Errorf("no uniform mat4 with name: %s\n", name)
-	}
-	gl.UniformMatrix4fv(loc, int32(count), false, &mat[0])
-	return nil
-}
-
-func AssignUniformVec3(p uint32, name string, v y3d.Vec3) error {
-	loc := gl.GetUniformLocation(p, gl.Str(name+"\x00"))
-	if loc == -1 {
-		return fmt.Errorf("no uniform vec3 with name: %s\n", name)
-	}
-	vs := v.ToSlice()
-	gl.Uniform3fv(loc, 1, &vs[0])
-	return nil
-}
-func AssignUniformVec4(p uint32, name string, v y3d.Vec4) error {
-	loc := gl.GetUniformLocation(p, gl.Str(name+"\x00"))
-	if loc == -1 {
-		return fmt.Errorf("no uniform vec3 with name: %s\n", name)
-	}
-	vs := v.ToSlice()
-	gl.Uniform4fv(loc, 1, &vs[0])
-	return nil
-}
-
-func AssignUniformFloat32(p uint32, name string, f float32) error {
-	loc := gl.GetUniformLocation(p, gl.Str(name+"\x00"))
-	if loc == -1 {
-		return fmt.Errorf("no uniform float with name: %s\n", name)
-	}
-	gl.Uniform1f(loc, f)
-	return nil
-}
-func AssignUniformInt32(p uint32, name string, i int32) error {
-	loc := gl.GetUniformLocation(p, gl.Str(name+"\x00"))
-	if loc == -1 {
-		return fmt.Errorf("no uniform float with name: %s\n", name)
-	}
-	gl.Uniform1i(loc, i)
-	return nil
 }

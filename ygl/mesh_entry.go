@@ -1,4 +1,4 @@
-package yecs
+package ygl
 
 type MeshEntry struct {
 	NumIndices  uint32

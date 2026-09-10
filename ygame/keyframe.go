@@ -1,4 +1,4 @@
-package yecs
+package ygame
 
 import "yam/y3d"
 

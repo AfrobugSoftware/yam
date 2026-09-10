@@ -27,10 +27,8 @@ type InputManager struct {
 	PrevKeyState      []uint8
 	CurMouseKeyState  uint32
 	PrevMouseKeyState uint32
-	MousePosition     y3d.Vec3
+	MousePosition     y3d.Vec2
 	ShowCursor        int
-	ScreenWidth       int32
-	ScreenHeight      int32
 	IsRelative        bool
 	ScrollWheelPos    y3d.Vec3
 	ScrollWheelDir    uint32
@@ -44,30 +42,6 @@ func NewInputManager() *InputManager {
 	}
 }
 
-func (im *InputManager) Update() {
-	copy(im.PrevKeyState, im.CurKeyState)
-	im.PrevMouseKeyState = im.CurMouseKeyState
-	clear(im.CurKeyState)
-	im.CurMouseKeyState = 0
-	im.ScrollWheelDir = 0
-	im.ScrollWheelPos = y3d.Vec3{}
-
-	var x, y int32
-	var state uint32
-	if im.IsRelative {
-		x, y, state = sdl.GetRelativeMouseState()
-	} else {
-		x, y, state = sdl.GetMouseState()
-	}
-	im.MousePosition = im.convertToOpenGLCoords(x, y)
-	im.CurMouseKeyState = state
-}
-func (im *InputManager) convertToOpenGLCoords(x, y int32) y3d.Vec3 {
-	return y3d.Vec3{
-		X: float32(x) - float32(im.ScreenWidth)/2,
-		Y: float32(im.ScreenHeight)/2 - float32(y),
-	}
-}
 func (im *InputManager) GetKeyState(key int) uint8 {
 	if key < 0 || key >= sdl.NUM_SCANCODES {
 		return BUTTON_NONE
@@ -118,4 +92,47 @@ func (im *InputManager) GetMouseButtonState(button int) uint8 {
 		}
 	}
 	return r
+}
+
+func (im *InputManager) ProcessInput() bool {
+	copy(im.PrevKeyState, im.CurKeyState)
+	im.PrevMouseKeyState = im.CurMouseKeyState
+	clear(im.CurKeyState)
+	im.CurMouseKeyState = 0
+	im.ScrollWheelDir = 0
+	im.ScrollWheelPos = y3d.Vec3{}
+
+	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
+		switch event.GetType() {
+		case sdl.QUIT:
+			return false
+		case sdl.MOUSEWHEEL:
+			w := event.(*sdl.MouseWheelEvent)
+			im.ScrollWheelPos = y3d.Vec3{
+				X: float32(w.X),
+				Y: float32(w.Y),
+			}
+			im.ScrollWheelDir = w.Direction
+		}
+		state := sdl.GetKeyboardState()
+		if state != nil {
+			if state[sdl.SCANCODE_ESCAPE] != 0 {
+				return false
+			}
+		}
+		copy(im.CurKeyState, state)
+		var x, y int32
+		var mState uint32
+		if im.IsRelative {
+			x, y, mState = sdl.GetRelativeMouseState()
+		} else {
+			x, y, mState = sdl.GetMouseState()
+		}
+		im.MousePosition = y3d.Vec2{
+			X: float32(x),
+			Y: float32(y),
+		}
+		im.CurMouseKeyState = mState
+	}
+	return true
 }

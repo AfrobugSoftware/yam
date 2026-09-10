@@ -2,11 +2,10 @@ package ygl
 
 import (
 	"encoding/binary"
-	"yam/yecs"
 )
 
-func CreateCube(mesh *yecs.Mesh) yecs.MeshEntry {
-	me := yecs.MeshEntry{
+func CreateCube(mesh *Mesh) MeshEntry {
+	me := MeshEntry{
 		MeshId:      mesh.MeshId,
 		BaseVertex:  mesh.NumVertices,
 		BaseIndex:   mesh.NumIndices,

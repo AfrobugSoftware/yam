@@ -3,10 +3,8 @@ package ygame
 import (
 	"os"
 	"time"
-	"yam/yecs"
-	"yam/ygl"
+	"yam/ymanager"
 
-	"github.com/ebitengine/oto/v3"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -15,7 +13,6 @@ var (
 )
 
 type Game struct {
-	World      *yecs.World
 	Running    bool
 	Ticks      uint64
 	NeedsReset bool
@@ -23,12 +20,9 @@ type Game struct {
 	DoReset    func()
 	OnExit     func() bool
 	logFile    *os.File
-	Gl3        *ygl.Gl3
-	Audio      *yecs.AudioSystem
-	Input      *yecs.InputSystem
 
-	//for test
-	SpriteBatch *ygl.SpriteBatch
+	RenderManager *ymanager.RenderManager
+	InputManager  *ymanager.InputManager
 }
 
 var gGame *Game
@@ -49,26 +43,12 @@ func NewGame(title string, width, height int32) (*Game, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	gl3, err := ygl.NewYGL(window, int(width), int(height))
-	if err != nil {
-		return nil, err
-	}
-	// sb := ygl.CreateSpriteBatch("assets/jumpman.png", 2, 2, float32(width),
-	// 	float32(height), 260, 260)
 	gGame = &Game{
 		Ticks: sdl.GetTicks64(),
-		Gl3:   gl3,
-		World: yecs.NewWorld(),
-		Audio: yecs.NewAudioSystem(yecs.STEREO, 44000, oto.FormatFloat32LE),
-		Input: &yecs.InputSystem{
-			ShowCursor:   1,
-			ScreenWidth:  width,
-			ScreenHeight: height,
-		},
-		ShowGrid: true,
-		//SpriteBatch: sb,
 	}
+	gGame.RenderManager = ymanager.NewRenderManager(window)
+	gGame.InputManager = ymanager.NewInputManager()
+
 	return gGame, nil
 }
 
@@ -77,11 +57,9 @@ func GetGame() *Game {
 }
 
 func (g *Game) Update(dt float64) {
-	g.World.Update(dt)
 }
 
 func (g *Game) ProcessInput() {
-	g.Input.PrepareToUpdate()
 	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 		switch event.GetType() {
 		case sdl.QUIT:
@@ -91,18 +69,14 @@ func (g *Game) ProcessInput() {
 			}
 		case sdl.MOUSEWHEEL:
 			w := event.(*sdl.MouseWheelEvent)
-			g.Input.ProcessWheel(w)
 		}
 		state := sdl.GetKeyboardState()
 		if state != nil {
 			if state[sdl.SCANCODE_ESCAPE] != 0 {
 				g.Running = false
 			}
-			copy(g.Input.CurKeyState, state)
 		}
-		g.Input.UpdateMouse()
 	}
-	g.Input.UpdateInput(g.World)
 }
 
 func (g *Game) Draw() {

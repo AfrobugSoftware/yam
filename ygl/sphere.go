@@ -3,11 +3,10 @@ package ygl
 import (
 	"encoding/binary"
 	"math"
-	"yam/yecs"
 )
 
-func CreateSphere(sectorCount, stackCount int, radius float64, mesh *yecs.Mesh) yecs.MeshEntry {
-	me := yecs.MeshEntry{
+func CreateSphere(sectorCount, stackCount int, radius float64, mesh *Mesh) MeshEntry {
+	me := MeshEntry{
 		MeshId: mesh.MeshId,
 	}
 	me.BaseIndex = mesh.NumIndices

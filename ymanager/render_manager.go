@@ -4,6 +4,7 @@ import (
 	"yam/y3d"
 
 	"github.com/go-gl/gl/v4.3-core/gl"
+	"github.com/veandco/go-sdl2/sdl"
 )
 
 const (
@@ -13,6 +14,13 @@ const (
 )
 
 type RenderManager struct {
+	Context       sdl.GLContext
+	Window        *sdl.Window
+	ClearColor    y3d.Vec4
+	PixelDepth    uint8
+	DoubleBuffer  bool
+	MinorVersion  int
+	MajorVersion  int
 	ViewPort      [4]y3d.Rect
 	View2D        y3d.Mat4
 	View3D        y3d.Mat4
@@ -31,6 +39,101 @@ type RenderManager struct {
 	Stage         int
 	Mode          int
 	SkinManager   *SkinManager
+	fbo           uint32
+	ColorBuffers  []uint32
+	DepthBuffer   uint32
+	RenderStates  []RenderState
+}
+
+func NewRenderManager(window *sdl.Window) *RenderManager {
+	rm := &RenderManager{
+		Window: window,
+		ClearColor: y3d.Vec4{
+			X: 0,
+			Y: 0,
+			Z: 0,
+			W: 1,
+		},
+		View2D: y3d.Identity}
+	context, err := window.GLCreateContext()
+	if err != nil {
+		panic(err)
+	}
+	rm.Context = context
+	if err = gl.Init(); err != nil {
+		panic(err)
+	}
+	gl.ClearColor(rm.ClearColor.X,
+		rm.ClearColor.Y,
+		rm.ClearColor.Z,
+		rm.ClearColor.W)
+
+	return rm
+}
+
+func (r *RenderManager) CreateFrameBuffer() {
+	gl.GenFramebuffers(1, &r.fbo)
+	r.ColorBuffers = make([]uint32, 0)
+	r.DepthBuffer = r.CreateDepthTexture()
+}
+
+func (r *RenderManager) AttachTexture(texId uint32) {
+	attachment := gl.COLOR_ATTACHMENT0 + len(r.ColorBuffers)
+	gl.BindTexture(gl.TEXTURE_2D, texId)
+	gl.FramebufferTexture2D(gl.FRAMEBUFFER, uint32(attachment), gl.TEXTURE_2D, texId, 0)
+	r.ColorBuffers = append(r.ColorBuffers, texId)
+}
+
+func (r *RenderManager) DrawBuffers() {
+	drawbuffer := make([]uint32, len(r.ColorBuffers))
+	for i := range r.ColorBuffers {
+		drawbuffer[i] = uint32(gl.COLOR_ATTACHMENT0 + i)
+	}
+	gl.DrawBuffers(int32(len(drawbuffer)), &drawbuffer[0])
+}
+
+func (r *RenderManager) CheckComplete() bool {
+	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
+	status := gl.CheckFramebufferStatus(gl.FRAMEBUFFER)
+	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+	return status == gl.FRAMEBUFFER_COMPLETE
+}
+
+func (r *RenderManager) DestroyFrameBuffer() {
+	if r.fbo != 0 {
+		gl.DeleteFramebuffers(1, &r.fbo)
+		r.fbo = 0
+	}
+	if r.DepthBuffer != 0 {
+		gl.DeleteRenderbuffers(1, &r.DepthBuffer)
+		r.DepthBuffer = 0
+	}
+	for i := range r.ColorBuffers {
+		gl.DeleteTextures(1, &r.ColorBuffers[i])
+	}
+	r.ColorBuffers = nil
+}
+
+func (r *RenderManager) CreateDepthTexture() uint32 {
+	var tex uint32
+	gl.GenTextures(1, &tex)
+	gl.BindTexture(gl.TEXTURE_2D, tex)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT,
+		int32(r.ViewPort[r.Stage].Width),
+		int32(r.ViewPort[r.Stage].Height),
+		0,
+		gl.DEPTH_COMPONENT, gl.FLOAT, nil)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	return tex
+}
+
+func (r *RenderManager) BindFrameBuffer() {
+	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
+}
+
+func (r *RenderManager) UnbindFrameBuffer() {
+	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 }
 
 func (r *RenderManager) GetFrustum() [6]y3d.Plane {
@@ -135,13 +238,6 @@ func (r *RenderManager) SetClippingPlanes(near, far float32) {
 	r.ProjP[3][14] = X
 }
 
-func NewRenderManager() *RenderManager {
-	rm := &RenderManager{
-		View2D: y3d.Identity,
-	}
-	return rm
-}
-
 func (r *RenderManager) Prepare2D() {
 	r.View2D = y3d.Identity
 	r.Proj2D[0] = 2.0 / float32(r.Width)
@@ -210,6 +306,10 @@ func (r *RenderManager) InitStage(mode int, stage int, viewport y3d.Rect, fov fl
 	r.ProjO[stage][10] = 1.0 / (r.Far - r.Near)
 	r.ProjO[stage][11] = -r.Near * (1.0 / (r.Far - r.Near))
 	r.ProjO[stage][15] = 1.0
+	if r.fbo != 0 {
+		r.DestroyFrameBuffer()
+	}
+	r.CreateFrameBuffer()
 }
 
 func (r *RenderManager) Transfrom3Dto2D(pos y3d.Vec3) y3d.Vec2 {
@@ -258,4 +358,27 @@ func (r *RenderManager) Transfrom2Dto3D(pos y3d.Vec2) (y3d.Vec3, y3d.Vec3) {
 	}
 	dir = y3d.Normalize(dir)
 	return origin, dir
+}
+
+func (r *RenderManager) Destroy() {
+	r.DestroyFrameBuffer()
+	if r.SkinManager != nil {
+		r.SkinManager.Destroy()
+	}
+
+	sdl.GLDeleteContext(r.Context)
+}
+
+func (r *RenderManager) Clear() {
+	gl.ClearColor(r.ClearColor.X, r.ClearColor.Y, r.ClearColor.Z, r.ClearColor.W)
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+}
+
+func (r *RenderManager) SetClearColor(color y3d.Vec4) {
+	r.ClearColor = color
+	gl.ClearColor(r.ClearColor.X, r.ClearColor.Y, r.ClearColor.Z, r.ClearColor.W)
+}
+
+func (r *RenderManager) Present() {
+	r.Window.GLSwap()
 }

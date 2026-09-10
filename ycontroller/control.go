@@ -1,4 +1,4 @@
-package yecs
+package ycontroller
 
 type Control struct {
 	MaxForwardSpeed      float64

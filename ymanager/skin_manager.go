@@ -5,7 +5,7 @@ import (
 	"image"
 	"os"
 	"time"
-	"yam/yecs"
+	"yam/ygl"
 
 	"github.com/go-gl/gl/v4.3-core/gl"
 )
@@ -45,21 +45,21 @@ type SkinManager struct {
 	TotalTextureSizeInMemeory uint
 	Skins                     map[int]Skin
 	Textures                  map[int]TextureData
-	Materials                 map[int]yecs.Material
+	Materials                 map[int]ygl.Material
 }
 
 func NewSkinManager() *SkinManager {
 	return &SkinManager{
 		Skins:     make(map[int]Skin),
 		Textures:  make(map[int]TextureData),
-		Materials: make(map[int]yecs.Material),
+		Materials: make(map[int]ygl.Material),
 	}
 }
 func generateRandomId() int {
 	return int(time.Now().UnixNano())
 }
 
-func (s *SkinManager) AddSkin(mat yecs.Material) int {
+func (s *SkinManager) AddSkin(mat ygl.Material) int {
 	skin := Skin{}
 	for i := range skin.Texture {
 		skin.Texture[i] = EmptyTexture
@@ -173,9 +173,9 @@ func (s *SkinManager) GetTexture(skin int, slot int) (uint32, error) {
 	return tex.Handle, nil
 }
 
-func (s *SkinManager) GetMaterial(skin int) (yecs.Material, error) {
+func (s *SkinManager) GetMaterial(skin int) (ygl.Material, error) {
 	if _, exists := s.Skins[skin]; !exists {
-		return yecs.Material{}, errors.New("invalid skin id")
+		return ygl.Material{}, errors.New("invalid skin id")
 	}
 	sk := s.Skins[skin]
 	return s.Materials[sk.Material], nil
@@ -220,7 +220,7 @@ func (s *SkinManager) RemoveSkin(skin int) {
 	delete(s.Skins, skin)
 }
 
-func (s *SkinManager) Destory() {
+func (s *SkinManager) Destroy() {
 	clear(s.Materials)
 	for _, t := range s.Textures {
 		gl.DeleteTextures(1, &t.Handle)

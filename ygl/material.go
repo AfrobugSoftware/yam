@@ -1,4 +1,4 @@
-package yecs
+package ygl
 
 import "yam/y3d"
 

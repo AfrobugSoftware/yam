@@ -1,4 +1,4 @@
-package yecs
+package yai
 
 import (
 	"math"
@@ -34,22 +34,6 @@ type ANodeQueue []*ANode
 
 func (a ANodeQueue) Sort() {
 	sort.Slice(a, func(i, j int) bool { return a[i].GlobalGoal < a[j].GlobalGoal })
-}
-
-func GatherNodes(w *World, start, end y3d.Vec3) (graph []ANode, s, e int) {
-	entites := w.Query([]ComponentId{ANodeComponent})
-	graph = make([]ANode, 0)
-	for i, ent := range entites {
-		a := w.GetComponent(ent, ANodeComponent).(ANode)
-		graph = append(graph, a)
-		if a.Pos.Equal(start) {
-			s = i
-		}
-		if a.Pos.Equal(end) {
-			e = i
-		}
-	}
-	return
 }
 
 func SolveAStar(graph []ANode, start int, end int) []y3d.Vec3 {
