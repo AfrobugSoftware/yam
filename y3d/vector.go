@@ -12,6 +12,10 @@ var (
 	ZEROV  = Vec3{}
 )
 
+type Vec2 struct {
+	X, Y float32
+}
+
 type Vec3 struct {
 	X, Y, Z float32
 }

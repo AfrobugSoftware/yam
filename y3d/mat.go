@@ -251,6 +251,38 @@ func RotationAxis(axis Vec3, angle float64) Mat4 {
 	return mat
 }
 
+func LookAt(eye, center, up Vec3) Mat4 {
+	dir := Normalize(Sub(center, eye))
+	dot := Dot(dir, up)
+	tmp := Smul(up, dot)
+	vUp := Sub(up, tmp)
+	l := vUp.Length()
+	if l < NearZero {
+		vY := Vec3{0, 1, 0}
+		tmp = Smul(dir, dir.Y)
+		vUp = Sub(vY, tmp)
+		l = vUp.Length()
+		if l < NearZero {
+			vY := Vec3{0, 0, 1}
+			tmp = Smul(dir, dir.Z)
+			vUp = Sub(vY, tmp)
+			l = vUp.Length()
+			if l < NearZero {
+				panic("LookAt: up vector is parallel to direction vector")
+			}
+		}
+	}
+	vUp = Smul(vUp, 1.0/l)
+	vRight := Cross(vUp, dir)
+	vRight = Normalize(vRight)
+	return Mat4{
+		vRight.X, vUp.X, dir.X, 0,
+		vRight.Y, vUp.Y, dir.Y, 0,
+		vRight.Z, vUp.Z, dir.Z, 0,
+		-Dot(vRight, eye), -Dot(vUp, eye), -Dot(dir, eye), 1,
+	}
+}
+
 func Ortho(left, right, bottom, top, near, far float32) Mat4 {
 	rml := right - left
 	tmb := top - bottom
