@@ -43,6 +43,7 @@ type RenderManager struct {
 	ColorBuffers  []uint32
 	DepthBuffer   uint32
 	RenderStates  []RenderState
+	DrawMode      uint32
 }
 
 func NewRenderManager(window *sdl.Window) *RenderManager {
@@ -54,7 +55,10 @@ func NewRenderManager(window *sdl.Window) *RenderManager {
 			Z: 0,
 			W: 1,
 		},
-		View2D: y3d.Identity}
+		View2D: y3d.Identity,
+		View3D: y3d.Identity,
+		Proj2D: y3d.Identity,
+	}
 	context, err := window.GLCreateContext()
 	if err != nil {
 		panic(err)
