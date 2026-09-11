@@ -1,4 +1,4 @@
-package ygame
+package yspatial
 
 import (
 	"math"
@@ -21,8 +21,8 @@ type Transform struct {
 	IsCurrent bool
 }
 
-func NewTransfromation() Transform {
-	return Transform{
+func NewTransform() *Transform {
+	return &Transform{
 		Position:  y3d.Vec3{},
 		Rotation:  y3d.IdenQuat(),
 		Scale:     y3d.Vec3{X: 1.0, Y: 1.0, Z: 1.0},
@@ -38,23 +38,26 @@ func (trans *Transform) Recalulate() {
 	trans.IsDirty = true
 }
 
-func (trans Transform) GetForward() y3d.Vec3 {
-	return trans.Rotation.RotateVec3(FORWARD)
+func (trans *Transform) GetForward() y3d.Vec3 {
+	return trans.Rotation.Rotate(FORWARD)
 }
 
-func (trans Transform) GetRight() y3d.Vec3 {
-	t := trans.Rotation.RotateVec3(RIGHT)
+func (trans *Transform) GetRight() y3d.Vec3 {
+	t := trans.Rotation.Rotate(RIGHT)
 	return y3d.Normalize(t)
 }
 
-func (trans Transform) GetUp() y3d.Vec3 {
-	return trans.Rotation.RotateVec3(UP)
+func (trans *Transform) GetUp() y3d.Vec3 {
+	return trans.Rotation.Rotate(UP)
 }
 
-func (t Transform) TransFormAABB(b y3d.AABB) y3d.AABB {
-	(&b).Scale(t.Scale)
-	(&b).Translate(t.Position)
-	return b
+func (t *Transform) TransFormAABB(b y3d.AABB) y3d.AABB {
+	max := t.World.MulVec3(b.Max)
+	min := t.World.MulVec3(b.Min)
+	return y3d.AABB{
+		Min: min,
+		Max: max,
+	}
 }
 
 func (t *Transform) RotateToFoward(forward y3d.Vec3) {
@@ -70,10 +73,4 @@ func (t *Transform) RotateToFoward(forward y3d.Vec3) {
 		t.Rotation = y3d.FromAngleAxis(axis, angle)
 	}
 	t.Recalulate()
-}
-
-func (t *Transform) FromKeyFrame(k *KeyFrame) {
-	t.Local = y3d.TRS(k.Position, k.Rotation, k.Scale)
-	t.IsDirty = true
-	t.IsCurrent = true
 }

@@ -74,14 +74,6 @@ func NewRenderManager(window *sdl.Window) *RenderManager {
 func (r *RenderManager) CreateFrameBuffer() {
 	gl.GenFramebuffers(1, &r.fbo)
 	r.ColorBuffers = make([]uint32, 0)
-	r.DepthBuffer = r.CreateDepthTexture()
-}
-
-func (r *RenderManager) AttachTexture(texId uint32) {
-	attachment := gl.COLOR_ATTACHMENT0 + len(r.ColorBuffers)
-	gl.BindTexture(gl.TEXTURE_2D, texId)
-	gl.FramebufferTexture2D(gl.FRAMEBUFFER, uint32(attachment), gl.TEXTURE_2D, texId, 0)
-	r.ColorBuffers = append(r.ColorBuffers, texId)
 }
 
 func (r *RenderManager) DrawBuffers() {
@@ -110,22 +102,44 @@ func (r *RenderManager) DestroyFrameBuffer() {
 	}
 	for i := range r.ColorBuffers {
 		gl.DeleteTextures(1, &r.ColorBuffers[i])
+		clear(r.ColorBuffers)
 	}
 	r.ColorBuffers = nil
 }
 
-func (r *RenderManager) CreateDepthTexture() uint32 {
+func (r *RenderManager) CreateColorBufferTexture() {
+	var textureColorbuffer uint32
+	gl.GenTextures(1, &textureColorbuffer)
+	gl.BindTexture(gl.TEXTURE_2D, textureColorbuffer)
+	gl.TexImage2D(gl.TEXTURE_2D,
+		0,
+		gl.RGB,
+		int32(r.ViewPort[r.Stage].Width),
+		int32(r.ViewPort[r.Stage].Height),
+		0, gl.RGB, gl.UNSIGNED_BYTE, nil)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	attachment := gl.COLOR_ATTACHMENT0 + len(r.ColorBuffers)
+	gl.FramebufferTexture2D(gl.FRAMEBUFFER, uint32(attachment), gl.TEXTURE_2D, textureColorbuffer, 0)
+	r.ColorBuffers = append(r.ColorBuffers, textureColorbuffer)
+	gl.BindTexture(gl.TEXTURE_2D, 0)
+
+}
+
+func (r *RenderManager) CreateDepthTexture() {
 	var tex uint32
 	gl.GenTextures(1, &tex)
 	gl.BindTexture(gl.TEXTURE_2D, tex)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT,
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.DEPTH24_STENCIL8,
 		int32(r.ViewPort[r.Stage].Width),
 		int32(r.ViewPort[r.Stage].Height),
 		0,
 		gl.DEPTH_COMPONENT, gl.FLOAT, nil)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	return tex
+	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.TEXTURE_2D, tex, 0)
+	gl.BindTexture(gl.TEXTURE_2D, 0)
+	r.DepthBuffer = tex
 }
 
 func (r *RenderManager) BindFrameBuffer() {

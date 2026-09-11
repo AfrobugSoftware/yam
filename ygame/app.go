@@ -4,6 +4,7 @@ import "time"
 
 type Application interface {
 	Startup()
-	Draw(currentTime time.Time)
+	Update(currentTime time.Time)
+	Draw()
 	Shutdown()
 }

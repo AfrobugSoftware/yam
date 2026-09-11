@@ -13,14 +13,14 @@ var (
 )
 
 type Game struct {
-	Running    bool
-	Ticks      uint64
-	NeedsReset bool
-	ShowGrid   bool
-	DoReset    func()
-	OnExit     func() bool
-	logFile    *os.File
-
+	Running       bool
+	Ticks         uint64
+	NeedsReset    bool
+	ShowGrid      bool
+	DoReset       func()
+	OnExit        func() bool
+	logFile       *os.File
+	App           Application
 	RenderManager *ymanager.RenderManager
 	InputManager  *ymanager.InputManager
 }
@@ -56,36 +56,21 @@ func GetGame() *Game {
 	return gGame
 }
 
-func (g *Game) Update(dt float64) {
+func (g *Game) SetApplication(app Application) {
+	g.App = app
+	g.App.Startup()
 }
 
-func (g *Game) ProcessInput() {
-	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-		switch event.GetType() {
-		case sdl.QUIT:
-			g.Running = false
-			if g.OnExit != nil {
-				g.Running = g.OnExit()
-			}
-		case sdl.MOUSEWHEEL:
-			w := event.(*sdl.MouseWheelEvent)
-		}
-		state := sdl.GetKeyboardState()
-		if state != nil {
-			if state[sdl.SCANCODE_ESCAPE] != 0 {
-				g.Running = false
-			}
-		}
+func (g *Game) Update(dt float64) {
+	if g.App != nil {
+		g.App.Update(time.Now())
 	}
 }
 
 func (g *Game) Draw() {
-
-	//entities := g.World.Query([]yecs.ComponentId{yecs.SpriteComponent})
-	//g.SpriteBatch.Draw(g.World, entities)
-
-	g.Gl3.DeferredRenderer.Draw(g.World)
-	g.Gl3.Window.GLSwap()
+	if g.App != nil {
+		g.App.Draw()
+	}
 }
 
 func (g *Game) Run() {
@@ -93,14 +78,13 @@ func (g *Game) Run() {
 	var dt time.Duration
 	g.Running = true
 	lastTime := time.Now()
-	for g.Running {
+	for g.InputManager.ProcessInput() {
 		now := time.Now()
 		dt = now.Sub(lastTime)
 		frameTime := dt.Seconds()
 		if frameTime > 0.05 {
 			frameTime = 0.05
 		}
-		g.ProcessInput()
 		g.Update(frameTime)
 		g.Draw()
 		lastTime = now
@@ -108,11 +92,9 @@ func (g *Game) Run() {
 }
 
 func (g *Game) Quit() {
-	g.World.Shutdown()
-	if g.Gl3 != nil {
-		g.Gl3.ShutDownGL()
+	if g.App != nil {
+		g.App.Shutdown()
 	}
-	if g.logFile != nil {
-		g.logFile.Close()
-	}
+	g.RenderManager.Destroy()
+	sdl.Quit()
 }

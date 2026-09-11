@@ -104,29 +104,14 @@ func (qin Quaternion) Inv() Quaternion {
 	return Quaternion{q.W / k2, q.X / k2, q.Y / k2, q.Z / k2}
 }
 
-func (qin Quaternion) RotateVec3(vec Vec3) Vec3 {
-	conj := qin.Conj()
-	aug := Quaternion{0,
-		float64(vec.X),
-		float64(vec.Y),
-		float64(vec.Z),
-	}
-	rot := ProdQuaternion(qin, aug, conj)
-	return Vec3{float32(rot.X), float32(rot.Y), float32(rot.Z)}
-}
+func (qin Quaternion) Rotate(vec Vec3) Vec3 {
+	u := Vec3{X: float32(qin.X), Y: float32(qin.Y), Z: float32(qin.Z)}
+	s := float32(qin.W)
 
-func Rotate(q Quaternion, vin Vec3) Vec3 {
-	conj := q.Conj()
-	aug := Quaternion{0,
-		float64(vin.X),
-		float64(vin.Y),
-		float64(vin.Z),
-	}
-	rot := ProdQuaternion(q, aug, conj)
-	return Vec3{
-		float32(rot.X),
-		float32(rot.Y),
-		float32(rot.Z)}
+	term1 := Smul(u, 2*Dot(u, vec))
+	term2 := Smul(vec, s*s-Dot(u, u))
+	term3 := Smul(Cross(u, vec), 2*s)
+	return Add(Add(term2, term1), term3)
 }
 
 func (q Quaternion) Euler() (float64, float64, float64) {
