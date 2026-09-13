@@ -2,8 +2,10 @@ package ymanager
 
 import (
 	"errors"
+	"fmt"
 	"image"
 	"os"
+	"strings"
 	"time"
 	"yam/ygl"
 
@@ -216,4 +218,11 @@ func (s *SkinManager) Destroy() {
 	}
 	clear(s.Textures)
 	clear(s.Skins)
+}
+
+func (s *SkinManager) String() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "Total texture size in memory: %d\n", s.TotalTextureSizeInMemeory)
+	fmt.Fprintf(&b, "Skins: %v\n", s.Skins)
+	return b.String()
 }

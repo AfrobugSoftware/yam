@@ -1,6 +1,8 @@
 package ymanager
 
 import (
+	"fmt"
+	"strings"
 	"yam/y3d"
 
 	"github.com/go-gl/gl/v4.3-core/gl"
@@ -33,20 +35,22 @@ type RenderManager struct {
 	Far            float32
 	Width          int
 	Height         int
-	Fov            float32
-	AspectRatio    float32
+	Fov            [4]float32
+	AspectRatio    [4]float32
 	Stage          int
 	Mode           int
 	SkinManager    *SkinManager
 	VertextManager *VertexCacheManager
+	ShaderManager  *ShaderManager
 	fbo            uint32
 	ColorBuffers   []uint32
 	DepthBuffer    uint32
 	RenderStates   []RenderState
 	DrawMode       uint32
+	ActiveProgram  uint32
 }
 
-func NewRenderManager(window *sdl.Window) *RenderManager {
+func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 	rm := &RenderManager{
 		Window: window,
 		ClearColor: y3d.Vec4{
@@ -58,10 +62,21 @@ func NewRenderManager(window *sdl.Window) *RenderManager {
 		View2D: y3d.Identity,
 		View3D: y3d.Identity,
 		Proj2D: y3d.Identity,
+		ProjO: [4]y3d.Mat4{
+			y3d.Identity,
+			y3d.Identity,
+			y3d.Identity,
+			y3d.Identity,
+		},
+		ProjP: [4]y3d.Mat4{
+			y3d.Identity,
+			y3d.Identity,
+			y3d.Identity,
+			y3d.Identity,
+		},
+		Mode:  MODE_3D_PERSPECTIVE,
+		Stage: -1,
 	}
-	rm.SkinManager = NewSkinManager()
-	rm.VertextManager = NewVertexCacheManager(rm,
-		1000, 10000*3, 10000, 10000)
 	context, err := window.GLCreateContext()
 	if err != nil {
 		panic(err)
@@ -74,7 +89,21 @@ func NewRenderManager(window *sdl.Window) *RenderManager {
 		rm.ClearColor.Y,
 		rm.ClearColor.Z,
 		rm.ClearColor.W)
+	rm.SkinManager = NewSkinManager()
+	rm.VertextManager = NewVertexCacheManager(rm,
+		1000, 10000*3, 10000, 10000)
+	rm.ShaderManager = NewShaderManager()
+	rm.SetClippingPlanes(0.1, 1000.0)
 
+	rm.InitStage(0, y3d.Rect{
+		X:      0,
+		Y:      0,
+		Height: height,
+		Width:  width,
+	},
+		float32(y3d.ToRadians(45)),
+	)
+	rm.SetStage(MODE_3D_PERSPECTIVE, 0) //SET TO THE 0TH stage
 	return rm
 }
 
@@ -306,14 +335,14 @@ func (r *RenderManager) SetStage(mode int, stage int) {
 	r.CalcViewProj()
 }
 
-func (r *RenderManager) InitStage(mode int, stage int, viewport y3d.Rect, fov float32) {
+func (r *RenderManager) InitStage(stage int, viewport y3d.Rect, fov float32) {
 	if stage < 0 || stage >= 4 {
 		stage = 0
 	}
 	r.ViewPort[stage] = viewport
-	r.Fov = fov
-	r.AspectRatio = float32(viewport.Width) / float32(viewport.Height)
-	r.ProjP[stage] = y3d.Perspective(fov, r.AspectRatio, r.Near, r.Far)
+	r.Fov[stage] = fov
+	r.AspectRatio[stage] = float32(viewport.Width) / float32(viewport.Height)
+	r.ProjP[stage] = y3d.Perspective(fov, r.AspectRatio[stage], r.Near, r.Far)
 	r.ProjO[stage] = y3d.Identity
 
 	r.ProjO[stage][0] = 2 / float32(viewport.Width)
@@ -321,10 +350,6 @@ func (r *RenderManager) InitStage(mode int, stage int, viewport y3d.Rect, fov fl
 	r.ProjO[stage][10] = 1.0 / (r.Far - r.Near)
 	r.ProjO[stage][11] = -r.Near * (1.0 / (r.Far - r.Near))
 	r.ProjO[stage][15] = 1.0
-	if r.fbo != 0 {
-		r.DestroyFrameBuffer()
-	}
-	r.CreateFrameBuffer()
 }
 
 func (r *RenderManager) Transfrom3Dto2D(pos y3d.Vec3) y3d.Vec2 {
@@ -380,6 +405,9 @@ func (r *RenderManager) Destroy() {
 	if r.SkinManager != nil {
 		r.SkinManager.Destroy()
 	}
+	if r.VertextManager != nil {
+		r.VertextManager.Destory()
+	}
 
 	sdl.GLDeleteContext(r.Context)
 }
@@ -396,4 +424,18 @@ func (r *RenderManager) SetClearColor(color y3d.Vec4) {
 
 func (r *RenderManager) Present() {
 	r.Window.GLSwap()
+}
+
+func (r *RenderManager) String() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "Major version: %d\n", r.MajorVersion)
+	fmt.Fprintf(&b, "Pixel depth: %d\n", r.PixelDepth)
+	fmt.Fprintf(&b, "Doubled buffer: %v\n", r.DoubleBuffer)
+	fmt.Fprintf(&b, "Height: %d\n", r.Height)
+	fmt.Fprintf(&b, "Width:  %d\n", r.Width)
+	fmt.Fprintf(&b, "Far: %.2f\n", r.Far)
+	fmt.Fprintf(&b, "Near: %.2f\n", r.Near)
+	fmt.Fprintf(&b, "FOV: %.2f\n", r.Fov)
+
+	return b.String()
 }

@@ -46,7 +46,7 @@ func NewGame(title string, width, height int32) (*Game, error) {
 	gGame = &Game{
 		Ticks: sdl.GetTicks64(),
 	}
-	gGame.RenderManager = ymanager.NewRenderManager(window)
+	gGame.RenderManager = ymanager.NewRenderManager(window, int(width), int(height))
 	gGame.InputManager = ymanager.NewInputManager()
 
 	return gGame, nil

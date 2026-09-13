@@ -1,17 +1,13 @@
 package ygl
 
 import (
+	"bytes"
 	"encoding/binary"
 )
 
-func CreateCube(mesh *Mesh) MeshEntry {
-	me := MeshEntry{
-		MeshId:      mesh.MeshId,
-		BaseVertex:  mesh.NumVertices,
-		BaseIndex:   mesh.NumIndices,
-		NumIndices:  36,
-		NumVertices: 8,
-	}
+func CreateCube() (dataV, dataI *bytes.Buffer) {
+	dataV = &bytes.Buffer{}
+	dataI = &bytes.Buffer{}
 	buf := []float32{
 		-0.25, -0.25, -0.25,
 		-0.25, 0.25, -0.25,
@@ -22,7 +18,7 @@ func CreateCube(mesh *Mesh) MeshEntry {
 		-0.25, -0.25, 0.25,
 		-0.25, 0.25, 0.25,
 	}
-	binary.Write(mesh.Positions, binary.NativeEndian, buf)
+	binary.Write(dataV, binary.NativeEndian, buf)
 	indices := []uint32{
 		0, 1, 2,
 		2, 1, 3,
@@ -37,8 +33,6 @@ func CreateCube(mesh *Mesh) MeshEntry {
 		7, 5, 3,
 		7, 3, 1,
 	}
-	binary.Write(mesh.Indices, binary.NativeEndian, indices)
-	mesh.NumIndices += me.NumIndices
-	mesh.NumVertices += me.NumVertices
-	return me
+	binary.Write(dataI, binary.NativeEndian, indices)
+	return
 }
