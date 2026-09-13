@@ -27,7 +27,6 @@ type RenderManager struct {
 	Proj2D        y3d.Mat4
 	ProjP         [4]y3d.Mat4
 	ProjO         [4]y3d.Mat4
-	World         y3d.Mat4
 	ViewProj      y3d.Mat4
 	WorldViewProj y3d.Mat4
 	Near          float32
@@ -288,11 +287,6 @@ func (r *RenderManager) CalcViewProj() {
 	}
 	r.ViewProj = a.Mul(*b)
 }
-
-func (r *RenderManager) CalcWorldViewProj() {
-	r.WorldViewProj = r.ViewProj.Mul(r.World)
-}
-
 func (r *RenderManager) SetStage(mode int, stage int) {
 	if stage < 0 || stage >= 4 {
 		stage = 0
@@ -306,7 +300,6 @@ func (r *RenderManager) SetStage(mode int, stage int) {
 		int32(r.ViewPort[stage].Width),
 		int32(r.ViewPort[stage].Height))
 	r.CalcViewProj()
-	r.CalcWorldViewProj()
 }
 
 func (r *RenderManager) InitStage(mode int, stage int, viewport y3d.Rect, fov float32) {
