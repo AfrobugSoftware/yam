@@ -1,6 +1,7 @@
-package ygl
+package ymanager
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -8,20 +9,12 @@ import (
 	"github.com/go-gl/gl/v4.3-core/gl"
 )
 
-const (
-	VERTEX   = gl.VERTEX_SHADER
-	FRAGMENT = gl.FRAGMENT_SHADER
-)
-
-func CreateShaderFromFile(filename string, shaderType uint32) (uint32, error) {
-	source, err := os.ReadFile(filename)
-	if err != nil {
-		return 0, err
-	}
-	return CreateShader(string(source), shaderType)
+type ShaderManager struct {
+	Shaders map[string]uint32
 }
 
-func CreateShader(source string, shaderType uint32) (uint32, error) {
+// helpers
+func createShader(source string, shaderType uint32) (uint32, error) {
 	s := gl.CreateShader(shaderType)
 	source = source + "\x00"
 	s_source, free := gl.Strs(source)
@@ -44,7 +37,7 @@ func CreateShader(source string, shaderType uint32) (uint32, error) {
 	return s, nil
 }
 
-func CreateProgram(shaders []uint32) (uint32, error) {
+func createProgram(shaders []uint32) (uint32, error) {
 	p := gl.CreateProgram()
 	for _, s := range shaders {
 		gl.AttachShader(p, s)
@@ -64,4 +57,38 @@ func CreateProgram(shaders []uint32) (uint32, error) {
 		return 0, fmt.Errorf("program failed to link: %s", sb.String())
 	}
 	return p, nil
+}
+
+func createShaderFromFile(filename string, shaderType uint32) (uint32, error) {
+	source, err := os.ReadFile(filename)
+	if err != nil {
+		return 0, err
+	}
+	return createShader(string(source), shaderType)
+}
+
+func NewShaderManager() *ShaderManager {
+	return &ShaderManager{
+		Shaders: make(map[string]uint32),
+	}
+}
+
+func (s *ShaderManager) AddFromFile(name string, filename []string, shaderType []uint32) error {
+	if len(filename) != len(shaderType) {
+		return errors.New("shader type must match shader file names")
+	}
+	shaders := make([]uint32, len(filename))
+	for i, f := range filename {
+		sh, err := createShaderFromFile(f, shaderType[i])
+		if err != nil {
+			return err
+		}
+		shaders = append(shaders, sh)
+	}
+	p, err := createProgram(shaders)
+	if err != nil {
+		return err
+	}
+	s.Shaders[name] = p
+	return nil
 }

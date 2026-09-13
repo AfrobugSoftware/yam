@@ -215,7 +215,7 @@ func (v *VertexCache) Flush() {
 			gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, 10, v.WorldMatrixSSBO)
 			gl.BindBufferBase(gl.UNIFORM_BUFFER, 16, v.MaterialUBO)
 			switch v.VManager.RenderManager.DrawMode {
-			case gl.TRIANGLES, gl.LINES:
+			case gl.TRIANGLES, gl.LINES, gl.LINE_STRIP:
 				gl.MultiDrawElementsIndirect(v.VManager.RenderManager.DrawMode,
 					gl.UNSIGNED_INT, nil, v.NumDrawCommands, int32(unsafe.Sizeof(DrawCommand{})))
 			case gl.POINTS:

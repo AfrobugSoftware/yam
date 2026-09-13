@@ -153,6 +153,12 @@ func Lerp(a, b Vec3, t float32) Vec3 {
 	}
 }
 
+func Berp(a, b, c Vec3, t float32) Vec3 {
+	i1 := Lerp(a, b, t)
+	i2 := Lerp(b, c, t)
+	return Lerp(i1, i2, t)
+}
+
 // assumes N is normalised
 func ReflectVec3(I Vec3, N Vec3) Vec3 {
 	r := Sub(I, Smul(N, 2*Dot(I, N)))
