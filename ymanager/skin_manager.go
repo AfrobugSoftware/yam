@@ -10,17 +10,6 @@ import (
 	"github.com/go-gl/gl/v4.3-core/gl"
 )
 
-const (
-	SLOT_1 int = 0
-	SLOT_2 int = 0
-	SLOT_3 int = 0
-	SLOT_4 int = 0
-	SLOT_5 int = 0
-	SLOT_6 int = 0
-	SLOT_7 int = 0
-	SLOT_8 int = 0
-)
-
 var (
 	EmptySkin = Skin{
 		Material: -1,
@@ -85,7 +74,7 @@ func (s *SkinManager) AddTexture(skin int, filename string, minFilter, maxFilter
 	if _, exists := s.Skins[skin]; !exists {
 		return errors.New("invalid skin id")
 	}
-	if s.Skins[skin].Texture[SLOT_7] != EmptyTexture {
+	if s.Skins[skin].Texture[7] != EmptyTexture {
 		return errors.New("skin texture slots are full")
 	}
 	id, found := s.FindTextureByFile(filename)

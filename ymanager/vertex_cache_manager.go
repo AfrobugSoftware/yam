@@ -15,6 +15,7 @@ const (
 )
 
 const (
+	VP     = "pos"
 	VPNT   = "pos.normal.tex"
 	VPNTT  = "pos.normal.tex.tex2"
 	VPNTWJ = "pos.normal.tex.joint.weight"
@@ -22,18 +23,19 @@ const (
 
 type VertexCacheManager struct {
 	ActiveCache   int
+	ActiveSB      int
 	ActiveSkin    int
 	RenderManager *RenderManager
 	CacheId       int
 	Strides       map[string]int32
 	Formats       map[string][]VertexFormat
 	Caches        map[string][MAX_CACHES]*VertexCache
-	StaticBuffers map[string][]*StaticBuffer
+	StaticBuffers []*StaticBuffer
 }
 
 func NewVertexCacheManager(
 	renderManager *RenderManager,
-	maxVerts, maxIndices, maxDrawCommands int32,
+	maxVerts, maxIndices, maxDrawCommands, maxWorldMatrix int32,
 ) *VertexCacheManager {
 	vm := &VertexCacheManager{
 		ActiveCache:   INVALID_CACHE,
@@ -41,12 +43,21 @@ func NewVertexCacheManager(
 		RenderManager: renderManager,
 		Caches:        make(map[string][MAX_CACHES]*VertexCache),
 		Formats:       make(map[string][]VertexFormat),
-		StaticBuffers: make(map[string][]*StaticBuffer),
+		StaticBuffers: make([]*StaticBuffer, 0),
 		Strides:       make(map[string]int32),
 	}
+	vm.Strides[VP] = int32(12)
 	vm.Strides[VPNT] = int32(32)
 	vm.Strides[VPNTT] = int32(40)
 	vm.Strides[VPNTWJ] = int32(56)
+
+	vm.Formats[VP] = []VertexFormat{
+		{
+			ComponentSize:  3,
+			Type:           gl.FLOAT,
+			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 3),
+		},
+	}
 	vm.Formats[VPNT] = []VertexFormat{
 		{
 			ComponentSize:  3,
@@ -114,12 +125,26 @@ func NewVertexCacheManager(
 		},
 	}
 	for i := range MAX_CACHES {
-		c := vm.Caches[VPNTT]
+		c := vm.Caches[VP]
 		c[i] = NewVertexCache(
 			renderManager.SkinManager,
 			maxVerts,
 			maxIndices,
 			maxDrawCommands,
+			maxWorldMatrix,
+			vm.Strides[VP],
+			-1,
+			vm.CacheId,
+			vm.Formats[VP],
+		)
+		vm.CacheId++
+		c = vm.Caches[VPNTT]
+		c[i] = NewVertexCache(
+			renderManager.SkinManager,
+			maxVerts,
+			maxIndices,
+			maxDrawCommands,
+			maxWorldMatrix,
 			vm.Strides[VPNTT],
 			-1,
 			vm.CacheId,
@@ -132,6 +157,7 @@ func NewVertexCacheManager(
 			maxVerts,
 			maxIndices,
 			maxDrawCommands,
+			maxWorldMatrix,
 			vm.Strides[VPNT],
 			-1,
 			vm.CacheId,
@@ -144,15 +170,13 @@ func NewVertexCacheManager(
 			maxVerts,
 			maxIndices,
 			maxDrawCommands,
+			maxWorldMatrix,
 			vm.Strides[VPNTWJ],
 			-1,
 			vm.CacheId,
 			vm.Formats[VPNTWJ],
 		)
 	}
-	vm.StaticBuffers[VPNT] = make([]*StaticBuffer, 0)
-	vm.StaticBuffers[VPNTT] = make([]*StaticBuffer, 0)
-	vm.StaticBuffers[VPNTWJ] = make([]*StaticBuffer, 0)
 	return vm
 }
 
@@ -163,9 +187,7 @@ func (vm *VertexCacheManager) Destory() {
 		}
 	}
 	for _, ss := range vm.StaticBuffers {
-		for _, s := range ss {
-			s.Destory()
-		}
+		ss.Destory()
 	}
 	clear(vm.StaticBuffers)
 	clear(vm.Caches)
@@ -175,7 +197,7 @@ func (vm *VertexCacheManager) Render(
 	vertexType string,
 	dataV, dataI *bytes.Buffer,
 	skinID int,
-	world y3d.Mat4,
+	world []y3d.Mat4,
 	command DrawCommand,
 ) error {
 	var empty, fullest *VertexCache
@@ -245,11 +267,8 @@ func (vm *VertexCacheManager) CreateStaticBuffer(
 	skinId int,
 	world []y3d.Mat4,
 ) (int, error) {
-	s, ok := vm.StaticBuffers[vertexType]
-	if !ok {
-		return -1, errors.New("invalid vertex type")
-	}
-	s = append(s, NewStaticBuffer(
+	id := len(vm.StaticBuffers)
+	vm.StaticBuffers = append(vm.StaticBuffers, NewStaticBuffer(
 		vm,
 		dataV, dataI,
 		command,
@@ -257,7 +276,14 @@ func (vm *VertexCacheManager) CreateStaticBuffer(
 		world,
 		vm.Strides[vertexType],
 		vm.Formats[vertexType],
+		id,
 	))
-	vm.StaticBuffers[vertexType] = s
-	return len(s) - 1, nil
+	return id, nil
+}
+
+func (vm *VertexCacheManager) RenderSB(id int, world []y3d.Mat4) {
+	if id >= len(vm.StaticBuffers) {
+		panic("invalid static buffer id")
+	}
+	vm.StaticBuffers[id].Render(world)
 }

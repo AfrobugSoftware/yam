@@ -14,35 +14,36 @@ const (
 )
 
 type RenderManager struct {
-	Context       sdl.GLContext
-	Window        *sdl.Window
-	ClearColor    y3d.Vec4
-	PixelDepth    uint8
-	DoubleBuffer  bool
-	MinorVersion  int
-	MajorVersion  int
-	ViewPort      [4]y3d.Rect
-	View2D        y3d.Mat4
-	View3D        y3d.Mat4
-	Proj2D        y3d.Mat4
-	ProjP         [4]y3d.Mat4
-	ProjO         [4]y3d.Mat4
-	ViewProj      y3d.Mat4
-	WorldViewProj y3d.Mat4
-	Near          float32
-	Far           float32
-	Width         int
-	Height        int
-	Fov           float32
-	AspectRatio   float32
-	Stage         int
-	Mode          int
-	SkinManager   *SkinManager
-	fbo           uint32
-	ColorBuffers  []uint32
-	DepthBuffer   uint32
-	RenderStates  []RenderState
-	DrawMode      uint32
+	Context        sdl.GLContext
+	Window         *sdl.Window
+	ClearColor     y3d.Vec4
+	PixelDepth     uint8
+	DoubleBuffer   bool
+	MinorVersion   int
+	MajorVersion   int
+	ViewPort       [4]y3d.Rect
+	View2D         y3d.Mat4
+	View3D         y3d.Mat4
+	Proj2D         y3d.Mat4
+	ProjP          [4]y3d.Mat4
+	ProjO          [4]y3d.Mat4
+	ViewProj       y3d.Mat4
+	WorldViewProj  y3d.Mat4
+	Near           float32
+	Far            float32
+	Width          int
+	Height         int
+	Fov            float32
+	AspectRatio    float32
+	Stage          int
+	Mode           int
+	SkinManager    *SkinManager
+	VertextManager *VertexCacheManager
+	fbo            uint32
+	ColorBuffers   []uint32
+	DepthBuffer    uint32
+	RenderStates   []RenderState
+	DrawMode       uint32
 }
 
 func NewRenderManager(window *sdl.Window) *RenderManager {
@@ -58,6 +59,9 @@ func NewRenderManager(window *sdl.Window) *RenderManager {
 		View3D: y3d.Identity,
 		Proj2D: y3d.Identity,
 	}
+	rm.SkinManager = NewSkinManager()
+	rm.VertextManager = NewVertexCacheManager(rm,
+		1000, 10000*3, 10000, 10000)
 	context, err := window.GLCreateContext()
 	if err != nil {
 		panic(err)

@@ -26,30 +26,32 @@ type DrawCommand struct {
 }
 
 type VertexCache struct {
-	Vao             uint32
-	VertexVbo       uint32
-	IndexVbo        uint32
-	DrawCommandBo   uint32
-	DrawIndexVbo    uint32
-	WorldMatrixSSBO uint32
-	MaterialUBO     uint32
-	MaxVertices     int32
-	MaxIndices      int32
-	MaxDrawCommands int32
-	NumVertics      int32
-	NumIndices      int32
-	NumDrawCommands int32
-	Stride          int32
-	SkinId          int
-	Id              int
-	Format          []VertexFormat
-	SkinManager     *SkinManager
-	VManager        *VertexCacheManager
+	Vao               uint32
+	VertexVbo         uint32
+	IndexVbo          uint32
+	DrawCommandBo     uint32
+	DrawIndexVbo      uint32
+	WorldMatrixSSBO   uint32
+	MaterialUBO       uint32
+	MaxVertices       int32
+	MaxIndices        int32
+	MaxDrawCommands   int32
+	MaxWorldMatrics   int32
+	NumVertics        int32
+	NumIndices        int32
+	NumDrawCommands   int32
+	NumOfWorldMatrics int32
+	Stride            int32
+	SkinId            int
+	Id                int
+	Format            []VertexFormat
+	SkinManager       *SkinManager
+	VManager          *VertexCacheManager
 }
 
 func NewVertexCache(
 	skinmanager *SkinManager,
-	maxVertex, maxIndex, maxDraws int32,
+	maxVertex, maxIndex, maxDraws, maxMatrix int32,
 	stride int32,
 	skinId int,
 	id int,
@@ -85,7 +87,7 @@ func NewVertexCache(
 
 	//create the world matrix ssbo
 	gl.CreateBuffers(1, &mssbo)
-	gl.NamedBufferStorage(mssbo, int(unsafe.Sizeof(y3d.Mat4{})*uintptr(maxDraws)), nil, gl.DYNAMIC_STORAGE_BIT)
+	gl.NamedBufferStorage(mssbo, int(unsafe.Sizeof(y3d.Mat4{})*uintptr(maxMatrix)), nil, gl.DYNAMIC_STORAGE_BIT)
 
 	gl.CreateBuffers(1, &mubo)
 	gl.NamedBufferStorage(mubo, int(unsafe.Sizeof([16]float32{})), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
@@ -101,6 +103,7 @@ func NewVertexCache(
 		MaxVertices:     maxVertex,
 		MaxIndices:      maxIndex,
 		MaxDrawCommands: maxDraws,
+		MaxWorldMatrics: maxMatrix,
 		Stride:          stride,
 		Id:              id,
 		SkinId:          skinId,
@@ -113,7 +116,7 @@ func (v *VertexCache) IsFull(size int) bool {
 	return v.NumVertics+int32(n) >= v.MaxVertices
 }
 
-func (v *VertexCache) Add(command DrawCommand, world y3d.Mat4, dataV, dataI *bytes.Buffer) error {
+func (v *VertexCache) Add(command DrawCommand, world []y3d.Mat4, dataV, dataI *bytes.Buffer) error {
 	if (v.Stride*v.MaxVertices) >= int32(dataV.Len()) ||
 		(v.MaxIndices*4) >= int32(dataI.Len()) ||
 		v.NumDrawCommands >= v.MaxDrawCommands {
@@ -130,18 +133,25 @@ func (v *VertexCache) Add(command DrawCommand, world y3d.Mat4, dataV, dataI *byt
 	gl.NamedBufferSubData(v.IndexVbo, int(4*v.NumIndices), dataI.Len(), gl.Ptr(&d[0]))
 	v.NumIndices += int32(dataI.Len() / 4)
 	//draw commands
-	command.BaseInstance = uint32(v.NumDrawCommands)
+	command.BaseInstance = uint32(v.NumOfWorldMatrics)
 	gl.NamedBufferSubData(v.DrawCommandBo, int(unsafe.Sizeof(command)*uintptr(v.NumDrawCommands)),
 		int(unsafe.Sizeof(command)), gl.Ptr(&command))
-	gl.NamedBufferSubData(v.DrawIndexVbo, int(4*v.NumDrawCommands), int(unsafe.Sizeof(uint32(0))),
-		gl.Ptr(&v.NumDrawCommands))
-	//world transforms
-	gl.NamedBufferSubData(v.WorldMatrixSSBO, int(unsafe.Sizeof(world)*uintptr(v.NumDrawCommands)),
-		int(unsafe.Sizeof(world)),
-		gl.Ptr(&world))
-
+	id := make([]uint32, len(world))
+	for i := range world {
+		id[i] = uint32(i + int(command.BaseInstance))
+	}
+	gl.NamedBufferSubData(
+		v.DrawIndexVbo,
+		int(4*v.NumOfWorldMatrics),
+		int(4*len(id)),
+		gl.Ptr(&id[0]))
 	v.NumDrawCommands += 1
 
+	//world transforms
+	gl.NamedBufferSubData(v.WorldMatrixSSBO, int(unsafe.Sizeof(y3d.Mat4{})*uintptr(v.NumOfWorldMatrics)),
+		int(unsafe.Sizeof(world)),
+		gl.Ptr(&world[0]))
+	v.NumOfWorldMatrics += int32(len(world))
 	return nil
 }
 func (v *VertexCache) IsEmpty() bool {

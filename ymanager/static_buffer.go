@@ -9,6 +9,7 @@ import (
 )
 
 type StaticBuffer struct {
+	Id              int
 	Vao             uint32
 	VertexVbo       uint32
 	IndexVbo        uint32
@@ -33,6 +34,7 @@ func NewStaticBuffer(
 	world []y3d.Mat4,
 	stride int32,
 	format []VertexFormat,
+	id int,
 ) *StaticBuffer {
 	var vao, vvbo, ivbo, dcbo, divbo, mssbo, mubo uint32
 	gl.CreateVertexArrays(1, &vao)
@@ -54,17 +56,17 @@ func NewStaticBuffer(
 	gl.VertexArrayElementBuffer(vao, ivbo)
 
 	//create draw indices
-	di := make([]uint32, len(command))
+	di := make([]uint32, len(world))
 	for i := range di {
 		di[i] = uint32(i)
 	}
 
 	gl.CreateBuffers(1, &divbo)
 	gl.NamedBufferStorage(divbo,
-		int(len(command)*int(unsafe.Sizeof(uint32(0)))), gl.Ptr(&di[0]), 0)
+		int(len(world)*int(unsafe.Sizeof(uint32(0)))), gl.Ptr(&di[0]), 0)
 	gl.VertexArrayAttribBinding(vao, 10, 10)
 	gl.VertexArrayVertexBuffer(vao, 10, divbo, 0, int32(unsafe.Sizeof(uint32(0))))
-	gl.VertexArrayAttribIFormat(vao, 10, 1, gl.UNSIGNED_INT, 0)
+	gl.VertexArrayAttribIFormat(vao, 10, 1, gl.UNSIGNED_INT, 0) //relative offset should it be zero
 	gl.VertexArrayVertexAttribDivisorEXT(vao, 10, 1)
 	gl.EnableVertexArrayAttrib(vao, 10)
 
@@ -75,7 +77,7 @@ func NewStaticBuffer(
 	//create the world matrix ssbo
 	gl.CreateBuffers(1, &mssbo)
 	gl.NamedBufferStorage(mssbo, int(unsafe.Sizeof(y3d.Mat4{})*uintptr(len(command))),
-		gl.Ptr(&world[0]), 0)
+		gl.Ptr(&world[0]), gl.MAP_WRITE_BIT)
 
 	//load material
 	gl.CreateBuffers(1, &mubo)
@@ -84,6 +86,7 @@ func NewStaticBuffer(
 		gl.MAP_WRITE_BIT)
 
 	return &StaticBuffer{
+		Id:              id,
 		Vao:             vao,
 		VertexVbo:       vvbo,
 		IndexVbo:        ivbo,
@@ -101,7 +104,7 @@ func NewStaticBuffer(
 	}
 }
 
-func (s *StaticBuffer) Flush() {
+func (s *StaticBuffer) Render(world []y3d.Mat4) {
 	if s.VManager.ActiveSkin != s.SkinId {
 		skin, err := s.VManager.RenderManager.SkinManager.GetSkin(s.SkinId)
 		if err != nil {
@@ -146,9 +149,20 @@ func (s *StaticBuffer) Flush() {
 		}
 		s.VManager.ActiveSkin = s.SkinId
 	}
-	gl.BindVertexArray(s.Vao)
-	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, 10, s.WorldMatrixSSBO)
-	gl.BindBufferBase(gl.UNIFORM_BUFFER, 16, s.MaterialUBO)
+	gl.BindBuffer(gl.SHADER_STORAGE_BUFFER, s.WorldMatrixSSBO)
+	mPtr := gl.MapBuffer(gl.SHADER_STORAGE_BUFFER, gl.WRITE_ONLY)
+	slice := unsafe.Slice((*y3d.Mat4)(mPtr), s.NumDrawCommands)
+	copy(slice, world)
+	gl.UnmapBuffer(gl.SHADER_STORAGE_BUFFER)
+
+	s.VManager.ActiveCache = INVALID_CACHE
+	if s.VManager.ActiveSB != s.Id {
+		gl.BindVertexArray(s.Vao)
+		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, 10, s.WorldMatrixSSBO)
+		gl.BindBufferBase(gl.UNIFORM_BUFFER, 16, s.MaterialUBO)
+		s.VManager.ActiveSB = s.Id
+	}
+
 	switch s.VManager.RenderManager.DrawMode {
 	case gl.TRIANGLES, gl.LINES:
 		gl.MultiDrawElementsIndirect(s.VManager.RenderManager.DrawMode,
