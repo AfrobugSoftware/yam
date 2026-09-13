@@ -61,7 +61,7 @@ func NewRenderManager(window *sdl.Window) *RenderManager {
 	}
 	rm.SkinManager = NewSkinManager()
 	rm.VertextManager = NewVertexCacheManager(rm,
-		1000, 10000*3, 10000, 10000)
+		10000, 10000*3, 10000, 10000)
 	context, err := window.GLCreateContext()
 	if err != nil {
 		panic(err)
