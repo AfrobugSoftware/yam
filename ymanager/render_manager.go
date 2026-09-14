@@ -439,3 +439,11 @@ func (r *RenderManager) String() string {
 
 	return b.String()
 }
+
+func (r *RenderManager) Render() {
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
+	//
+	gl.UseProgram(r.ActiveProgram)
+	gl.UniformMatrix4fv(0, 1, false, &r.ViewProj[0])
+	r.Window.GLSwap()
+}

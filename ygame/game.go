@@ -71,6 +71,7 @@ func (g *Game) Draw() {
 	if g.App != nil {
 		g.App.Draw()
 	}
+	g.RenderManager.Render() //how to I allow the frontend render
 }
 
 func (g *Game) Run() {
