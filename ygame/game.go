@@ -3,7 +3,7 @@ package ygame
 import (
 	"os"
 	"time"
-	"yam/ymanager"
+	"yam/ycore"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -21,8 +21,8 @@ type Game struct {
 	OnExit        func() bool
 	logFile       *os.File
 	App           Application
-	RenderManager *ymanager.RenderManager
-	InputManager  *ymanager.InputManager
+	RenderManager *ycore.RenderManager
+	InputManager  *ycore.InputManager
 }
 
 var gGame *Game
@@ -46,8 +46,8 @@ func NewGame(title string, width, height int32) (*Game, error) {
 	gGame = &Game{
 		Ticks: sdl.GetTicks64(),
 	}
-	gGame.RenderManager = ymanager.NewRenderManager(window, int(width), int(height))
-	gGame.InputManager = ymanager.NewInputManager()
+	gGame.RenderManager = ycore.NewRenderManager(window, int(width), int(height))
+	gGame.InputManager = ycore.NewInputManager()
 
 	return gGame, nil
 }

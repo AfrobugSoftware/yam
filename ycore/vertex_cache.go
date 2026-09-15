@@ -1,4 +1,4 @@
-package ymanager
+package ycore
 
 import (
 	"bytes"
@@ -80,7 +80,7 @@ func NewVertexCache(
 	gl.VertexArrayElementBuffer(vao, ivbo)
 
 	gl.CreateBuffers(1, &divbo)
-	gl.NamedBufferStorage(divbo, int(maxDraws*int32(unsafe.Sizeof(uint32(0)))), nil, gl.DYNAMIC_STORAGE_BIT)
+	gl.NamedBufferStorage(divbo, int(maxMatrix*int32(unsafe.Sizeof(uint32(0)))), nil, gl.DYNAMIC_STORAGE_BIT)
 	gl.VertexArrayAttribBinding(vao, 10, DRAW_INDEX_BINDING)
 	gl.VertexArrayVertexBuffer(vao, DRAW_INDEX_BINDING, divbo, 0, int32(unsafe.Sizeof(uint32(0))))
 	gl.VertexArrayAttribIFormat(vao, 10, 1, gl.UNSIGNED_INT, 0)
@@ -235,6 +235,7 @@ func (v *VertexCache) Flush() {
 			v.NumDrawCommands = 0
 			v.NumIndices = 0
 			v.NumVertics = 0
+			v.NumOfWorldMatrics = 0
 		}
 	}
 }

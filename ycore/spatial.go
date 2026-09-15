@@ -1,4 +1,4 @@
-package ymanager
+package ycore
 
 import (
 	"bytes"
@@ -15,11 +15,13 @@ type SpatialInterface interface {
 	PropagateToRoot()
 	GetTransform() *Transform
 	GetBoundingBox() y3d.AABB
+	GetEffect() Effect
 }
 
 type Spatial struct {
 	Parent           SpatialInterface
 	Children         []SpatialInterface
+	LocalEffect      Effect
 	LocalBoundingBox y3d.AABB
 	WorldBoundingBox y3d.AABB
 	Transform        *Transform
@@ -66,6 +68,9 @@ func (s *Spatial) GetBoundingBox() y3d.AABB {
 }
 
 func (s *Spatial) Draw(r *RenderManager) {
+	if s.LocalEffect != nil {
+		s.LocalEffect.Bind(r.ShaderManager)
+	}
 	if s.StaticBuf != NO_STATICBUF {
 		r.VertextManager.RenderSB(s.StaticBuf, []y3d.Mat4{s.Transform.World})
 		return
@@ -78,6 +83,9 @@ func (s *Spatial) Draw(r *RenderManager) {
 			log.Println(err)
 		}
 		return
+	}
+	if s.LocalEffect != nil {
+		s.LocalEffect.Unbind()
 	}
 }
 
@@ -103,4 +111,8 @@ func (s *Spatial) UpdateWorldTransform() {
 	} else {
 		s.Transform.World = s.Transform.Local
 	}
+}
+
+func (s *Spatial) GetEffect() Effect {
+	return s.LocalEffect
 }

@@ -1,4 +1,4 @@
-package ymanager
+package ycore
 
 type Geometry struct {
 	Spatial

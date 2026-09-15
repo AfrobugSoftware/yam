@@ -1,8 +1,9 @@
-package ymanager
+package ycore
 
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -80,6 +81,30 @@ func (s *ShaderManager) AddFromFile(name string, filename []string, shaderType [
 	shaders := make([]uint32, len(filename))
 	for i, f := range filename {
 		sh, err := createShaderFromFile(f, shaderType[i])
+		if err != nil {
+			return err
+		}
+		shaders = append(shaders, sh)
+	}
+	p, err := createProgram(shaders)
+	if err != nil {
+		return err
+	}
+	s.Shaders[name] = p
+	return nil
+}
+
+func (s *ShaderManager) Add(name string, r []io.Reader, shaderType []uint32) error {
+	if len(r) != len(shaderType) {
+		return errors.New("shader type must match shader file names")
+	}
+	shaders := make([]uint32, len(r))
+	for i, f := range r {
+		b, err := io.ReadAll(f)
+		if err != nil {
+			return err
+		}
+		sh, err := createShader(string(b), shaderType[i])
 		if err != nil {
 			return err
 		}

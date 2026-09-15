@@ -1,4 +1,4 @@
-package ymanager
+package ycore
 
 import (
 	"yam/y3d"

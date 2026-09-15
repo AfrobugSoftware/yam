@@ -1,4 +1,4 @@
-package ymanager
+package ycore
 
 import (
 	"fmt"
@@ -434,7 +434,7 @@ func (r *RenderManager) Destroy() {
 
 func (r *RenderManager) Clear() {
 	gl.ClearColor(r.ClearColor.X, r.ClearColor.Y, r.ClearColor.Z, r.ClearColor.W)
-	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
 }
 
 func (r *RenderManager) SetClearColor(color y3d.Vec4) {
@@ -489,4 +489,22 @@ func (r *RenderManager) Render() {
 		r.Root.Draw(r)
 	}
 	r.Window.GLSwap()
+}
+
+func (r *RenderManager) RenderToGBuffer() {
+	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
+	gl.UseProgram(r.ActiveProgram)
+	gl.UniformMatrix4fv(0, 1, false, &r.ViewProj[0])
+
+	if r.ActiveLights > 0 {
+		gl.NamedBufferSubData(r.LightUBO, 0, int(unsafe.Sizeof(ygl.Light{})*uintptr(MAX_LIGHT)),
+			gl.Ptr(r.Lights))
+		gl.BindBufferBase(gl.UNIFORM_BUFFER, LIGHT_BINDING, r.LightUBO)
+	}
+	//might be mvoved to the scene_manager.go
+	if r.Root != nil {
+		r.Root.Draw(r)
+	}
+	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 }

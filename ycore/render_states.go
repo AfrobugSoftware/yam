@@ -1,4 +1,4 @@
-package ymanager
+package ycore
 
 import "github.com/go-gl/gl/v4.3-core/gl"
 

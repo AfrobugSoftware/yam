@@ -1,4 +1,4 @@
-package ymanager
+package ycore
 
 import (
 	"errors"
@@ -72,7 +72,10 @@ func (s *SkinManager) FindTextureByFile(filename string) (int, bool) {
 	return 0, false
 }
 
-func (s *SkinManager) AddTexture(skin int, filename string, minFilter, maxFilter int32, useMipmap bool) error {
+func (s *SkinManager) AddTexture(skin int, filename string,
+	minFilter, maxFilter int32,
+	wraps, wrapt int32,
+	useMipmap bool) error {
 	if _, exists := s.Skins[skin]; !exists {
 		return errors.New("invalid skin id")
 	}
@@ -114,8 +117,8 @@ func (s *SkinManager) AddTexture(skin int, filename string, minFilter, maxFilter
 	gl.GenTextures(1, &texId)
 	gl.BindTexture(gl.TEXTURE_2D, texId)
 
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wraps)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrapt)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, minFilter)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, maxFilter)
 	gl.TexImage2D(
