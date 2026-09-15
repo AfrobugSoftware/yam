@@ -63,7 +63,7 @@ func (g *Game) SetApplication(app Application) {
 
 func (g *Game) Update(dt float64) {
 	if g.App != nil {
-		g.App.Update(time.Now())
+		g.App.Update(dt)
 	}
 }
 

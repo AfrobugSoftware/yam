@@ -1,6 +1,10 @@
 package ygl
 
-import "yam/y3d"
+import (
+	"encoding/binary"
+	"io"
+	"yam/y3d"
+)
 
 const (
 	POINT_LIGHT = iota
@@ -10,41 +14,27 @@ const (
 )
 
 type Light struct {
+	Pos         y3d.Vec4
+	Direction   y3d.Vec4
+	Diffuse     y3d.Vec4
+	Ambient     y3d.Vec4
+	Specular    y3d.Vec4
+	Attenuation y3d.Vec4
 	Type        int
-	Pos         y3d.Vec3
 	Intensity   float32
-	Direction   y3d.Vec3
-	Diffuse     y3d.Vec3
-	Ambient     y3d.Vec3
-	Specular    y3d.Vec3
-	Attenuation [3]float32
 	Range       float32
 	FallOff     float32
 }
 
-func (l *Light) ToUBO() [16]float32 {
-	var buf [16]float32
-	buf[0] = l.Diffuse.X
-	buf[1] = l.Diffuse.Y
-	buf[2] = l.Diffuse.Z
-	buf[3] = 0.0
-
-	buf[4] = l.Ambient.X
-	buf[5] = l.Ambient.Y
-	buf[6] = l.Ambient.Z
-	buf[7] = 0.0
-
-	buf[8] = l.Specular.X
-	buf[9] = l.Specular.Y
-	buf[10] = l.Specular.Z
-	buf[11] = 0.0
-
-	buf[12] = l.Pos.X
-	buf[13] = l.Pos.Y
-	buf[14] = l.Pos.Z
-	buf[15] = l.Intensity //use
-
-	//need to put in the direction
-
-	return buf
+func (l *Light) Write(b io.Writer) {
+	binary.Write(b, binary.NativeEndian, l.Pos.ToSlice())
+	binary.Write(b, binary.NativeEndian, l.Direction.ToSlice())
+	binary.Write(b, binary.NativeEndian, l.Diffuse.ToSlice())
+	binary.Write(b, binary.NativeEndian, l.Ambient.ToSlice())
+	binary.Write(b, binary.NativeEndian, l.Specular.ToSlice())
+	binary.Write(b, binary.NativeEndian, l.Attenuation.ToSlice())
+	binary.Write(b, binary.NativeEndian, l.Type)
+	binary.Write(b, binary.NativeEndian, l.Intensity)
+	binary.Write(b, binary.NativeEndian, l.Range)
+	binary.Write(b, binary.NativeEndian, l.FallOff)
 }

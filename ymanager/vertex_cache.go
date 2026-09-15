@@ -64,11 +64,16 @@ func NewVertexCache(
 	gl.CreateBuffers(1, &vvbo)
 	gl.NamedBufferStorage(vvbo, int(maxVertex*stride), nil, gl.DYNAMIC_STORAGE_BIT)
 	for i, f := range format {
-		gl.VertexArrayAttribBinding(vao, uint32(i), 0)
-		gl.VertexArrayAttribFormat(vao, uint32(i), f.ComponentSize, f.Type, false, f.RelativeOffset)
+		gl.VertexArrayAttribBinding(vao, uint32(i), VERTEX_ATTRIBUTE_BINDING)
+		switch f.Type {
+		case gl.UNSIGNED_INT, gl.UNSIGNED_BYTE, gl.UNSIGNED_SHORT:
+			gl.VertexArrayAttribIFormat(vao, uint32(i), f.ComponentSize, f.Type, f.RelativeOffset)
+		default:
+			gl.VertexArrayAttribFormat(vao, uint32(i), f.ComponentSize, f.Type, false, f.RelativeOffset)
+		}
 		gl.EnableVertexArrayAttrib(vao, uint32(i))
 	}
-	gl.VertexArrayVertexBuffer(vao, 0, vvbo, 0, stride)
+	gl.VertexArrayVertexBuffer(vao, VERTEX_ATTRIBUTE_BINDING, vvbo, 0, stride)
 
 	gl.CreateBuffers(1, &ivbo)
 	gl.NamedBufferStorage(ivbo, int(maxIndex*4), nil, gl.DYNAMIC_STORAGE_BIT)
@@ -76,8 +81,8 @@ func NewVertexCache(
 
 	gl.CreateBuffers(1, &divbo)
 	gl.NamedBufferStorage(divbo, int(maxDraws*int32(unsafe.Sizeof(uint32(0)))), nil, gl.DYNAMIC_STORAGE_BIT)
-	gl.VertexArrayAttribBinding(vao, 10, 10)
-	gl.VertexArrayVertexBuffer(vao, 10, divbo, 0, int32(unsafe.Sizeof(uint32(0))))
+	gl.VertexArrayAttribBinding(vao, 10, DRAW_INDEX_BINDING)
+	gl.VertexArrayVertexBuffer(vao, DRAW_INDEX_BINDING, divbo, 0, int32(unsafe.Sizeof(uint32(0))))
 	gl.VertexArrayAttribIFormat(vao, 10, 1, gl.UNSIGNED_INT, 0)
 	gl.VertexArrayVertexAttribDivisorEXT(vao, 10, 1)
 	gl.EnableVertexArrayAttrib(vao, 10)
@@ -119,18 +124,22 @@ func (v *VertexCache) IsFull(size int) bool {
 func (v *VertexCache) Add(command DrawCommand, world []y3d.Mat4, dataV, dataI *bytes.Buffer) error {
 	if (v.Stride*v.MaxVertices) >= int32(dataV.Len()) ||
 		(v.MaxIndices*4) >= int32(dataI.Len()) ||
-		v.NumDrawCommands >= v.MaxDrawCommands {
+		v.NumDrawCommands >= v.MaxDrawCommands ||
+		v.NumOfWorldMatrics >= v.MaxWorldMatrics {
 		return errors.New("vertex cache full")
 	}
 	//vertex data
-	d := dataV.Bytes()
 	gl.NamedBufferSubData(v.VertexVbo,
-		int(v.Stride*v.NumVertics), dataV.Len(), gl.Ptr(&d[0]))
+		int(v.Stride*v.NumVertics),
+		dataV.Len(),
+		gl.Ptr(dataV.Bytes()))
 	command.BaseVertex = uint32(v.NumVertics)
 	v.NumVertics += int32(dataV.Len() / int(v.Stride))
 	//index data
-	d = dataI.Bytes()
-	gl.NamedBufferSubData(v.IndexVbo, int(4*v.NumIndices), dataI.Len(), gl.Ptr(&d[0]))
+	gl.NamedBufferSubData(v.IndexVbo,
+		int(4*v.NumIndices),
+		dataI.Len(),
+		gl.Ptr(dataI.Bytes()))
 	v.NumIndices += int32(dataI.Len() / 4)
 	//draw commands
 	command.BaseInstance = uint32(v.NumOfWorldMatrics)
@@ -212,8 +221,9 @@ func (v *VertexCache) Flush() {
 
 			v.VManager.ActiveCache = v.Id
 			gl.BindVertexArray(v.Vao)
-			gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, 10, v.WorldMatrixSSBO)
-			gl.BindBufferBase(gl.UNIFORM_BUFFER, 16, v.MaterialUBO)
+			gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, WORLD_MATRIX_BINDING, v.WorldMatrixSSBO)
+			gl.BindBufferBase(gl.UNIFORM_BUFFER, MATERIAL_SSBO_BINDING, v.MaterialUBO)
+			gl.BindBuffer(gl.DRAW_INDIRECT_BUFFER, v.DrawCommandBo)
 			switch v.VManager.RenderManager.DrawMode {
 			case gl.TRIANGLES, gl.LINES, gl.LINE_STRIP:
 				gl.MultiDrawElementsIndirect(v.VManager.RenderManager.DrawMode,

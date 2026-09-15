@@ -40,6 +40,7 @@ func NewVertexCacheManager(
 	vm := &VertexCacheManager{
 		ActiveCache:   INVALID_CACHE,
 		ActiveSkin:    -1,
+		ActiveSB:      -1,
 		RenderManager: renderManager,
 		Caches:        make(map[string][MAX_CACHES]*VertexCache),
 		Formats:       make(map[string][]VertexFormat),
@@ -55,14 +56,14 @@ func NewVertexCacheManager(
 		{
 			ComponentSize:  3,
 			Type:           gl.FLOAT,
-			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 3),
+			RelativeOffset: 0,
 		},
 	}
 	vm.Formats[VPNT] = []VertexFormat{
 		{
 			ComponentSize:  3,
 			Type:           gl.FLOAT,
-			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 3),
+			RelativeOffset: 0,
 		},
 		{
 			ComponentSize:  3,
@@ -72,14 +73,14 @@ func NewVertexCacheManager(
 		{
 			ComponentSize:  2,
 			Type:           gl.FLOAT,
-			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 2),
+			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 6),
 		},
 	}
 	vm.Formats[VPNTT] = []VertexFormat{
 		{
 			ComponentSize:  3,
 			Type:           gl.FLOAT,
-			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 3),
+			RelativeOffset: 0,
 		},
 		{
 			ComponentSize:  3,
@@ -89,19 +90,19 @@ func NewVertexCacheManager(
 		{
 			ComponentSize:  2,
 			Type:           gl.FLOAT,
-			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 2),
+			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 6),
 		},
 		{
 			ComponentSize:  2,
 			Type:           gl.FLOAT,
-			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 2),
+			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 8),
 		},
 	}
 	vm.Formats[VPNTWJ] = []VertexFormat{
 		{
 			ComponentSize:  3,
 			Type:           gl.FLOAT,
-			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 3),
+			RelativeOffset: 0,
 		},
 		{
 			ComponentSize:  3,
@@ -111,17 +112,17 @@ func NewVertexCacheManager(
 		{
 			ComponentSize:  2,
 			Type:           gl.FLOAT,
-			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 2),
+			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 6),
 		},
 		{
 			ComponentSize:  3,
 			Type:           gl.FLOAT,
-			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 3),
+			RelativeOffset: uint32(unsafe.Sizeof(uint32(0)) * 8),
 		},
 		{
 			ComponentSize:  3,
-			Type:           gl.FLOAT,
-			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 3),
+			Type:           gl.UNSIGNED_INT,
+			RelativeOffset: uint32(unsafe.Sizeof(uint32(0)) * 11),
 		},
 	}
 	for i := range MAX_CACHES {
@@ -268,7 +269,7 @@ func (vm *VertexCacheManager) CreateStaticBuffer(
 	world []y3d.Mat4,
 ) (int, error) {
 	id := len(vm.StaticBuffers)
-	vm.StaticBuffers = append(vm.StaticBuffers, NewStaticBuffer(
+	s := NewStaticBuffer(
 		vm,
 		dataV, dataI,
 		command,
@@ -277,7 +278,11 @@ func (vm *VertexCacheManager) CreateStaticBuffer(
 		vm.Strides[vertexType],
 		vm.Formats[vertexType],
 		id,
-	))
+	)
+	if s == nil {
+		return -1, errors.New("cannot create static buffer")
+	}
+	vm.StaticBuffers = append(vm.StaticBuffers, s)
 	return id, nil
 }
 
@@ -286,4 +291,15 @@ func (vm *VertexCacheManager) RenderSB(id int, world []y3d.Mat4) {
 		panic("invalid static buffer id")
 	}
 	vm.StaticBuffers[id].Render(world)
+}
+
+func (vm *VertexCacheManager) CreateDrawCommand(dataI *bytes.Buffer,
+	instanceCount int) DrawCommand {
+	return DrawCommand{
+		VertexCount:   uint32(dataI.Len() / 4),
+		InstanceCount: uint32(instanceCount),
+		FirstIndex:    0,
+		BaseVertex:    0,
+		BaseInstance:  0,
+	}
 }

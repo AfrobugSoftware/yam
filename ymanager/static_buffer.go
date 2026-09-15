@@ -8,6 +8,10 @@ import (
 	"github.com/go-gl/gl/v4.3-core/gl"
 )
 
+const (
+	NO_STATICBUF = -1
+)
+
 type StaticBuffer struct {
 	Id              int
 	Vao             uint32
@@ -36,13 +40,15 @@ func NewStaticBuffer(
 	format []VertexFormat,
 	id int,
 ) *StaticBuffer {
+	if len(world) == 0 || len(command) == 0 || len(format) == 0 {
+		return nil
+	}
 	var vao, vvbo, ivbo, dcbo, divbo, mssbo, mubo uint32
 	gl.CreateVertexArrays(1, &vao)
 	gl.BindVertexArray(vao)
 
 	gl.CreateBuffers(1, &vvbo)
-	d := dataV.Bytes()
-	gl.NamedBufferStorage(vvbo, dataV.Len(), gl.Ptr(&d[0]), 0)
+	gl.NamedBufferStorage(vvbo, dataV.Len(), gl.Ptr(dataV.Bytes()), 0)
 	for i, f := range format {
 		gl.VertexArrayAttribBinding(vao, uint32(i), 0)
 		gl.VertexArrayAttribFormat(vao, uint32(i), f.ComponentSize, f.Type, false, f.RelativeOffset)
@@ -51,8 +57,7 @@ func NewStaticBuffer(
 	gl.VertexArrayVertexBuffer(vao, 0, vvbo, 0, stride)
 
 	gl.CreateBuffers(1, &ivbo)
-	d = dataI.Bytes()
-	gl.NamedBufferStorage(ivbo, dataI.Len(), gl.Ptr(&d[0]), 0)
+	gl.NamedBufferStorage(ivbo, dataI.Len(), gl.Ptr(dataI.Bytes()), 0)
 	gl.VertexArrayElementBuffer(vao, ivbo)
 
 	//create draw indices
@@ -62,8 +67,7 @@ func NewStaticBuffer(
 	}
 
 	gl.CreateBuffers(1, &divbo)
-	gl.NamedBufferStorage(divbo,
-		int(len(world)*int(unsafe.Sizeof(uint32(0)))), gl.Ptr(&di[0]), 0)
+	gl.NamedBufferStorage(divbo, int(len(world)*int(unsafe.Sizeof(uint32(0)))), gl.Ptr(di), 0)
 	gl.VertexArrayAttribBinding(vao, 10, 10)
 	gl.VertexArrayVertexBuffer(vao, 10, divbo, 0, int32(unsafe.Sizeof(uint32(0))))
 	gl.VertexArrayAttribIFormat(vao, 10, 1, gl.UNSIGNED_INT, 0) //relative offset should it be zero
@@ -71,13 +75,11 @@ func NewStaticBuffer(
 	gl.EnableVertexArrayAttrib(vao, 10)
 
 	gl.CreateBuffers(1, &dcbo)
-	gl.NamedBufferStorage(dcbo, int(unsafe.Sizeof(DrawCommand{})*uintptr(len(command))),
-		gl.Ptr(&command[0]), 0)
+	gl.NamedBufferStorage(dcbo, int(unsafe.Sizeof(DrawCommand{})*uintptr(len(command))), gl.Ptr(command), 0)
 
 	//create the world matrix ssbo
 	gl.CreateBuffers(1, &mssbo)
-	gl.NamedBufferStorage(mssbo, int(unsafe.Sizeof(y3d.Mat4{})*uintptr(len(command))),
-		gl.Ptr(&world[0]), gl.MAP_WRITE_BIT)
+	gl.NamedBufferStorage(mssbo, int(unsafe.Sizeof(y3d.Mat4{})*uintptr(len(command))), gl.Ptr(world), gl.MAP_WRITE_BIT)
 
 	//load material
 	gl.CreateBuffers(1, &mubo)
@@ -162,7 +164,7 @@ func (s *StaticBuffer) Render(world []y3d.Mat4) {
 		gl.BindBufferBase(gl.UNIFORM_BUFFER, 16, s.MaterialUBO)
 		s.VManager.ActiveSB = s.Id
 	}
-
+	gl.BindBuffer(gl.DRAW_INDIRECT_BUFFER, s.DrawCommandBo)
 	switch s.VManager.RenderManager.DrawMode {
 	case gl.TRIANGLES, gl.LINES:
 		gl.MultiDrawElementsIndirect(s.VManager.RenderManager.DrawMode,

@@ -13,5 +13,8 @@ func main() {
 		return
 	}
 	fmt.Println("Game created successfully!")
+	g.SetApplication(&ygame.TestApplication{
+		RenderManager: g.RenderManager,
+	})
 	g.Run()
 }

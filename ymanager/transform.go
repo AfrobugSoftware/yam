@@ -1,4 +1,4 @@
-package yspatial
+package ymanager
 
 import (
 	"math"
@@ -31,6 +31,10 @@ func NewTransform() *Transform {
 		IsDirty:   false,
 		IsCurrent: false,
 	}
+}
+
+func (trans *Transform) UpdateWorld(parent *Transform) {
+	trans.World = parent.World.Mul(trans.Local)
 }
 
 func (trans *Transform) Recalulate() {

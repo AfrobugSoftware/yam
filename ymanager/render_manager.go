@@ -3,7 +3,9 @@ package ymanager
 import (
 	"fmt"
 	"strings"
+	"unsafe"
 	"yam/y3d"
+	"yam/ygl"
 
 	"github.com/go-gl/gl/v4.3-core/gl"
 	"github.com/veandco/go-sdl2/sdl"
@@ -13,6 +15,15 @@ const (
 	MODE_2D             = 0
 	MODE_3D_ORTHO       = 1
 	MODE_3D_PERSPECTIVE = 2
+)
+
+const (
+	MAX_LIGHT                = 10
+	VERTEX_ATTRIBUTE_BINDING = 0
+	DRAW_INDEX_BINDING       = 10
+	MATERIAL_SSBO_BINDING    = 16
+	LIGHT_BINDING            = 17
+	WORLD_MATRIX_BINDING     = 18
 )
 
 type RenderManager struct {
@@ -48,6 +59,10 @@ type RenderManager struct {
 	RenderStates   []RenderState
 	DrawMode       uint32
 	ActiveProgram  uint32
+	Root           SpatialInterface
+	Lights         []ygl.Light
+	LightUBO       uint32
+	ActiveLights   int
 }
 
 func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
@@ -74,8 +89,9 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 			y3d.Identity,
 			y3d.Identity,
 		},
-		Mode:  MODE_3D_PERSPECTIVE,
-		Stage: -1,
+		Mode:     MODE_3D_PERSPECTIVE,
+		DrawMode: gl.TRIANGLES,
+		Stage:    -1,
 	}
 	context, err := window.GLCreateContext()
 	if err != nil {
@@ -91,8 +107,9 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 		rm.ClearColor.W)
 	rm.SkinManager = NewSkinManager()
 	rm.VertextManager = NewVertexCacheManager(rm,
-		1000, 10000*3, 10000, 10000)
+		10000, 10000*3, 10000, 10000)
 	rm.ShaderManager = NewShaderManager()
+	rm.CreateDefaultShader()
 	rm.SetClippingPlanes(0.1, 1000.0)
 
 	rm.InitStage(0, y3d.Rect{
@@ -104,6 +121,9 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 		float32(y3d.ToRadians(45)),
 	)
 	rm.SetStage(MODE_3D_PERSPECTIVE, 0) //SET TO THE 0TH stage
+
+	gl.CreateBuffers(1, &rm.LightUBO)
+	gl.NamedBufferStorage(rm.LightUBO, int(112*MAX_LIGHT), nil, gl.DYNAMIC_STORAGE_BIT)
 	return rm
 }
 
@@ -318,7 +338,7 @@ func (r *RenderManager) CalcViewProj() {
 		a = &y3d.Identity
 		b = &y3d.Identity
 	}
-	r.ViewProj = a.Mul(*b)
+	r.ViewProj = (*a).Mul(*b)
 }
 func (r *RenderManager) SetStage(mode int, stage int) {
 	if stage < 0 || stage >= 4 {
@@ -440,10 +460,33 @@ func (r *RenderManager) String() string {
 	return b.String()
 }
 
+func (r *RenderManager) CreateDefaultShader() {
+	err := r.ShaderManager.AddFromFile("default",
+		[]string{"assets/shaders/test.vert", "assets/shaders/test.frag"},
+		[]uint32{gl.VERTEX_SHADER, gl.FRAGMENT_SHADER})
+	if err != nil {
+		panic(err)
+	}
+	p, ok := r.ShaderManager.Shaders["default"]
+	if ok {
+		r.ActiveProgram = p
+	}
+}
+
+// hmmm
 func (r *RenderManager) Render() {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
 	gl.UseProgram(r.ActiveProgram)
 	gl.UniformMatrix4fv(0, 1, false, &r.ViewProj[0])
 
+	if r.ActiveLights > 0 {
+		gl.NamedBufferSubData(r.LightUBO, 0, int(unsafe.Sizeof(ygl.Light{})*uintptr(MAX_LIGHT)),
+			gl.Ptr(r.Lights))
+		gl.BindBufferBase(gl.UNIFORM_BUFFER, LIGHT_BINDING, r.LightUBO)
+	}
+	//might be mvoved to the scene_manager.go
+	if r.Root != nil {
+		r.Root.Draw(r)
+	}
 	r.Window.GLSwap()
 }

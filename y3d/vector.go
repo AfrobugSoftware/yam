@@ -22,13 +22,13 @@ type Vec3 struct {
 
 type Vec4 struct{ X, Y, Z, W float32 }
 
-func (v Vec3) ToSlice() []float32 {
-	return []float32{
+func (v Vec3) ToSlice() [3]float32 {
+	return [3]float32{
 		v.X, v.Y, v.Z,
 	}
 }
-func (v Vec4) ToSlice() []float32 {
-	return []float32{
+func (v Vec4) ToSlice() [4]float32 {
+	return [4]float32{
 		v.X, v.Y, v.Z, v.W,
 	}
 }
