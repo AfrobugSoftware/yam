@@ -257,6 +257,8 @@ func (v *VertexCache) Clear() {
 
 	v.NumIndices = 0
 	v.NumVertics = 0
+	v.NumDrawCommands = 0
+	v.NumOfWorldMatrics = 0
 }
 func (v *VertexCache) SetSkin(skin int) {
 	if !v.IsEmpty() {

@@ -28,11 +28,7 @@ func (t *TestApplication) Startup() {
 		v, i,
 		[]ymanager.DrawCommand{dc},
 		-1,
-		[]y3d.Mat4{y3d.Translation(y3d.Vec3{
-			X: 0.0,
-			Y: 0.0,
-			Z: -10.0,
-		})},
+		[]y3d.Mat4{y3d.Identity},
 	)
 	if err != nil {
 		panic(err)
@@ -45,6 +41,14 @@ func (t *TestApplication) Startup() {
 		-1,
 		s)
 	t.RenderManager.Root = sp
+	sp.Transform.Position = y3d.Vec3{
+		X: 0.0,
+		Y: 0.0,
+		Z: -1.0,
+	}
+
+	sp.Transform.Recalulate()
+	sp.UpdateWorldTransform()
 }
 
 func (t *TestApplication) Update(currentTime float64) {}
