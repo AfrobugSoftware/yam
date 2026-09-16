@@ -214,6 +214,13 @@ func (s *SkinManager) RemoveSkin(skin int) {
 	delete(s.Skins, skin)
 }
 
+func (s *SkinManager) ConvertHeightMapToNormalMap(hmap *image.Image) (*image.Image, error) {
+	if hmap == nil {
+		return nil, errors.New("no height map given")
+	}
+	return nil, nil
+}
+
 func (s *SkinManager) Destroy() {
 	clear(s.Materials)
 	for _, t := range s.Textures {

@@ -1,6 +1,7 @@
 package ycore
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"unsafe"
@@ -18,7 +19,7 @@ const (
 )
 
 const (
-	MAX_LIGHT                = 10
+	MAX_LIGHT                = 100
 	VERTEX_ATTRIBUTE_BINDING = 0
 	DRAW_INDEX_BINDING       = 10
 	MATERIAL_SSBO_BINDING    = 16
@@ -53,16 +54,20 @@ type RenderManager struct {
 	SkinManager    *SkinManager
 	VertextManager *VertexCacheManager
 	ShaderManager  *ShaderManager
-	fbo            uint32
-	ColorBuffers   []uint32
-	DepthBuffer    uint32
 	RenderStates   []RenderState
 	DrawMode       uint32
 	ActiveProgram  uint32
 	Root           SpatialInterface
 	Lights         []ygl.Light
 	LightUBO       uint32
-	ActiveLights   int
+	ScreenVao      uint32
+	ScreenVbo      uint32
+	ScreenEbo      uint32
+	gBuffer        uint32
+	gNormal        uint32
+	gPosition      uint32
+	gAlbedoSpec    uint32
+	gDepth         uint32
 }
 
 func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
@@ -124,68 +129,59 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 
 	gl.CreateBuffers(1, &rm.LightUBO)
 	gl.NamedBufferStorage(rm.LightUBO, int(112*MAX_LIGHT), nil, gl.DYNAMIC_STORAGE_BIT)
+	rm.CreateScreenQuad()
+	err = rm.CreateFrameBuffer()
+	if err != nil {
+		panic(err)
+	}
 	return rm
 }
 
-func (r *RenderManager) CreateFrameBuffer() {
-	gl.GenFramebuffers(1, &r.fbo)
-	r.ColorBuffers = make([]uint32, 0)
-}
+func (r *RenderManager) CreateFrameBuffer() error {
+	gl.GenFramebuffers(1, &r.gBuffer)
+	gl.BindFramebuffer(gl.FRAMEBUFFER, r.gBuffer)
 
-func (r *RenderManager) DrawBuffers() {
-	drawbuffer := make([]uint32, len(r.ColorBuffers))
-	for i := range r.ColorBuffers {
-		drawbuffer[i] = uint32(gl.COLOR_ATTACHMENT0 + i)
-	}
-	gl.DrawBuffers(int32(len(drawbuffer)), &drawbuffer[0])
-}
-
-func (r *RenderManager) CheckComplete() bool {
-	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
-	status := gl.CheckFramebufferStatus(gl.FRAMEBUFFER)
-	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
-	return status == gl.FRAMEBUFFER_COMPLETE
-}
-
-func (r *RenderManager) DestroyFrameBuffer() {
-	if r.fbo != 0 {
-		gl.DeleteFramebuffers(1, &r.fbo)
-		r.fbo = 0
-	}
-	if r.DepthBuffer != 0 {
-		gl.DeleteRenderbuffers(1, &r.DepthBuffer)
-		r.DepthBuffer = 0
-	}
-	for i := range r.ColorBuffers {
-		gl.DeleteTextures(1, &r.ColorBuffers[i])
-		clear(r.ColorBuffers)
-	}
-	r.ColorBuffers = nil
-}
-
-func (r *RenderManager) CreateColorBufferTexture() {
-	var textureColorbuffer uint32
-	gl.GenTextures(1, &textureColorbuffer)
-	gl.BindTexture(gl.TEXTURE_2D, textureColorbuffer)
+	//position
+	gl.GenTextures(1, &r.gPosition)
+	gl.BindTexture(gl.TEXTURE_2D, r.gPosition)
 	gl.TexImage2D(gl.TEXTURE_2D,
 		0,
-		gl.RGB,
+		gl.RGBA16F,
 		int32(r.ViewPort[r.Stage].Width),
 		int32(r.ViewPort[r.Stage].Height),
-		0, gl.RGB, gl.UNSIGNED_BYTE, nil)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	attachment := gl.COLOR_ATTACHMENT0 + len(r.ColorBuffers)
-	gl.FramebufferTexture2D(gl.FRAMEBUFFER, uint32(attachment), gl.TEXTURE_2D, textureColorbuffer, 0)
-	r.ColorBuffers = append(r.ColorBuffers, textureColorbuffer)
-	gl.BindTexture(gl.TEXTURE_2D, 0)
+		0, gl.RGBA, gl.FLOAT, nil)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, r.gPosition, 0)
 
-}
+	//normals
+	gl.GenTextures(1, &r.gNormal)
+	gl.BindTexture(gl.TEXTURE_2D, r.gNormal)
+	gl.TexImage2D(gl.TEXTURE_2D,
+		0,
+		gl.RGBA16F,
+		int32(r.ViewPort[r.Stage].Width),
+		int32(r.ViewPort[r.Stage].Height),
+		0, gl.RGBA, gl.FLOAT, nil)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, r.gNormal, 0)
 
-func (r *RenderManager) CreateDepthTexture() {
-	var tex uint32
-	gl.GenTextures(1, &tex)
-	gl.BindTexture(gl.TEXTURE_2D, tex)
+	//alebo spec
+	gl.GenTextures(1, &r.gAlbedoSpec)
+	gl.BindTexture(gl.TEXTURE_2D, r.gAlbedoSpec)
+	gl.TexImage2D(gl.TEXTURE_2D,
+		0,
+		gl.RGBA,
+		int32(r.ViewPort[r.Stage].Width),
+		int32(r.ViewPort[r.Stage].Height),
+		0, gl.RGBA, gl.UNSIGNED_BYTE, nil)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT2, gl.TEXTURE_2D, r.gAlbedoSpec, 0)
+
+	gl.GenTextures(1, &r.gDepth)
+	gl.BindTexture(gl.TEXTURE_2D, r.gDepth)
 	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.DEPTH24_STENCIL8,
 		int32(r.ViewPort[r.Stage].Width),
 		int32(r.ViewPort[r.Stage].Height),
@@ -193,17 +189,35 @@ func (r *RenderManager) CreateDepthTexture() {
 		gl.DEPTH_COMPONENT, gl.FLOAT, nil)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.TEXTURE_2D, tex, 0)
+	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.TEXTURE_2D, r.gDepth, 0)
 	gl.BindTexture(gl.TEXTURE_2D, 0)
-	r.DepthBuffer = tex
+
+	attachments := [3]uint32{
+		gl.COLOR_ATTACHMENT0,
+		gl.COLOR_ATTACHMENT1,
+		gl.COLOR_ATTACHMENT2,
+	}
+	gl.DrawBuffers(3, &attachments[0])
+	status := gl.CheckFramebufferStatus(gl.FRAMEBUFFER)
+	if status != gl.FRAMEBUFFER_COMPLETE {
+		return errors.New("failed to create g-buffer")
+	}
+	return nil
 }
 
-func (r *RenderManager) BindFrameBuffer() {
-	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
-}
+func (r *RenderManager) CreateScreenQuad() {
+	v, i := ygl.CreateQuad()
+	gl.CreateVertexArrays(1, &r.ScreenVao)
+	gl.CreateBuffers(1, &r.ScreenVbo)
+	gl.CreateBuffers(1, &r.ScreenEbo)
 
-func (r *RenderManager) UnbindFrameBuffer() {
-	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+	gl.NamedBufferStorage(r.ScreenVbo, v.Len(), gl.Ptr(v.Bytes()), 0)
+	gl.NamedBufferStorage(r.ScreenEbo, i.Len(), gl.Ptr(i.Bytes()), 0)
+	gl.VertexArrayAttribBinding(r.ScreenVao, 0, 0)
+	gl.VertexArrayAttribFormat(r.ScreenVao, 0, 3, gl.FLOAT, false, 0)
+	gl.EnableVertexArrayAttrib(r.ScreenVao, 0)
+	gl.VertexArrayVertexBuffer(r.ScreenVao, 0, r.ScreenVbo, 0, int32(unsafe.Sizeof(float32(0)*3)))
+	gl.VertexArrayElementBuffer(r.ScreenVao, r.ScreenEbo)
 }
 
 func (r *RenderManager) GetFrustum() [6]y3d.Plane {
@@ -421,14 +435,20 @@ func (r *RenderManager) Transfrom2Dto3D(pos y3d.Vec2) (y3d.Vec3, y3d.Vec3) {
 }
 
 func (r *RenderManager) Destroy() {
-	r.DestroyFrameBuffer()
 	if r.SkinManager != nil {
 		r.SkinManager.Destroy()
 	}
 	if r.VertextManager != nil {
 		r.VertextManager.Destory()
 	}
-
+	gl.DeleteVertexArrays(1, &r.ScreenVao)
+	gl.DeleteBuffers(1, &r.ScreenVbo)
+	gl.DeleteBuffers(1, &r.ScreenVbo)
+	gl.DeleteFramebuffers(1, &r.gBuffer)
+	gl.DeleteTextures(1, &r.gNormal)
+	gl.DeleteTextures(1, &r.gPosition)
+	gl.DeleteTextures(1, &r.gAlbedoSpec)
+	gl.DeleteTextures(1, &r.gDepth)
 	sdl.GLDeleteContext(r.Context)
 }
 
@@ -479,32 +499,37 @@ func (r *RenderManager) Render() {
 	gl.UseProgram(r.ActiveProgram)
 	gl.UniformMatrix4fv(0, 1, false, &r.ViewProj[0])
 
-	if r.ActiveLights > 0 {
-		gl.NamedBufferSubData(r.LightUBO, 0, int(unsafe.Sizeof(ygl.Light{})*uintptr(MAX_LIGHT)),
-			gl.Ptr(r.Lights))
-		gl.BindBufferBase(gl.UNIFORM_BUFFER, LIGHT_BINDING, r.LightUBO)
-	}
-	//might be mvoved to the scene_manager.go
 	if r.Root != nil {
 		r.Root.Draw(r)
 	}
 	r.Window.GLSwap()
 }
 
-func (r *RenderManager) RenderToGBuffer() {
-	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
-	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
-	gl.UseProgram(r.ActiveProgram)
-	gl.UniformMatrix4fv(0, 1, false, &r.ViewProj[0])
-
-	if r.ActiveLights > 0 {
-		gl.NamedBufferSubData(r.LightUBO, 0, int(unsafe.Sizeof(ygl.Light{})*uintptr(MAX_LIGHT)),
-			gl.Ptr(r.Lights))
-		gl.BindBufferBase(gl.UNIFORM_BUFFER, LIGHT_BINDING, r.LightUBO)
-	}
-	//might be mvoved to the scene_manager.go
-	if r.Root != nil {
-		r.Root.Draw(r)
-	}
+func (r *RenderManager) CopyDepthToDefault() {
+	gl.BindFramebuffer(gl.READ_FRAMEBUFFER, r.gBuffer)
+	gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, 0)
+	gl.BlitFramebuffer(
+		0, 0,
+		int32(r.ViewPort[r.Stage].Width),
+		int32(r.ViewPort[r.Stage].Height),
+		0, 0,
+		int32(r.ViewPort[r.Stage].Width),
+		int32(r.ViewPort[r.Stage].Height),
+		gl.DEPTH_BUFFER_BIT,
+		gl.NEAREST,
+	)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+}
+
+func (r *RenderManager) RenderLightingPass() {
+	gl.BindFramebuffer(gl.FRAMEBUFFER, 0) // set up default frame buffer
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
+	gl.NamedBufferSubData(r.LightUBO, 0, int(unsafe.Sizeof(ygl.Light{})*uintptr(MAX_LIGHT)), gl.Ptr(r.Lights))
+	gl.BindBufferBase(gl.UNIFORM_BUFFER, LIGHT_BINDING, r.LightUBO)
+	gl.BindTextureUnit(0, r.gPosition)
+	gl.BindTextureUnit(1, r.gNormal)
+	gl.BindTextureUnit(2, r.gAlbedoSpec)
+
+	gl.BindVertexArray(r.ScreenVao)
+	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
 }

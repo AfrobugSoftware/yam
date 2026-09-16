@@ -328,7 +328,7 @@ func TRS(translate Vec3, rot Quaternion, scale Vec3) Mat4 {
 		m[0], m[1], m[2], 0,
 		m[3], m[4], m[5], 0,
 		m[6], m[7], m[8], 0,
-		0, 0, 0, 1,
+		translate.X, translate.Y, translate.Z, 1,
 	}
 	result[0] *= float32(scale.X)
 	result[1] *= float32(scale.X)
@@ -342,9 +342,6 @@ func TRS(translate Vec3, rot Quaternion, scale Vec3) Mat4 {
 	result[9] *= float32(scale.Z)
 	result[10] *= float32(scale.Z)
 
-	result[12] = translate.X
-	result[13] = translate.Y
-	result[14] = translate.Z
 	return result
 }
 

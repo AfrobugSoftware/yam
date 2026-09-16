@@ -11,15 +11,7 @@ layout(std140, binding= 16) uniform Material {
 
 struct Light {
     vec4 pos;
-    vec4 direction;
-    vec4 diffuse;
-    vec4 ambient;
-    vec4 specular;
-    vec4 attenuation;
-    int type;
-    float intensity;
-    float range;
-    float falloff;
+    vec4 color;
 };
 
 layout(std140, binding=17) uniform Lights {

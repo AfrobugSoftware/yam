@@ -1,8 +1,6 @@
 package ygl
 
 import (
-	"encoding/binary"
-	"io"
 	"yam/y3d"
 )
 
@@ -14,27 +12,31 @@ const (
 )
 
 type Light struct {
-	Pos         y3d.Vec4
-	Direction   y3d.Vec4
-	Diffuse     y3d.Vec4
-	Ambient     y3d.Vec4
-	Specular    y3d.Vec4
-	Attenuation y3d.Vec4
-	Type        int
-	Intensity   float32
-	Range       float32
-	FallOff     float32
+	Pos    y3d.Vec4
+	Color  y3d.Vec4
+	Volume y3d.Mat4
 }
 
-func (l *Light) Write(b io.Writer) {
-	binary.Write(b, binary.NativeEndian, l.Pos.ToSlice())
-	binary.Write(b, binary.NativeEndian, l.Direction.ToSlice())
-	binary.Write(b, binary.NativeEndian, l.Diffuse.ToSlice())
-	binary.Write(b, binary.NativeEndian, l.Ambient.ToSlice())
-	binary.Write(b, binary.NativeEndian, l.Specular.ToSlice())
-	binary.Write(b, binary.NativeEndian, l.Attenuation.ToSlice())
-	binary.Write(b, binary.NativeEndian, l.Type)
-	binary.Write(b, binary.NativeEndian, l.Intensity)
-	binary.Write(b, binary.NativeEndian, l.Range)
-	binary.Write(b, binary.NativeEndian, l.FallOff)
+func (l *Light) CalcOmniLightMat(radius float32) {
+	invRadius := 0.5 / radius
+	ms := y3d.Scale(y3d.Vec3{
+		X: invRadius,
+		Y: invRadius,
+		Z: invRadius,
+	})
+	mT := y3d.Translation(
+		y3d.Vec3{
+			X: -l.Pos.X,
+			Y: -l.Pos.Y,
+			Z: -l.Pos.Z,
+		},
+	)
+	mB2 := y3d.Translation(
+		y3d.Vec3{
+			X: 0.5,
+			Y: 0.5,
+			Z: 0.5,
+		},
+	)
+	l.Volume = mT.Mul(ms).Mul(mB2)
 }
