@@ -68,6 +68,7 @@ type RenderManager struct {
 	gPosition      uint32
 	gAlbedoSpec    uint32
 	gDepth         uint32
+	lightSphere    int
 }
 
 func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
@@ -202,6 +203,7 @@ func (r *RenderManager) CreateFrameBuffer() error {
 	if status != gl.FRAMEBUFFER_COMPLETE {
 		return errors.New("failed to create g-buffer")
 	}
+	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 	return nil
 }
 
@@ -519,6 +521,22 @@ func (r *RenderManager) CopyDepthToDefault() {
 		gl.NEAREST,
 	)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+}
+
+func (r *RenderManager) CreateLightSphere() {
+	v, i := ygl.CreateSphere(64, 32, 1.0)
+	s, err := r.VertextManager.CreateStaticBuffer(
+		VPNT, v, i,
+		[]DrawCommand{
+			r.VertextManager.CreateDrawCommand(i, MAX_LIGHT),
+		},
+		-1,
+		MAX_LIGHT,
+	)
+	if err != nil {
+		panic(err)
+	}
+	r.lightSphere = s
 }
 
 func (r *RenderManager) RenderLightingPass() {

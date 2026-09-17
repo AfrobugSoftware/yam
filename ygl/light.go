@@ -1,6 +1,7 @@
 package ygl
 
 import (
+	"math"
 	"yam/y3d"
 )
 
@@ -11,32 +12,23 @@ const (
 	AMBIENT_LIGHT
 )
 
+const (
+	DEFAULT_CONSTANT  = 1.0
+	DEFAULT_LINEAR    = 0.7
+	DEFAULT_QUADRATIC = 1.8
+	DEFAULT_DARK      = (256 / 5.0)
+)
+
 type Light struct {
+	Radius float32
 	Pos    y3d.Vec4
 	Color  y3d.Vec4
-	Volume y3d.Mat4
 }
 
-func (l *Light) CalcOmniLightMat(radius float32) {
-	invRadius := 0.5 / radius
-	ms := y3d.Scale(y3d.Vec3{
-		X: invRadius,
-		Y: invRadius,
-		Z: invRadius,
-	})
-	mT := y3d.Translation(
-		y3d.Vec3{
-			X: -l.Pos.X,
-			Y: -l.Pos.Y,
-			Z: -l.Pos.Z,
-		},
-	)
-	mB2 := y3d.Translation(
-		y3d.Vec3{
-			X: 0.5,
-			Y: 0.5,
-			Z: 0.5,
-		},
-	)
-	l.Volume = mT.Mul(ms).Mul(mB2)
+func (l *Light) CalculateRadius(constant, linear, quadratic, darkIntensity float32) {
+	lmax := max(l.Color.X, l.Color.Y, l.Color.Z)
+	l.Radius = (-linear + float32(math.Sqrt(float64(linear*
+		linear-
+		4*quadratic*(constant-darkIntensity*lmax))))) /
+		(2 * quadratic)
 }

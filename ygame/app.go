@@ -40,12 +40,12 @@ func (t *TestApplication) Startup() {
 		v, i,
 		[]ycore.DrawCommand{dc},
 		skin,
-		[]y3d.Mat4{y3d.Identity},
+		1,
 	)
 	if err != nil {
 		panic(err)
 	}
-	sp := ycore.NewSpatial(nil, y3d.AABB{},
+	sp := ycore.NewSpatial(nil, y3d.UnitOBB,
 		ycore.NewTransform(),
 		ycore.VP,
 		v,

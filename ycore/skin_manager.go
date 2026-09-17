@@ -4,6 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	"os"
 	"strings"
 	"time"
@@ -130,7 +133,7 @@ func (s *SkinManager) AddTexture(skin int, filename string,
 		0,
 		gl.RGBA,
 		gl.UNSIGNED_BYTE,
-		gl.Ptr(&rgba.Pix[0]),
+		gl.Ptr(rgba.Pix),
 	)
 	if useMipmap {
 		var v float32

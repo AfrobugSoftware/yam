@@ -14,7 +14,7 @@ type SpatialInterface interface {
 	Draw(r *RenderManager)
 	PropagateToRoot()
 	GetTransform() *Transform
-	GetBoundingBox() y3d.AABB
+	GetBoundingBox() y3d.OBB
 	GetEffect() Effect
 }
 
@@ -22,8 +22,8 @@ type Spatial struct {
 	Parent           SpatialInterface
 	Children         []SpatialInterface
 	LocalEffect      Effect
-	LocalBoundingBox y3d.AABB
-	WorldBoundingBox y3d.AABB
+	LocalBoundingBox y3d.OBB
+	WorldBoundingBox y3d.OBB
 	Transform        *Transform
 	VertexType       string
 	DataV, DataI     *bytes.Buffer
@@ -34,7 +34,7 @@ type Spatial struct {
 
 func NewSpatial(
 	parent SpatialInterface,
-	boundingBox y3d.AABB,
+	boundingBox y3d.OBB,
 	tranform *Transform,
 	vertexType string,
 	dataV, dataI *bytes.Buffer,
@@ -63,7 +63,7 @@ func (s *Spatial) GetTransform() *Transform {
 	return s.Transform
 }
 
-func (s *Spatial) GetBoundingBox() y3d.AABB {
+func (s *Spatial) GetBoundingBox() y3d.OBB {
 	return s.WorldBoundingBox
 }
 
@@ -103,7 +103,7 @@ func (s *Spatial) PropagateToRoot() {
 }
 
 func (s *Spatial) UpdateWorldBound() {
-	s.WorldBoundingBox = s.Transform.TransFormAABB(s.LocalBoundingBox)
+	s.WorldBoundingBox = s.Transform.TransformOBB(s.LocalBoundingBox)
 }
 func (s *Spatial) UpdateWorldTransform() {
 	if s.Parent != nil {

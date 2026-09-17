@@ -1,6 +1,24 @@
 package y3d
 
-import "math"
+import (
+	"math"
+)
+
+var (
+	UnitOBB = OBB{
+		Center: Vec3{},
+		Axes: [3]Vec3{
+			UNIT_X,
+			UNIT_Y,
+			UNIT_Z,
+		},
+		Extents: Vec3{
+			X: 1,
+			Y: 1,
+			Z: 1,
+		},
+	}
+)
 
 type OBB struct {
 	Center  Vec3
@@ -40,7 +58,7 @@ func TriProj(axis, a, b, c Vec3) (max float32, min float32) {
 	return
 }
 
-func (o OBB) IntersectsTriang(a, b, c Vec3) bool {
+func (o OBB) IntersectsTriangle(a, b, c Vec3) bool {
 	edge := make([]Vec3, 3)
 	edge[0] = Sub(b, a)
 	edge[1] = Sub(c, a)

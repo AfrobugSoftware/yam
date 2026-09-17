@@ -39,9 +39,34 @@ func (ls LineSegment) MinDistSq(point Vec3) float32 {
 	}
 }
 
+func (p LineSegment) SquaredDistanceLineLine(q LineSegment) (r, s, t float32) {
+	diff := Sub(p.Start, q.Start)
+	d1 := Sub(p.End, p.Start)
+	d2 := Sub(q.End, q.Start)
+	a := Dot(d1, d1)
+	b := -Dot(d1, d2)
+	c := Dot(d2, d2)
+	d := Dot(d1, diff)
+	f := Dot(diff, diff)
+	det := float32(math.Abs(float64((a*c - b*b))))
+	if det > NearZero {
+		//not parallel
+		e := -Dot(d2, diff)
+		invDet := 1 / det
+		s = (b*e - c*d) * invDet
+		t = (b*d - a*e) * invDet
+		r = s*(a*s+b*t+2*d) + t*(b*s+c*t+2*e) + f
+	} else {
+		s = -d / a
+		t = 0
+		r = d*s + f
+	}
+	return
+}
+
 func (p LineSegment) MinLineSegmentDistSq(q LineSegment) float32 {
 	d1 := Sub(p.End, p.Start)
-	d2 := Sub(p.End, q.Start) //this should be q.End no ?
+	d2 := Sub(q.End, q.Start) //this should be q.End no ?
 	r := Sub(p.Start, q.Start)
 
 	a := Dot(d1, d1)

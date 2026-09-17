@@ -211,6 +211,7 @@ func (vm *VertexCacheManager) Render(
 		if vc[i].SkinId == skinID {
 			return vc[i].Add(
 				command,
+				len(world),
 				world,
 				dataV,
 				dataI,
@@ -227,6 +228,7 @@ func (vm *VertexCacheManager) Render(
 		empty.SetSkin(skinID)
 		return empty.Add(
 			command,
+			len(world),
 			world,
 			dataV,
 			dataI,
@@ -235,6 +237,7 @@ func (vm *VertexCacheManager) Render(
 	fullest.SetSkin(skinID)
 	return fullest.Add(
 		command,
+		len(world),
 		world,
 		dataV,
 		dataI,
@@ -266,15 +269,15 @@ func (vm *VertexCacheManager) CreateStaticBuffer(
 	dataV, dataI *bytes.Buffer,
 	command []DrawCommand,
 	skinId int,
-	world []y3d.Mat4,
+	instanceCount int,
 ) (int, error) {
 	id := len(vm.StaticBuffers)
 	s := NewStaticBuffer(
 		vm,
 		dataV, dataI,
 		command,
+		instanceCount,
 		skinId,
-		world,
 		vm.Strides[vertexType],
 		vm.Formats[vertexType],
 		id,

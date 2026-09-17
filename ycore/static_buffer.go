@@ -2,6 +2,7 @@ package ycore
 
 import (
 	"bytes"
+	"fmt"
 	"unsafe"
 	"yam/y3d"
 
@@ -24,23 +25,31 @@ type StaticBuffer struct {
 	NumVertics      int32
 	NumIndices      int32
 	NumDrawCommands int32
+	NumOfInstnaces  int32
 	Stride          int32
 	SkinId          int
 	Format          []VertexFormat
 	VManager        *VertexCacheManager
 }
 
+func CheckError() {
+	ierr := gl.GetError()
+	if ierr != gl.NO_ERROR {
+		fmt.Printf("GL error: 0x%x\n", ierr)
+	}
+}
+
 func NewStaticBuffer(
 	vertexCacheManager *VertexCacheManager,
 	dataV, dataI *bytes.Buffer,
 	command []DrawCommand,
+	instanceCount int,
 	skinId int,
-	world []y3d.Mat4,
 	stride int32,
 	format []VertexFormat,
 	id int,
 ) *StaticBuffer {
-	if len(world) == 0 || len(command) == 0 || len(format) == 0 {
+	if len(command) == 0 || len(format) == 0 {
 		return nil
 	}
 	var vao, vvbo, ivbo, dcbo, divbo, mssbo, mubo uint32
@@ -61,13 +70,13 @@ func NewStaticBuffer(
 	gl.VertexArrayElementBuffer(vao, ivbo)
 
 	//create draw indices
-	di := make([]uint32, len(world))
-	for i := range di {
+	di := make([]uint32, instanceCount)
+	for i := range instanceCount {
 		di[i] = uint32(i)
 	}
 
 	gl.CreateBuffers(1, &divbo)
-	gl.NamedBufferStorage(divbo, int(len(world)*int(unsafe.Sizeof(uint32(0)))), gl.Ptr(di), 0)
+	gl.NamedBufferStorage(divbo, int(instanceCount*int(unsafe.Sizeof(uint32(0)))), gl.Ptr(di), 0)
 	gl.VertexArrayAttribBinding(vao, 10, 10)
 	gl.VertexArrayVertexBuffer(vao, 10, divbo, 0, int32(unsafe.Sizeof(uint32(0))))
 	gl.VertexArrayAttribIFormat(vao, 10, 1, gl.UNSIGNED_INT, 0) //relative offset should it be zero
@@ -79,7 +88,8 @@ func NewStaticBuffer(
 
 	//create the world matrix ssbo
 	gl.CreateBuffers(1, &mssbo)
-	gl.NamedBufferStorage(mssbo, int(unsafe.Sizeof(y3d.Mat4{})*uintptr(len(command))), gl.Ptr(world), gl.MAP_WRITE_BIT)
+	gl.NamedBufferStorage(mssbo, int(unsafe.Sizeof(y3d.Mat4{})*uintptr(instanceCount)),
+		nil, gl.MAP_WRITE_BIT)
 
 	//load material
 	gl.CreateBuffers(1, &mubo)
@@ -99,6 +109,7 @@ func NewStaticBuffer(
 		NumVertics:      (int32(dataV.Len() / int(stride))),
 		NumIndices:      (int32(dataI.Len() / 4)),
 		NumDrawCommands: int32(len(command)),
+		NumOfInstnaces:  int32(instanceCount),
 		SkinId:          skinId,
 		Format:          format,
 		Stride:          stride,
@@ -116,9 +127,13 @@ func (s *StaticBuffer) Render(world []y3d.Mat4) {
 		if err != nil {
 			return
 		}
-		gl.BindBuffer(gl.UNIFORM_BUFFER, s.MaterialUBO)
-		mPtr := gl.MapBuffer(gl.UNIFORM_BUFFER, gl.WRITE_ONLY)
-		if mPtr != nil {
+		mPtr := gl.MapNamedBufferRange(
+			s.MaterialUBO,
+			0,
+			int(unsafe.Sizeof([16]float32{})),
+			gl.MAP_WRITE_BIT|gl.MAP_INVALIDATE_BUFFER_BIT)
+		if mPtr == nil {
+			CheckError()
 			panic("cannot set material for static buffer")
 		}
 		m := unsafe.Slice((*float32)(mPtr), 16)
@@ -138,24 +153,35 @@ func (s *StaticBuffer) Render(world []y3d.Mat4) {
 		m[13] = material.Emissive.Y
 		m[14] = material.Emissive.Z
 		m[15] = material.Shininess
-		gl.UnmapBuffer(gl.UNIFORM_BUFFER)
+		gl.UnmapNamedBuffer(s.MaterialUBO)
 
-		for _, i := range skin.Texture {
-			if i == EmptyTexture {
+		for i, t := range skin.Texture {
+			if t == EmptyTexture {
 				break
 			}
-			tex, ok := s.VManager.RenderManager.SkinManager.Textures[i]
+			tex, ok := s.VManager.RenderManager.SkinManager.Textures[t]
 			if ok {
 				gl.BindTextureUnit(uint32(i), tex.Handle)
 			}
 		}
 		s.VManager.ActiveSkin = s.SkinId
 	}
-	gl.BindBuffer(gl.SHADER_STORAGE_BUFFER, s.WorldMatrixSSBO)
-	mPtr := gl.MapBuffer(gl.SHADER_STORAGE_BUFFER, gl.WRITE_ONLY)
-	slice := unsafe.Slice((*y3d.Mat4)(mPtr), s.NumDrawCommands)
+	ptr := gl.MapNamedBufferRange(
+		s.WorldMatrixSSBO,
+		0,
+		int(len(world)*int(unsafe.Sizeof(y3d.Mat4{}))),
+		gl.MAP_WRITE_BIT|gl.MAP_INVALIDATE_BUFFER_BIT,
+	)
+	if ptr == nil {
+		CheckError()
+		panic("cannot load world matrix")
+	}
+	slice := unsafe.Slice((*y3d.Mat4)(ptr), len(world))
 	copy(slice, world)
-	gl.UnmapBuffer(gl.SHADER_STORAGE_BUFFER)
+	if !gl.UnmapNamedBuffer(s.WorldMatrixSSBO) {
+		CheckError()
+		panic("cannot release world matrix buffer")
+	}
 
 	s.VManager.ActiveCache = INVALID_CACHE
 	if s.VManager.ActiveSB != s.Id {

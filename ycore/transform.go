@@ -55,13 +55,17 @@ func (trans *Transform) GetUp() y3d.Vec3 {
 	return trans.Rotation.Rotate(UP)
 }
 
-func (t *Transform) TransFormAABB(b y3d.AABB) y3d.AABB {
+func (t *Transform) TransformAABB(b y3d.AABB) y3d.AABB {
 	max := t.World.MulVec3(b.Max)
 	min := t.World.MulVec3(b.Min)
 	return y3d.AABB{
 		Min: min,
 		Max: max,
 	}
+}
+
+func (t *Transform) TransformOBB(b y3d.OBB) y3d.OBB {
+	return b.DeTransform(t.World)
 }
 
 func (t *Transform) RotateToFoward(forward y3d.Vec3) {
