@@ -2,6 +2,7 @@ package ycore
 
 import (
 	"bytes"
+	"encoding/gob"
 	"yam/y3d"
 )
 
@@ -33,19 +34,26 @@ type MMaterial struct {
 }
 
 type Model struct {
-	Vertices     *bytes.Buffer
-	VerticesOrig *bytes.Buffer
-	VertexType   string
-	Materials    []MMaterial
-	Faces        []Face
-	Meshes       []Mesh
-	Joints       []Joint
-	Name         string
-	Version      string
-	Type         string
-	NumVertices  uint32
-	NumIndices   uint32
-	NumFaces     uint32
-	NumMesh      uint32
-	NumJoints    uint32
+	Vertices    *bytes.Buffer
+	VertexType  string
+	Materials   []MMaterial
+	Faces       []Face
+	Meshes      []Mesh
+	Joints      []Joint
+	Name        string
+	Version     string
+	Type        string
+	NumVertices uint32
+	NumIndices  uint32
+	NumFaces    uint32
+	NumMesh     uint32
+	NumJoints   uint32
+}
+
+func (m *Model) Write(e *gob.Encoder) error {
+	return e.Encode(*m)
+}
+
+func (m *Model) Read(d *gob.Decoder) error {
+	return d.Decode(m)
 }

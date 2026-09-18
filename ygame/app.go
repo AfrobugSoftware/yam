@@ -17,6 +17,7 @@ type Application interface {
 
 type TestApplication struct {
 	RenderManager *ycore.RenderManager
+	Obj           ycore.SpatialInterface
 }
 
 func (t *TestApplication) Startup() {
@@ -35,6 +36,7 @@ func (t *TestApplication) Startup() {
 		panic(err)
 	}
 	dc := t.RenderManager.VertextManager.CreateDrawCommand(i, 1)
+	s, box := t.RenderManager.VertextManager.GetScalingAndBox(v, i, 0.5, ycore.VP)
 	staticbuf, err := t.RenderManager.VertextManager.CreateStaticBuffer(
 		ycore.VP,
 		v, i,
@@ -45,7 +47,7 @@ func (t *TestApplication) Startup() {
 	if err != nil {
 		panic(err)
 	}
-	sp := ycore.NewGeometry(nil, y3d.UnitOBB,
+	sp := ycore.NewGeometry(nil, box,
 		ycore.NewTransform(),
 		ycore.VP,
 		v,
@@ -59,11 +61,22 @@ func (t *TestApplication) Startup() {
 		Y: 0.0,
 		Z: -1.0,
 	}
+	sp.Transform.SetScale(s)
 	sp.Transform.Recalulate()
 	sp.UpdateWorldTransform()
+
+	t.Obj = sp
 }
 
-func (t *TestApplication) Update(currentTime float64) {}
+func (t *TestApplication) Update(deltaTime float64) {
+	speed := float32(0.5)
+	trans := t.Obj.GetTransform()
+	trans.Position = y3d.Add(trans.Position, y3d.Smul(y3d.NegateVec3(y3d.UNIT_Z), speed*float32(deltaTime)))
+
+	trans.Recalulate()
+	s := t.Obj.(*ycore.Geometry)
+	s.UpdateWorldTransform()
+}
 
 func (t *TestApplication) Draw() {}
 

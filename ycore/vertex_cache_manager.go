@@ -26,7 +26,6 @@ const (
 
 type VertexCacheManager struct {
 	ActiveCache   int
-	ActiveSB      int
 	ActiveSkin    int
 	RenderManager *RenderManager
 	CacheId       int
@@ -43,7 +42,6 @@ func NewVertexCacheManager(
 	vm := &VertexCacheManager{
 		ActiveCache:   INVALID_CACHE,
 		ActiveSkin:    -1,
-		ActiveSB:      -1,
 		RenderManager: renderManager,
 		Caches:        make(map[string][MAX_CACHES]*VertexCache),
 		Formats:       make(map[string][]VertexFormat),
@@ -387,8 +385,9 @@ func (vm *VertexCacheManager) CalculateTangentSpace(dataV, dataI *bytes.Buffer, 
 	stride := vm.Strides[vertexType]
 	b := dataV.Bytes()
 	getPos := func(i int) y3d.Vec3 {
-		off := int(stride) * i
-		v := b[off+int(format[0].RelativeOffset) : int(format[0].ComponentSize)*int(unsafe.Sizeof(float32(0)))]
+		off := (int(stride) * i) + int(format[0].RelativeOffset)
+		end := off + int(format[0].ComponentSize)*int(unsafe.Sizeof(float32(0)))
+		v := b[off:end]
 		vp := unsafe.Slice((*float32)(unsafe.Pointer(unsafe.SliceData(v))), 3)
 		return y3d.Vec3{
 			X: vp[0],
@@ -398,8 +397,9 @@ func (vm *VertexCacheManager) CalculateTangentSpace(dataV, dataI *bytes.Buffer, 
 	}
 
 	getUV := func(i int) y3d.Vec2 {
-		off := int(stride) * i
-		v := b[off+int(format[2].RelativeOffset) : int(format[2].ComponentSize)*int(unsafe.Sizeof(float32(0)))]
+		off := (int(stride) * i) + int(format[2].RelativeOffset)
+		end := off + int(format[2].ComponentSize)*int(unsafe.Sizeof(float32(0)))
+		v := b[off:end]
 		vp := unsafe.Slice((*float32)(unsafe.Pointer(unsafe.SliceData(v))), 2)
 		return y3d.Vec2{
 			X: vp[0],
@@ -407,10 +407,12 @@ func (vm *VertexCacheManager) CalculateTangentSpace(dataV, dataI *bytes.Buffer, 
 		}
 	}
 	writeTB := func(T, B []float32, i int) {
-		off := int(stride) * i
-		vt := b[off+int(format[3].RelativeOffset) : int(format[3].ComponentSize)*int(unsafe.Sizeof(float32(0)))]
+		off := (int(stride) * i) + int(format[0].RelativeOffset)
+		end := off + int(format[0].ComponentSize)*int(unsafe.Sizeof(float32(0)))
+		vt := b[off:end]
 		t := unsafe.Slice((*float32)(unsafe.Pointer(unsafe.SliceData(vt))), 3)
-		vb := b[off+int(format[4].RelativeOffset) : int(format[4].ComponentSize)*int(unsafe.Sizeof(float32(0)))]
+
+		vb := b[off:end]
 		b := unsafe.Slice((*float32)(unsafe.Pointer(unsafe.SliceData(vb))), 3)
 
 		copy(t, T)
@@ -495,4 +497,52 @@ func (vm *VertexCacheManager) CalculateTangentSpace(dataV, dataI *bytes.Buffer, 
 			unsafe.Slice((*float32)(unsafe.Pointer(&B[2])), 3), int(i3))
 	}
 	return dataV, nil
+}
+
+func (vm *VertexCacheManager) GetScalingAndBox(dataV, dataI *bytes.Buffer, scale float32, vertexType string) (float32, y3d.AABB) {
+	if scale == 0.0 {
+		return 0.0, y3d.UnitAABB
+	}
+	format := vm.Formats[vertexType]
+	stride := vm.Strides[vertexType]
+	b := dataV.Bytes()
+	getPos := func(i int) y3d.Vec3 {
+		off := (int(stride) * i) + int(format[0].RelativeOffset)
+		end := off + int(format[0].ComponentSize)*int(unsafe.Sizeof(float32(0)))
+		v := b[off:end]
+		vp := unsafe.Slice((*float32)(unsafe.Pointer(unsafe.SliceData(v))),
+			format[0].ComponentSize)
+		return y3d.Vec3{
+			X: vp[0],
+			Y: vp[1],
+			Z: vp[2],
+		}
+	}
+	box := y3d.AABB{
+		Min: y3d.Vec3{
+			X: 999999.99,
+			Y: 999999.99,
+			Z: 999999.99,
+		},
+		Max: y3d.Vec3{
+			X: -999999.99,
+			Y: -999999.99,
+			Z: -999999.99,
+		},
+	}
+	count := dataI.Len() / 4
+	i := dataI.Bytes()
+	indices := unsafe.Slice((*uint32)(unsafe.Pointer(unsafe.SliceData(i))), count)
+	for _, i := range indices {
+		vertex := getPos(int(i))
+		box.Max.X = max(vertex.X, box.Max.X)
+		box.Max.Y = max(vertex.Y, box.Max.Y)
+		box.Max.Z = max(vertex.Z, box.Max.Z)
+
+		box.Min.X = min(vertex.X, box.Min.X)
+		box.Min.Y = min(vertex.Y, box.Min.Y)
+		box.Min.Z = min(vertex.Z, box.Min.Z)
+	}
+	scaling := (box.Max.Y - box.Min.Y) / scale
+	return 1.0 / scaling, box
 }

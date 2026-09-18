@@ -33,6 +33,14 @@ func NewTransform() *Transform {
 	}
 }
 
+func (trans *Transform) SetScale(factor float32) {
+	trans.Scale = y3d.Vec3{
+		X: factor,
+		Y: factor,
+		Z: factor,
+	}
+}
+
 func (trans *Transform) UpdateWorld(parent *Transform) {
 	trans.World = parent.World.Mul(trans.Local)
 }

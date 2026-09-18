@@ -2,6 +2,7 @@ package ycore
 
 import (
 	"bytes"
+	"encoding/gob"
 	"log"
 	"yam/y3d"
 )
@@ -16,9 +17,17 @@ type Geometry struct {
 	SkeletalAnimator *SkeletalAnimator
 }
 
+func (g *Geometry) Write(e *gob.Encoder) error {
+	return e.Encode(*g)
+}
+
+func (g *Geometry) Read(d *gob.Decoder) error {
+	return d.Decode(g)
+}
+
 func NewGeometry(
 	parent SpatialInterface,
-	boundingBox y3d.OBB,
+	boundingBox y3d.AABB,
 	tranform *Transform,
 	vertexType string,
 	dataV, dataI *bytes.Buffer,

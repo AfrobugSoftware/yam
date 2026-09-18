@@ -184,12 +184,9 @@ func (s *StaticBuffer) Render(world []y3d.Mat4) {
 	}
 
 	s.VManager.ActiveCache = INVALID_CACHE
-	if s.VManager.ActiveSB != s.Id {
-		gl.BindVertexArray(s.Vao)
-		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, 10, s.WorldMatrixSSBO)
-		gl.BindBufferBase(gl.UNIFORM_BUFFER, 16, s.MaterialUBO)
-		s.VManager.ActiveSB = s.Id
-	}
+	gl.BindVertexArray(s.Vao)
+	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, 10, s.WorldMatrixSSBO)
+	gl.BindBufferBase(gl.UNIFORM_BUFFER, 16, s.MaterialUBO)
 	gl.BindBuffer(gl.DRAW_INDIRECT_BUFFER, s.DrawCommandBo)
 	switch s.VManager.RenderManager.DrawMode {
 	case gl.TRIANGLES, gl.LINES:

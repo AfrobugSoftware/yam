@@ -8,18 +8,19 @@ type SpatialInterface interface {
 	UpdateRS(dt float32)
 	UpdateGS(dt float32)
 	GetParent() SpatialInterface
+	SetParent(p SpatialInterface)
 	Draw(r *RenderManager)
 	PropagateToRoot()
 	GetTransform() *Transform
-	GetBoundingBox() y3d.OBB
+	GetBoundingBox() y3d.AABB
 	GetEffect() Effect
 }
 
 type Spatial struct {
 	Parent           SpatialInterface
 	LocalEffect      Effect
-	LocalBoundingBox y3d.OBB
-	WorldBoundingBox y3d.OBB
+	LocalBoundingBox y3d.AABB
+	WorldBoundingBox y3d.AABB
 	Transform        *Transform
 }
 
@@ -27,11 +28,15 @@ func (s *Spatial) GetParent() SpatialInterface {
 	return s.Parent
 }
 
+func (s *Spatial) SetParent(p SpatialInterface) {
+	s.Parent = p
+}
+
 func (s *Spatial) GetTransform() *Transform {
 	return s.Transform
 }
 
-func (s *Spatial) GetBoundingBox() y3d.OBB {
+func (s *Spatial) GetBoundingBox() y3d.AABB {
 	return s.WorldBoundingBox
 }
 
@@ -46,8 +51,14 @@ func (s *Spatial) PropagateToRoot() {
 
 }
 
+func (s *Spatial) CalculateScale(factor float32) {
+	scaling := (s.LocalBoundingBox.Max.Y - s.LocalBoundingBox.Min.Y) / factor
+	s.Transform.SetScale(scaling)
+	s.Transform.Recalulate()
+}
+
 func (s *Spatial) UpdateWorldBound() {
-	s.WorldBoundingBox = s.Transform.TransformOBB(s.LocalBoundingBox)
+	s.WorldBoundingBox = s.Transform.TransformAABB(s.LocalBoundingBox)
 }
 func (s *Spatial) UpdateWorldTransform() {
 	if s.Parent != nil {

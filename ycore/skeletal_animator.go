@@ -7,6 +7,13 @@ const (
 	ROOT             = 0 //root is alway at zero
 )
 
+type Animation struct {
+	Name       string
+	StartFrame int
+	EndFrame   int
+	IsActive   bool
+}
+
 type Joint struct {
 	Id         int
 	Parent     int
@@ -22,5 +29,6 @@ type Joint struct {
 }
 
 type SkeletalAnimator struct {
-	Joints []*Joint
+	Animation []*Animation
+	Joints    []*Joint
 }

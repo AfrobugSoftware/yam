@@ -4,6 +4,21 @@ import (
 	"math"
 )
 
+var (
+	UnitAABB = AABB{
+		Min: Vec3{
+			X: -1,
+			Y: -1,
+			Z: -1,
+		},
+		Max: Vec3{
+			X: 1,
+			Y: 1,
+			Z: 1,
+		},
+	}
+)
+
 type AABB struct {
 	Min Vec3
 	Max Vec3
