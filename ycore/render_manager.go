@@ -1,6 +1,7 @@
 package ycore
 
 import (
+	"encoding/gob"
 	"errors"
 	"fmt"
 	"strings"
@@ -42,7 +43,6 @@ type RenderManager struct {
 	ProjP          [4]y3d.Mat4
 	ProjO          [4]y3d.Mat4
 	ViewProj       y3d.Mat4
-	WorldViewProj  y3d.Mat4
 	Near           float32
 	Far            float32
 	Width          int
@@ -60,9 +60,9 @@ type RenderManager struct {
 	Root           SpatialInterface
 	Lights         []ygl.Light
 	LightUBO       uint32
-	ScreenVao      uint32
-	ScreenVbo      uint32
-	ScreenEbo      uint32
+	screenVao      uint32
+	screenVbo      uint32
+	screenEbo      uint32
 	gBuffer        uint32
 	gNormal        uint32
 	gPosition      uint32
@@ -137,6 +137,15 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 	}
 	return rm
 }
+func (r *RenderManager) Write(e *gob.Encoder) error {
+	e.Encode(r.ClearColor)
+	return nil
+}
+
+func (r *RenderManager) Read(d *gob.Decoder) error {
+	d.Decode(&r.ClearColor)
+	return nil
+}
 
 func (r *RenderManager) CreateFrameBuffer() error {
 	gl.GenFramebuffers(1, &r.gBuffer)
@@ -209,17 +218,17 @@ func (r *RenderManager) CreateFrameBuffer() error {
 
 func (r *RenderManager) CreateScreenQuad() {
 	v, i := ygl.CreateQuad()
-	gl.CreateVertexArrays(1, &r.ScreenVao)
-	gl.CreateBuffers(1, &r.ScreenVbo)
-	gl.CreateBuffers(1, &r.ScreenEbo)
+	gl.CreateVertexArrays(1, &r.screenVao)
+	gl.CreateBuffers(1, &r.screenVbo)
+	gl.CreateBuffers(1, &r.screenEbo)
 
-	gl.NamedBufferStorage(r.ScreenVbo, v.Len(), gl.Ptr(v.Bytes()), 0)
-	gl.NamedBufferStorage(r.ScreenEbo, i.Len(), gl.Ptr(i.Bytes()), 0)
-	gl.VertexArrayAttribBinding(r.ScreenVao, 0, 0)
-	gl.VertexArrayAttribFormat(r.ScreenVao, 0, 3, gl.FLOAT, false, 0)
-	gl.EnableVertexArrayAttrib(r.ScreenVao, 0)
-	gl.VertexArrayVertexBuffer(r.ScreenVao, 0, r.ScreenVbo, 0, int32(unsafe.Sizeof(float32(0)*3)))
-	gl.VertexArrayElementBuffer(r.ScreenVao, r.ScreenEbo)
+	gl.NamedBufferStorage(r.screenVbo, v.Len(), gl.Ptr(v.Bytes()), 0)
+	gl.NamedBufferStorage(r.screenEbo, i.Len(), gl.Ptr(i.Bytes()), 0)
+	gl.VertexArrayAttribBinding(r.screenVao, 0, 0)
+	gl.VertexArrayAttribFormat(r.screenVao, 0, 3, gl.FLOAT, false, 0)
+	gl.EnableVertexArrayAttrib(r.screenVao, 0)
+	gl.VertexArrayVertexBuffer(r.screenVao, 0, r.screenVbo, 0, int32(unsafe.Sizeof(float32(0)*3)))
+	gl.VertexArrayElementBuffer(r.screenVao, r.screenEbo)
 }
 
 func (r *RenderManager) GetFrustum() [6]y3d.Plane {
@@ -443,9 +452,9 @@ func (r *RenderManager) Destroy() {
 	if r.VertextManager != nil {
 		r.VertextManager.Destory()
 	}
-	gl.DeleteVertexArrays(1, &r.ScreenVao)
-	gl.DeleteBuffers(1, &r.ScreenVbo)
-	gl.DeleteBuffers(1, &r.ScreenVbo)
+	gl.DeleteVertexArrays(1, &r.screenVao)
+	gl.DeleteBuffers(1, &r.screenVbo)
+	gl.DeleteBuffers(1, &r.screenVbo)
 	gl.DeleteFramebuffers(1, &r.gBuffer)
 	gl.DeleteTextures(1, &r.gNormal)
 	gl.DeleteTextures(1, &r.gPosition)
@@ -548,6 +557,6 @@ func (r *RenderManager) RenderLightingPass() {
 	gl.BindTextureUnit(1, r.gNormal)
 	gl.BindTextureUnit(2, r.gAlbedoSpec)
 
-	gl.BindVertexArray(r.ScreenVao)
+	gl.BindVertexArray(r.screenVao)
 	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
 }

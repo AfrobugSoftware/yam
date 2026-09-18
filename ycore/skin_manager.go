@@ -4,12 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"image/color"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
 	"os"
 	"strings"
 	"time"
+	"yam/y3d"
 	"yam/ygl"
 
 	"github.com/go-gl/gl/v4.3-core/gl"
@@ -32,7 +34,6 @@ type TextureData struct {
 type Skin struct {
 	Material int
 	Texture  [8]int
-	Alpha    bool
 }
 
 type SkinManager struct {
@@ -217,11 +218,59 @@ func (s *SkinManager) RemoveSkin(skin int) {
 	delete(s.Skins, skin)
 }
 
-func (s *SkinManager) ConvertHeightMapToNormalMap(hmap *image.Image) (*image.Image, error) {
+func (s *SkinManager) ConvertHeightMapToNormalMap(hmap *image.RGBA) (*image.RGBA, error) {
 	if hmap == nil {
 		return nil, errors.New("no height map given")
 	}
-	return nil, nil
+	bounds := hmap.Bounds()
+	ret := image.NewRGBA(hmap.Rect)
+	for i := range bounds.Max.Y {
+		for j := range bounds.Max.X {
+			var c00, c10, c01 color.RGBA
+			c00 = hmap.RGBAAt(j, i)
+			if j+1 >= bounds.Max.X {
+				c10 = hmap.RGBAAt(0, i)
+			} else {
+				c10 = hmap.RGBAAt(j+1, i)
+			}
+			if i+i >= bounds.Max.Y {
+				c01 = hmap.RGBAAt(j, 0)
+			} else {
+				c01 = hmap.RGBAAt(j, i+1)
+			}
+			h00 := float32(c00.R / 255.0)
+			h10 := float32(c10.R / 255.0)
+			h01 := float32(c01.R / 255.0)
+
+			p00 := y3d.Vec3{
+				X: float32(j),
+				Y: float32(i),
+				Z: h00,
+			}
+			p10 := y3d.Vec3{
+				X: float32(j) + 1.0,
+				Y: float32(i),
+				Z: h10,
+			}
+
+			p01 := y3d.Vec3{
+				X: float32(j),
+				Y: float32(i) + 1.0,
+				Z: h01,
+			}
+			v1 := y3d.Sub(p10, p00)
+			v0 := y3d.Sub(p01, p00)
+			n := y3d.Normalize(y3d.Cross(v1, v0))
+			nc := color.RGBA{
+				R: uint8(127.0*n.X + 128.0),
+				G: uint8(127.0*n.Y + 128.0),
+				B: uint8(127.0*n.Z + 128.0),
+				A: uint8(255.0 * h00),
+			}
+			ret.Set(j, i, nc)
+		}
+	}
+	return ret, nil
 }
 
 func (s *SkinManager) Destroy() {

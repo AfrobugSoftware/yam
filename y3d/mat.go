@@ -24,6 +24,12 @@ var Identity = Mat4{
 	0, 0, 0, 1,
 }
 
+var Identity3x3 = Mat3{
+	1, 0, 0,
+	0, 1, 0,
+	0, 0, 1,
+}
+
 func (m Mat4) MulVec4(v Vec4) Vec4 {
 	return Vec4{
 		X: m[0]*v.X + m[4]*v.Y + m[8]*v.Z + m[12]*v.W,
@@ -50,6 +56,51 @@ func (a Mat4) Mul(b Mat4) Mat4 {
 		}
 	}
 	return out
+}
+
+func (a Mat3) Mul(b Mat3) Mat3 {
+	var out Mat3
+	for col := range 3 {
+		for row := range 3 {
+			var sum float32
+			for k := range 3 {
+				sum += a[k*3+row] * b[col*3+k]
+			}
+			out[col*4+row] = sum
+		}
+	}
+	return out
+}
+
+func (m Mat3) Inverse() Mat3 {
+	a00, a01, a02 := m[0], m[1], m[2]
+	a10, a11, a12 := m[3], m[4], m[5]
+	a20, a21, a22 := m[6], m[7], m[8]
+
+	b01 := a22*a11 - a12*a21
+	b11 := a12*a20 - a22*a10
+	b21 := a21*a10 - a11*a20
+
+	det := a00*b01 + a01*b11 + a02*b21
+
+	const epsilon = 1e-8
+	if det > -epsilon && det < epsilon {
+		return Identity3x3
+	}
+	invDet := 1 / det
+	return Mat3{
+		b01 * invDet,
+		(a02*a21 - a22*a01) * invDet,
+		(a12*a01 - a02*a11) * invDet,
+
+		b11 * invDet,
+		(a22*a00 - a02*a20) * invDet,
+		(a02*a10 - a12*a00) * invDet,
+
+		b21 * invDet,
+		(a01*a20 - a21*a00) * invDet,
+		(a11*a00 - a01*a10) * invDet,
+	}
 }
 
 func (m1 *Mat4) CalulateNormalMatrix() Mat3 {

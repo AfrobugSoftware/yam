@@ -45,7 +45,7 @@ func (t *TestApplication) Startup() {
 	if err != nil {
 		panic(err)
 	}
-	sp := ycore.NewSpatial(nil, y3d.UnitOBB,
+	sp := ycore.NewGeometry(nil, y3d.UnitOBB,
 		ycore.NewTransform(),
 		ycore.VP,
 		v,
