@@ -25,7 +25,6 @@ const (
 )
 
 type VertexCacheManager struct {
-	ActiveCache   int
 	ActiveSkin    int
 	RenderManager *RenderManager
 	CacheId       int
@@ -37,10 +36,9 @@ type VertexCacheManager struct {
 
 func NewVertexCacheManager(
 	renderManager *RenderManager,
-	maxVerts, maxIndices, maxDrawCommands, maxWorldMatrix int32,
+	maxVerts, maxIndices, maxDrawCommands, maxInstances int32,
 ) *VertexCacheManager {
 	vm := &VertexCacheManager{
-		ActiveCache:   INVALID_CACHE,
 		ActiveSkin:    -1,
 		RenderManager: renderManager,
 		Caches:        make(map[string][MAX_CACHES]*VertexCache),
@@ -199,7 +197,7 @@ func NewVertexCacheManager(
 			maxVerts,
 			maxIndices,
 			maxDrawCommands,
-			maxWorldMatrix,
+			maxInstances,
 			vm.Strides[VP],
 			-1,
 			vm.CacheId,
@@ -212,7 +210,7 @@ func NewVertexCacheManager(
 			maxVerts,
 			maxIndices,
 			maxDrawCommands,
-			maxWorldMatrix,
+			maxInstances,
 			vm.Strides[VPNTT],
 			-1,
 			vm.CacheId,
@@ -225,7 +223,7 @@ func NewVertexCacheManager(
 			maxVerts,
 			maxIndices,
 			maxDrawCommands,
-			maxWorldMatrix,
+			maxInstances,
 			vm.Strides[VPNT],
 			-1,
 			vm.CacheId,
@@ -238,11 +236,37 @@ func NewVertexCacheManager(
 			maxVerts,
 			maxIndices,
 			maxDrawCommands,
-			maxWorldMatrix,
+			maxInstances,
 			vm.Strides[VPNTWJ],
 			-1,
 			vm.CacheId,
 			vm.Formats[VPNTWJ],
+		)
+		vm.CacheId++
+		c = vm.Caches[VPNTTBWJ]
+		c[i] = NewVertexCache(
+			renderManager.SkinManager,
+			maxVerts,
+			maxIndices,
+			maxDrawCommands,
+			maxInstances,
+			vm.Strides[VPNTTBWJ],
+			-1,
+			vm.CacheId,
+			vm.Formats[VPNTTBWJ],
+		)
+		vm.CacheId++
+		c = vm.Caches[VPNTTB]
+		c[i] = NewVertexCache(
+			renderManager.SkinManager,
+			maxVerts,
+			maxIndices,
+			maxDrawCommands,
+			maxInstances,
+			vm.Strides[VPNTTB],
+			-1,
+			vm.CacheId,
+			vm.Formats[VPNTTB],
 		)
 	}
 	return vm
@@ -311,21 +335,21 @@ func (vm *VertexCacheManager) Render(
 	)
 }
 
-func (vm *VertexCacheManager) ForceFlush(vertexType string) error {
+func (vm *VertexCacheManager) ForceRender(vertexType string) error {
 	vc, ok := vm.Caches[vertexType]
 	if !ok {
 		return errors.New("invalid vertex type")
 	}
 	for _, c := range vc {
-		c.Flush()
+		c.Render()
 	}
 	return nil
 }
 
-func (vm *VertexCacheManager) ForceFlushAll() error {
+func (vm *VertexCacheManager) ForceRenderAll() error {
 	for _, vc := range vm.Caches {
 		for _, c := range vc {
-			c.Flush()
+			c.Render()
 		}
 	}
 	return nil

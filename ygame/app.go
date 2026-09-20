@@ -35,6 +35,15 @@ func (t *TestApplication) Startup() {
 	if err != nil {
 		panic(err)
 	}
+	err = t.RenderManager.SkinManager.AddTexture(skin, "assets/earth.jpg",
+		gl.LINEAR,
+		gl.LINEAR,
+		gl.CLAMP_TO_EDGE,
+		gl.CLAMP_TO_EDGE,
+		false)
+	if err != nil {
+		panic(err)
+	}
 	dc := t.RenderManager.VertextManager.CreateDrawCommand(i, 1)
 	s, box := t.RenderManager.VertextManager.GetScalingAndBox(v, i, 0.5, ycore.VP)
 	staticbuf, err := t.RenderManager.VertextManager.CreateStaticBuffer(
@@ -47,7 +56,9 @@ func (t *TestApplication) Startup() {
 	if err != nil {
 		panic(err)
 	}
-	sp := ycore.NewGeometry(nil, box,
+	sp := ycore.NewGeometry(
+		t.RenderManager,
+		nil, box,
 		ycore.NewTransform(),
 		ycore.VP,
 		v,

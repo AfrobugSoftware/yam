@@ -9,7 +9,7 @@ type SpatialInterface interface {
 	UpdateGS(dt float32)
 	GetParent() SpatialInterface
 	SetParent(p SpatialInterface)
-	Draw(r *RenderManager)
+	Draw()
 	PropagateToRoot()
 	GetTransform() *Transform
 	GetBoundingBox() y3d.AABB
@@ -17,6 +17,7 @@ type SpatialInterface interface {
 }
 
 type Spatial struct {
+	RenderManager    *RenderManager
 	Parent           SpatialInterface
 	LocalEffect      Effect
 	LocalBoundingBox y3d.AABB

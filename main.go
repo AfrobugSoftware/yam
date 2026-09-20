@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	fmt.Println("kiwi island 1.0.2!")
+	// fmt.Println("kiwi island 1.0.2!")
 	g, error := ygame.NewGame("Kiwi Island", 1000, 600)
 	if error != nil {
 		fmt.Println("Error creating game:", error)

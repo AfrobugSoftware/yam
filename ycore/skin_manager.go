@@ -8,13 +8,14 @@ import (
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
-	"os"
 	"strings"
 	"time"
 	"yam/y3d"
 	"yam/ygl"
 
 	"github.com/go-gl/gl/v4.3-core/gl"
+	"github.com/veandco/go-sdl2/img"
+	"github.com/veandco/go-sdl2/sdl"
 )
 
 var (
@@ -98,29 +99,20 @@ func (s *SkinManager) AddTexture(skin int, filename string,
 		s.Skins[skin] = sk
 		return nil
 	}
-	file, err := os.Open(filename)
+	surface, err := img.Load(filename)
 	if err != nil {
-		return err
+		return fmt.Errorf("img.Load(%q): %w", filename, err)
 	}
-	defer file.Close()
-	img, _, err := image.Decode(file)
+	defer surface.Free()
+	converted, err := surface.ConvertFormat(uint32(sdl.PIXELFORMAT_RGBA32), 0)
 	if err != nil {
-		return err
+		return fmt.Errorf("ConvertFormat: %w", err)
 	}
-
-	bounds := img.Bounds()
-	rgba := image.NewRGBA(bounds)
-	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			rgba.Set(x, y, img.At(x, y))
-		}
-	}
-	texSize := len(rgba.Pix)
-	s.TotalTextureSizeInMemeory += uint(texSize)
+	defer converted.Free()
+	w, h := int32(converted.W), int32(converted.H)
 	var texId uint32
 	gl.GenTextures(1, &texId)
 	gl.BindTexture(gl.TEXTURE_2D, texId)
-
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wraps)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrapt)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, minFilter)
@@ -129,12 +121,12 @@ func (s *SkinManager) AddTexture(skin int, filename string,
 		gl.TEXTURE_2D,
 		0,
 		gl.RGBA,
-		int32(bounds.Max.X),
-		int32(bounds.Max.Y),
+		w,
+		h,
 		0,
 		gl.RGBA,
 		gl.UNSIGNED_BYTE,
-		gl.Ptr(rgba.Pix),
+		gl.Ptr(converted.Pixels()),
 	)
 	if useMipmap {
 		var v float32
@@ -145,7 +137,7 @@ func (s *SkinManager) AddTexture(skin int, filename string,
 	gl.BindTexture(gl.TEXTURE_2D, 0)
 	td := TextureData{
 		Handle:       texId,
-		Size:         uint32(texSize),
+		Size:         uint32(len(converted.Pixels())),
 		LastAccessed: time.Now(),
 		FileOnDisc:   filename,
 	}

@@ -183,7 +183,6 @@ func (s *StaticBuffer) Render(world []y3d.Mat4) {
 		panic("cannot release world matrix buffer")
 	}
 
-	s.VManager.ActiveCache = INVALID_CACHE
 	gl.BindVertexArray(s.Vao)
 	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, 10, s.WorldMatrixSSBO)
 	gl.BindBufferBase(gl.UNIFORM_BUFFER, 16, s.MaterialUBO)

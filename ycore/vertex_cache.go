@@ -173,81 +173,81 @@ func (v *VertexCache) IsEmpty() bool {
 	return v.NumVertics == 0
 }
 
-func (v *VertexCache) Flush() {
-	//having the flush draw instead of the geometry object is somewhat confusing
-	//not sure I understand that
+func (v *VertexCache) Render() {
 	if v.NumDrawCommands != 0 {
 		//setup skin
-		if v.VManager.ActiveCache != v.Id {
-			if v.VManager.ActiveSkin != v.SkinId {
-				skin, err := v.VManager.RenderManager.SkinManager.GetSkin(v.SkinId)
-				if err != nil {
-					return
-				}
-				material, err := v.VManager.RenderManager.SkinManager.GetMaterial(skin.Material)
-				if err != nil {
-					return
-				}
-				mPtr := gl.MapNamedBufferRange(
-					v.MaterialUBO,
-					0,
-					4*16,
-					gl.MAP_WRITE_BIT|gl.MAP_INVALIDATE_BUFFER_BIT)
-				if mPtr != nil {
-					panic("cannot set material for vertex cache")
-				}
-				m := unsafe.Slice((*float32)(mPtr), 16)
-				m[0] = material.Diffuse.X
-				m[1] = material.Diffuse.Y
-				m[2] = material.Diffuse.Z
-				m[3] = 0.0
-				m[4] = material.Ambient.X
-				m[5] = material.Ambient.Y
-				m[6] = material.Ambient.Z
-				m[7] = 0.0
-				m[8] = material.Specular.X
-				m[9] = material.Specular.Y
-				m[10] = material.Specular.Z
-				m[11] = 0.0
-				m[12] = material.Emissive.X
-				m[13] = material.Emissive.Y
-				m[14] = material.Emissive.Z
-				m[15] = material.Shininess
-				gl.UnmapNamedBuffer(v.MaterialUBO)
-
-				for i, t := range skin.Texture {
-					if t == EmptyTexture {
-						break
-					}
-					tex, ok := v.VManager.RenderManager.SkinManager.Textures[t]
-					if ok {
-						gl.BindTextureUnit(uint32(i), tex.Handle)
-					}
-				}
-				v.VManager.ActiveSkin = v.SkinId
+		if v.VManager.ActiveSkin != v.SkinId {
+			skin, err := v.VManager.RenderManager.SkinManager.GetSkin(v.SkinId)
+			if err != nil {
+				return
 			}
-			//how to handle render states ???
-
-			v.VManager.ActiveCache = v.Id
-			gl.BindVertexArray(v.Vao)
-			gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, WORLD_MATRIX_BINDING, v.WorldMatrixSSBO)
-			gl.BindBufferBase(gl.UNIFORM_BUFFER, MATERIAL_SSBO_BINDING, v.MaterialUBO)
-			gl.BindBuffer(gl.DRAW_INDIRECT_BUFFER, v.DrawCommandBo)
-			switch v.VManager.RenderManager.DrawMode {
-			case gl.TRIANGLES, gl.LINES, gl.LINE_STRIP:
-				gl.MultiDrawElementsIndirect(v.VManager.RenderManager.DrawMode,
-					gl.UNSIGNED_INT, nil, v.NumDrawCommands, int32(unsafe.Sizeof(DrawCommand{})))
-			case gl.POINTS:
-				gl.MultiDrawArraysIndirect(v.VManager.RenderManager.DrawMode, nil, int32(v.NumDrawCommands),
-					int32(unsafe.Sizeof(DrawCommand{})))
+			material, err := v.VManager.RenderManager.SkinManager.GetMaterial(skin.Material)
+			if err != nil {
+				return
 			}
-			v.NumDrawCommands = 0
-			v.NumIndices = 0
-			v.NumVertics = 0
-			v.NumOfInstances = 0
+			mPtr := gl.MapNamedBufferRange(
+				v.MaterialUBO,
+				0,
+				4*16,
+				gl.MAP_WRITE_BIT|gl.MAP_INVALIDATE_BUFFER_BIT)
+			if mPtr != nil {
+				panic("cannot set material for vertex cache")
+			}
+			m := unsafe.Slice((*float32)(mPtr), 16)
+			m[0] = material.Diffuse.X
+			m[1] = material.Diffuse.Y
+			m[2] = material.Diffuse.Z
+			m[3] = 0.0
+			m[4] = material.Ambient.X
+			m[5] = material.Ambient.Y
+			m[6] = material.Ambient.Z
+			m[7] = 0.0
+			m[8] = material.Specular.X
+			m[9] = material.Specular.Y
+			m[10] = material.Specular.Z
+			m[11] = 0.0
+			m[12] = material.Emissive.X
+			m[13] = material.Emissive.Y
+			m[14] = material.Emissive.Z
+			m[15] = material.Shininess
+			gl.UnmapNamedBuffer(v.MaterialUBO)
+
+			for i, t := range skin.Texture {
+				if t == EmptyTexture {
+					break
+				}
+				tex, ok := v.VManager.RenderManager.SkinManager.Textures[t]
+				if ok {
+					gl.BindTextureUnit(uint32(i), tex.Handle)
+				}
+			}
+			v.VManager.ActiveSkin = v.SkinId
 		}
+		//how to handle render states ???
+
+		gl.BindVertexArray(v.Vao)
+		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, WORLD_MATRIX_BINDING, v.WorldMatrixSSBO)
+		gl.BindBufferBase(gl.UNIFORM_BUFFER, MATERIAL_SSBO_BINDING, v.MaterialUBO)
+		gl.BindBuffer(gl.DRAW_INDIRECT_BUFFER, v.DrawCommandBo)
+		switch v.VManager.RenderManager.DrawMode {
+		case gl.TRIANGLES, gl.LINES, gl.LINE_STRIP:
+			gl.MultiDrawElementsIndirect(v.VManager.RenderManager.DrawMode,
+				gl.UNSIGNED_INT, nil, v.NumDrawCommands, int32(unsafe.Sizeof(DrawCommand{})))
+		case gl.POINTS:
+			gl.MultiDrawArraysIndirect(v.VManager.RenderManager.DrawMode, nil, int32(v.NumDrawCommands),
+				int32(unsafe.Sizeof(DrawCommand{})))
+		}
+		v.Reset()
 	}
 }
+
+func (v *VertexCache) Reset() {
+	v.NumIndices = 0
+	v.NumVertics = 0
+	v.NumDrawCommands = 0
+	v.NumOfInstances = 0
+}
+
 func (v *VertexCache) Clear() {
 	c := uint8(0x00)
 	gl.BindBuffer(gl.ARRAY_BUFFER, v.VertexVbo)
@@ -272,10 +272,9 @@ func (v *VertexCache) Clear() {
 }
 func (v *VertexCache) SetSkin(skin int) {
 	if !v.IsEmpty() {
-		v.Flush()
+		v.Render()
 	}
 	v.SkinId = skin
-	v.VManager.ActiveCache = INVALID_CACHE
 }
 
 func (v *VertexCache) Destroy() {

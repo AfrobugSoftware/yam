@@ -1,9 +1,11 @@
 package ycore
 
 import (
+	"bytes"
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"unsafe"
 	"yam/y3d"
@@ -29,46 +31,48 @@ const (
 )
 
 type RenderManager struct {
-	Context        sdl.GLContext
-	Window         *sdl.Window
-	ClearColor     y3d.Vec4
-	PixelDepth     uint8
-	DoubleBuffer   bool
-	MinorVersion   int
-	MajorVersion   int
-	ViewPort       [4]y3d.Rect
-	View2D         y3d.Mat4
-	View3D         y3d.Mat4
-	Proj2D         y3d.Mat4
-	ProjP          [4]y3d.Mat4
-	ProjO          [4]y3d.Mat4
-	ViewProj       y3d.Mat4
-	Near           float32
-	Far            float32
-	Width          int
-	Height         int
-	Fov            [4]float32
-	AspectRatio    [4]float32
-	Stage          int
-	Mode           int
-	SkinManager    *SkinManager
-	VertextManager *VertexCacheManager
-	ShaderManager  *ShaderManager
-	RenderStates   []RenderState
-	DrawMode       uint32
-	ActiveProgram  uint32
-	Root           SpatialInterface
-	Lights         []ygl.Light
-	LightUBO       uint32
-	screenVao      uint32
-	screenVbo      uint32
-	screenEbo      uint32
-	gBuffer        uint32
-	gNormal        uint32
-	gPosition      uint32
-	gAlbedoSpec    uint32
-	gDepth         uint32
-	lightSphere    int
+	Context         sdl.GLContext
+	Window          *sdl.Window
+	ClearColor      y3d.Vec4
+	PixelDepth      uint8
+	DoubleBuffer    bool
+	MinorVersion    int
+	MajorVersion    int
+	ViewPort        [4]y3d.Rect
+	View2D          y3d.Mat4
+	View3D          y3d.Mat4
+	Proj2D          y3d.Mat4
+	ProjP           [4]y3d.Mat4
+	ProjO           [4]y3d.Mat4
+	ViewProj        y3d.Mat4
+	Near            float32
+	Far             float32
+	Width           int
+	Height          int
+	Fov             [4]float32
+	AspectRatio     [4]float32
+	Stage           int
+	Mode            int
+	SkinManager     *SkinManager
+	VertextManager  *VertexCacheManager
+	ShaderManager   *ShaderManager
+	RenderStates    []RenderState
+	DrawMode        uint32
+	ActiveProgram   uint32
+	Root            SpatialInterface
+	Lights          []ygl.Light
+	LightUBO        uint32
+	screenVao       uint32
+	screenVbo       uint32
+	screenEbo       uint32
+	gBuffer         uint32
+	gNormal         uint32
+	gPosition       uint32
+	gAlbedoSpec     uint32
+	gDepth          uint32
+	lightSphere     int
+	LineCache       *VertexCache
+	LineDrawCommand DrawCommand
 }
 
 func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
@@ -127,7 +131,23 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 		float32(y3d.ToRadians(45)),
 	)
 	rm.SetStage(MODE_3D_PERSPECTIVE, 0) //SET TO THE 0TH stage
-
+	rm.LineCache = NewVertexCache(
+		rm.SkinManager, 1000, 100, 100, 100, 12, -1, 0,
+		[]VertexFormat{
+			{
+				ComponentSize:  3,
+				Type:           gl.FLOAT,
+				RelativeOffset: 0,
+			},
+		},
+	)
+	rm.LineDrawCommand = DrawCommand{
+		VertexCount:   2,
+		InstanceCount: 1,
+		FirstIndex:    0,
+		BaseVertex:    0,
+		BaseInstance:  0,
+	}
 	gl.CreateBuffers(1, &rm.LightUBO)
 	gl.NamedBufferStorage(rm.LightUBO, int(112*MAX_LIGHT), nil, gl.DYNAMIC_STORAGE_BIT)
 	rm.CreateScreenQuad()
@@ -511,7 +531,7 @@ func (r *RenderManager) Render() {
 	gl.UniformMatrix4fv(0, 1, false, &r.ViewProj[0])
 
 	if r.Root != nil {
-		r.Root.Draw(r)
+		r.Root.Draw()
 	}
 	r.Window.GLSwap()
 }
@@ -546,6 +566,22 @@ func (r *RenderManager) CreateLightSphere() {
 		panic(err)
 	}
 	r.lightSphere = s
+}
+
+func (r *RenderManager) RenderLine(l y3d.LineSegment, w y3d.Mat4) {
+	vt := []float32{
+		l.Start.X, l.Start.Y, l.Start.Z,
+		l.End.X, l.End.Y, l.End.Z,
+	}
+	ii := []uint32{
+		0, 1,
+	}
+	v := bytes.NewBuffer(unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(vt))), 12))
+	i := bytes.NewBuffer(unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(ii))), 8))
+	err := r.LineCache.Add(r.LineDrawCommand, 1, []y3d.Mat4{w}, v, i)
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 func (r *RenderManager) RenderLightingPass() {

@@ -28,7 +28,6 @@ func NewTransform() *Transform {
 		Scale:     y3d.Vec3{X: 1.0, Y: 1.0, Z: 1.0},
 		Local:     y3d.Identity,
 		World:     y3d.Identity,
-		IsDirty:   false,
 		IsCurrent: false,
 	}
 }
@@ -47,7 +46,6 @@ func (trans *Transform) UpdateWorld(parent *Transform) {
 
 func (trans *Transform) Recalulate() {
 	trans.Local = y3d.TRS(trans.Position, trans.Rotation, trans.Scale)
-	trans.IsDirty = true
 }
 
 func (trans *Transform) GetForward() y3d.Vec3 {
