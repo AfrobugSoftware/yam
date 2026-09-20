@@ -14,22 +14,23 @@ const (
 )
 
 type StaticBuffer struct {
-	Id              int
-	Vao             uint32
-	VertexVbo       uint32
-	IndexVbo        uint32
-	DrawCommandBo   uint32
-	DrawIndexVbo    uint32
-	WorldMatrixSSBO uint32
-	MaterialUBO     uint32
-	NumVertics      int32
-	NumIndices      int32
-	NumDrawCommands int32
-	NumOfInstnaces  int32
-	Stride          int32
-	SkinId          int
-	Format          []VertexFormat
-	VManager        *VertexCacheManager
+	Id               int
+	Vao              uint32
+	VertexVbo        uint32
+	IndexVbo         uint32
+	DrawCommandBo    uint32
+	DrawIndexVbo     uint32
+	WorldMatrixSSBO  uint32 //should I change this to an attribute ?
+	MaterialUBO      uint32
+	NumVertics       int32
+	NumIndices       int32
+	NumDrawCommands  int32
+	NumOfInstnaces   int32
+	Stride           int32
+	SkinId           int
+	Format           []VertexFormat
+	VManager         *VertexCacheManager
+	SkeletalAnimator *SkeletalAnimator
 }
 
 func CheckError() {
@@ -184,8 +185,11 @@ func (s *StaticBuffer) Render(world []y3d.Mat4) {
 	}
 
 	gl.BindVertexArray(s.Vao)
-	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, 10, s.WorldMatrixSSBO)
-	gl.BindBufferBase(gl.UNIFORM_BUFFER, 16, s.MaterialUBO)
+	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, WORLD_MATRIX_BINDING, s.WorldMatrixSSBO)
+	gl.BindBufferBase(gl.UNIFORM_BUFFER, MATERIAL_UBO_BINDING, s.MaterialUBO)
+	if s.SkeletalAnimator != nil {
+		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, JOINTS_SSBO_BINDING, s.SkeletalAnimator.JointBufferObject)
+	}
 	gl.BindBuffer(gl.DRAW_INDIRECT_BUFFER, s.DrawCommandBo)
 	switch s.VManager.RenderManager.DrawMode {
 	case gl.TRIANGLES, gl.LINES:

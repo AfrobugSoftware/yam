@@ -26,27 +26,28 @@ type DrawCommand struct {
 }
 
 type VertexCache struct {
-	Vao             uint32
-	VertexVbo       uint32
-	IndexVbo        uint32
-	DrawCommandBo   uint32
-	DrawIndexVbo    uint32
-	WorldMatrixSSBO uint32
-	MaterialUBO     uint32
-	MaxVertices     int32
-	MaxIndices      int32
-	MaxDrawCommands int32
-	MaxInstances    int32
-	NumVertics      int32
-	NumIndices      int32
-	NumDrawCommands int32
-	NumOfInstances  int32
-	Stride          int32
-	SkinId          int
-	Id              int
-	Format          []VertexFormat
-	SkinManager     *SkinManager
-	VManager        *VertexCacheManager
+	Vao              uint32
+	VertexVbo        uint32
+	IndexVbo         uint32
+	DrawCommandBo    uint32
+	DrawIndexVbo     uint32
+	WorldMatrixSSBO  uint32
+	MaterialUBO      uint32
+	MaxVertices      int32
+	MaxIndices       int32
+	MaxDrawCommands  int32
+	MaxInstances     int32
+	NumVertics       int32
+	NumIndices       int32
+	NumDrawCommands  int32
+	NumOfInstances   int32
+	Stride           int32
+	SkinId           int
+	Id               int
+	Format           []VertexFormat
+	SkinManager      *SkinManager
+	VManager         *VertexCacheManager
+	SkeletalAnimator *SkeletalAnimator
 }
 
 func NewVertexCache(
@@ -227,7 +228,10 @@ func (v *VertexCache) Render() {
 
 		gl.BindVertexArray(v.Vao)
 		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, WORLD_MATRIX_BINDING, v.WorldMatrixSSBO)
-		gl.BindBufferBase(gl.UNIFORM_BUFFER, MATERIAL_SSBO_BINDING, v.MaterialUBO)
+		gl.BindBufferBase(gl.UNIFORM_BUFFER, MATERIAL_UBO_BINDING, v.MaterialUBO)
+		if v.SkeletalAnimator != nil {
+			gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, JOINTS_SSBO_BINDING, v.SkeletalAnimator.JointBufferObject)
+		}
 		gl.BindBuffer(gl.DRAW_INDIRECT_BUFFER, v.DrawCommandBo)
 		switch v.VManager.RenderManager.DrawMode {
 		case gl.TRIANGLES, gl.LINES, gl.LINE_STRIP:

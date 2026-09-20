@@ -25,9 +25,18 @@ const (
 	MAX_LIGHT                = 100
 	VERTEX_ATTRIBUTE_BINDING = 0
 	DRAW_INDEX_BINDING       = 10
-	MATERIAL_SSBO_BINDING    = 16
-	LIGHT_BINDING            = 17
-	WORLD_MATRIX_BINDING     = 18
+)
+
+// UBO
+const (
+	MATERIAL_UBO_BINDING = 2
+	LIGHT_BINDING        = 3
+)
+
+// SSBO
+const (
+	WORLD_MATRIX_BINDING = iota
+	JOINTS_SSBO_BINDING
 )
 
 type RenderManager struct {
@@ -155,6 +164,7 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 	if err != nil {
 		panic(err)
 	}
+
 	return rm
 }
 func (r *RenderManager) Write(e *gob.Encoder) error {

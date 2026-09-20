@@ -48,6 +48,15 @@ func (trans *Transform) Recalulate() {
 	trans.Local = y3d.TRS(trans.Position, trans.Rotation, trans.Scale)
 }
 
+func (trans *Transform) RecalulateNoScale() {
+	m := trans.Rotation.RotMat()
+	trans.Local = y3d.Mat4{
+		m[0], m[1], m[2], 0,
+		m[3], m[4], m[5], 0,
+		m[6], m[7], m[8], 0,
+		trans.Position.X, trans.Position.Y, trans.Position.Z, 1,
+	}
+}
 func (trans *Transform) GetForward() y3d.Vec3 {
 	return trans.Rotation.Rotate(FORWARD)
 }

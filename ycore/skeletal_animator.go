@@ -98,6 +98,7 @@ func (sa *SkeletalAnimator) Add(animation *Animation) (int, error) {
 		return NO_ANIMATION, errors.New("more joints in the animation that is expected")
 	}
 	sa.Animation = append(sa.Animation, animation)
+	animation.CalcBindPoses() //set up bind poses
 	sa.CurrentAnimation = len(sa.Animation) - 1
 	return sa.CurrentAnimation, nil
 }
@@ -148,7 +149,7 @@ func (sa *SkeletalAnimator) Play(deltaTime float32) {
 				if lastpos != -1 && thispos != -1 {
 					t := (animation.CurFrame - j.KPos[lastpos].Time) /
 						(j.KPos[thispos].Time - j.KPos[lastpos].Time)
-					j.Transform.Position = y3d.Lerp(j.KPos[thispos].Pos, j.KPos[lastpos].Pos, t)
+					j.Transform.Position = y3d.Lerp(j.KPos[lastpos].Pos, j.KPos[thispos].Pos, t)
 				} else if lastpos == -1 {
 					j.Transform.Position = j.KPos[thispos].Pos
 				} else {
@@ -166,19 +167,18 @@ func (sa *SkeletalAnimator) Play(deltaTime float32) {
 				if lastpos != -1 && thispos != -1 {
 					t := (animation.CurFrame - j.KPos[lastpos].Time) /
 						(j.KRot[thispos].Time - j.KRot[lastpos].Time)
-					j.Transform.Rotation = y3d.Slerp(j.KRot[thispos].Rot,
-						j.KRot[lastpos].Rot, float64(t))
+					j.Transform.Rotation = y3d.Slerp(j.KRot[lastpos].Rot, j.KRot[thispos].Rot, float64(t))
 				} else if lastpos == -1 {
 					j.Transform.Rotation = j.KRot[thispos].Rot
 				} else {
 					j.Transform.Rotation = j.KRot[lastpos].Rot
 				}
-				j.Transform.Recalulate()
+				j.Transform.RecalulateNoScale()
 				j.Transform.Local = j.Transform.Local.Mul(j.BindPose) // i think lol
-				//walk the tree from the root
 			} else {
 				j.Transform.Local = j.BindPose //copy the bind pos
 			}
+			//walk the tree from the root
 			animation.Joints[animation.Root].Update(animation.Joints)
 			sa.LoadBuffer() //upload data to the gpu
 		}
@@ -244,4 +244,22 @@ func (j *Joint) Update(joints []*Joint) {
 	for _, c := range j.Children {
 		joints[c].Update(joints)
 	}
+}
+
+func (j *Joint) CalcBind(joint []*Joint) {
+	if j.Parent != NIL_JOINT_PARENT {
+		j.BindPose = joint[j.Parent].BindPose.Mul(j.BindPose)
+	}
+	for _, c := range j.Children {
+		joint[c].CalcBind(joint)
+	}
+	(&j.BindPose).Invert()
+}
+
+func (a *Animation) CalcBindPoses() {
+	a.Joints[a.Root].CalcBind(a.Joints)
+}
+
+func (a *Animation) Destory() {
+	clear(a.Joints)
 }
