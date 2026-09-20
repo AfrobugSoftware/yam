@@ -16,9 +16,9 @@ const (
 
 type Animation struct {
 	Name         string
-	StartFrame   int
-	EndFrame     int
-	CurFrame     int
+	StartFrame   float32
+	EndFrame     float32
+	CurFrame     float32
 	FPS          float32
 	PlaybackTime float32
 	IsActive     bool
@@ -31,7 +31,7 @@ type Animation struct {
 func NewAnimation(
 	name string,
 	fps float32,
-	starframe, endframe int,
+	starframe, endframe float32,
 	runOnce bool,
 	root int,
 	joints []*Joint,
@@ -49,14 +49,25 @@ func NewAnimation(
 	}
 }
 
+type PFrame struct {
+	Time float32
+	Pos  y3d.Vec3
+}
+
+type RFrame struct {
+	Time float32
+	Rot  y3d.Quaternion
+}
+
 type Joint struct {
 	Id         int
 	Parent     int
 	Name       string
 	Children   []int
 	kTime      []float32
-	KPos       []y3d.Vec3
-	KRot       []y3d.Quaternion
+	KPos       []PFrame
+	KRot       []RFrame
+	BindPose   y3d.Mat4
 	Transform  *Transform
 	IsAnimated bool
 }
@@ -113,7 +124,7 @@ func (sa *SkeletalAnimator) Play(deltaTime float32) {
 		return
 	}
 	animation.CurFrame = max(animation.StartFrame+
-		int(animation.FPS*animation.PlaybackTime), animation.StartFrame)
+		animation.FPS*animation.PlaybackTime, animation.StartFrame)
 	animation.PlaybackTime += deltaTime
 	if animation.CurFrame >= animation.EndFrame {
 		animation.IsComplete = true
@@ -121,18 +132,53 @@ func (sa *SkeletalAnimator) Play(deltaTime float32) {
 		animation.PlaybackTime = 0
 	} else {
 		animation.IsComplete = false
-		if animation.CurFrame != animation.StartFrame {
-			for _, j := range animation.Joints {
-				//this is not correct
-				pos := y3d.Lerp(j.KPos[animation.CurFrame],
-					j.KPos[animation.CurFrame+1], deltaTime)
-				rot := y3d.Slerp(j.KRot[animation.CurFrame],
-					j.KRot[animation.CurFrame+1], float64(deltaTime))
-				j.Transform.Position = pos
-				j.Transform.Rotation = rot
+		//I do not think this is correct, my idea on the way the frames are calculated might be wrong
+		//need data for test
+
+		for _, j := range animation.Joints {
+			if len(j.KPos) != 0 && len(j.KRot) != 0 && j.IsAnimated {
+				lastpos, thispos := -1, -1
+				for i := range j.KPos {
+					if j.KPos[i].Time >= animation.CurFrame {
+						thispos = i
+						break
+					}
+					lastpos = i
+				}
+				if lastpos != -1 && thispos != -1 {
+					t := (animation.CurFrame - j.KPos[lastpos].Time) /
+						(j.KPos[thispos].Time - j.KPos[lastpos].Time)
+					j.Transform.Position = y3d.Lerp(j.KPos[thispos].Pos, j.KPos[lastpos].Pos, t)
+				} else if lastpos == -1 {
+					j.Transform.Position = j.KPos[thispos].Pos
+				} else {
+					j.Transform.Position = j.KPos[lastpos].Pos
+				}
+
+				lastpos, thispos = -1, -1
+				for i := range j.KRot {
+					if j.KRot[i].Time >= animation.CurFrame {
+						thispos = i
+						break
+					}
+					lastpos = i
+				}
+				if lastpos != -1 && thispos != -1 {
+					t := (animation.CurFrame - j.KPos[lastpos].Time) /
+						(j.KRot[thispos].Time - j.KRot[lastpos].Time)
+					j.Transform.Rotation = y3d.Slerp(j.KRot[thispos].Rot,
+						j.KRot[lastpos].Rot, float64(t))
+				} else if lastpos == -1 {
+					j.Transform.Rotation = j.KRot[thispos].Rot
+				} else {
+					j.Transform.Rotation = j.KRot[lastpos].Rot
+				}
 				j.Transform.Recalulate()
+				j.Transform.Local = j.Transform.Local.Mul(j.BindPose) // i think lol
+				//walk the tree from the root
+			} else {
+				j.Transform.Local = j.BindPose //copy the bind pos
 			}
-			//walk the tree from the root
 			animation.Joints[animation.Root].Update(animation.Joints)
 			sa.LoadBuffer() //upload data to the gpu
 		}
@@ -172,12 +218,16 @@ func NewJoint(
 	name string,
 	pos y3d.Vec3,
 	rot y3d.Quaternion,
+	bindPose y3d.Mat4,
+	isAnimated bool,
 ) *Joint {
 	j := &Joint{
-		Id:        id,
-		Parent:    parent,
-		Name:      name,
-		Transform: NewTransform(),
+		Id:         id,
+		Parent:     parent,
+		Name:       name,
+		BindPose:   bindPose,
+		IsAnimated: isAnimated,
+		Transform:  NewTransform(),
 	}
 	j.Transform.Position = pos
 	j.Transform.Rotation = rot

@@ -176,7 +176,7 @@ func (v *VertexCache) IsEmpty() bool {
 func (v *VertexCache) Render() {
 	if v.NumDrawCommands != 0 {
 		//setup skin
-		if v.VManager.ActiveSkin != v.SkinId {
+		if v.VManager.ActiveSkin != v.SkinId && v.SkinId != -1 {
 			skin, err := v.VManager.RenderManager.SkinManager.GetSkin(v.SkinId)
 			if err != nil {
 				return
