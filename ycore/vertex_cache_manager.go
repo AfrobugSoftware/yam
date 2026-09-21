@@ -361,6 +361,7 @@ func (vm *VertexCacheManager) CreateStaticBuffer(
 	command []DrawCommand,
 	skinId int,
 	instanceCount int,
+	idxType uint32,
 ) (int, error) {
 	id := len(vm.StaticBuffers)
 	s := NewStaticBuffer(
@@ -371,6 +372,7 @@ func (vm *VertexCacheManager) CreateStaticBuffer(
 		skinId,
 		vm.Strides[vertexType],
 		vm.Formats[vertexType],
+		idxType,
 		id,
 	)
 	if s == nil {

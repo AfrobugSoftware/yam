@@ -52,6 +52,7 @@ func (t *TestApplication) Startup() {
 		[]ycore.DrawCommand{dc},
 		skin,
 		1,
+		gl.UNSIGNED_INT,
 	)
 	if err != nil {
 		panic(err)

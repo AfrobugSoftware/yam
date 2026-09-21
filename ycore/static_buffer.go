@@ -28,6 +28,7 @@ type StaticBuffer struct {
 	NumOfInstnaces   int32
 	Stride           int32
 	SkinId           int
+	IdxType          uint32
 	Format           []VertexFormat
 	VManager         *VertexCacheManager
 	SkeletalAnimator *SkeletalAnimator
@@ -48,6 +49,7 @@ func NewStaticBuffer(
 	skinId int,
 	stride int32,
 	format []VertexFormat,
+	idxType uint32,
 	id int,
 ) *StaticBuffer {
 	if len(command) == 0 || len(format) == 0 {
@@ -114,12 +116,13 @@ func NewStaticBuffer(
 		SkinId:          skinId,
 		Format:          format,
 		Stride:          stride,
+		IdxType:         idxType,
 		VManager:        vertexCacheManager,
 	}
 }
 
 func (s *StaticBuffer) Render(world []y3d.Mat4) {
-	if s.VManager.ActiveSkin != s.SkinId {
+	if s.VManager.ActiveSkin != s.SkinId && s.SkinId != -1 {
 		skin, err := s.VManager.RenderManager.SkinManager.GetSkin(s.SkinId)
 		if err != nil {
 			return
@@ -194,7 +197,7 @@ func (s *StaticBuffer) Render(world []y3d.Mat4) {
 	switch s.VManager.RenderManager.DrawMode {
 	case gl.TRIANGLES, gl.LINES:
 		gl.MultiDrawElementsIndirect(s.VManager.RenderManager.DrawMode,
-			gl.UNSIGNED_INT,
+			s.IdxType,
 			nil,
 			s.NumDrawCommands,
 			int32(unsafe.Sizeof(DrawCommand{})))

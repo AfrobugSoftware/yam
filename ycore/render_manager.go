@@ -571,6 +571,7 @@ func (r *RenderManager) CreateLightSphere() {
 		},
 		-1,
 		MAX_LIGHT,
+		gl.UNSIGNED_INT,
 	)
 	if err != nil {
 		panic(err)

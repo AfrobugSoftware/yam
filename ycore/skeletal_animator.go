@@ -93,12 +93,14 @@ func NewSkeletalAnimator(
 	return sa
 }
 
-func (sa *SkeletalAnimator) Add(animation *Animation) (int, error) {
+func (sa *SkeletalAnimator) Add(animation *Animation, calcInverseBind bool) (int, error) {
 	if len(animation.Joints) >= sa.MaxJoints {
 		return NO_ANIMATION, errors.New("more joints in the animation that is expected")
 	}
 	sa.Animation = append(sa.Animation, animation)
-	animation.CalcBindPoses() //set up bind poses
+	if calcInverseBind {
+		animation.CalcBindPoses() //set up bind poses
+	}
 	sa.CurrentAnimation = len(sa.Animation) - 1
 	return sa.CurrentAnimation, nil
 }
