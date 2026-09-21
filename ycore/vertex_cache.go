@@ -52,6 +52,7 @@ type VertexCache struct {
 
 func NewVertexCache(
 	skinmanager *SkinManager,
+	vertexManger *VertexCacheManager,
 	maxVertex, maxIndex, maxDraws, maxInstances int32,
 	stride int32,
 	skinId int,
@@ -93,7 +94,7 @@ func NewVertexCache(
 
 	//create the world matrix ssbo
 	gl.CreateBuffers(1, &mssbo)
-	gl.NamedBufferStorage(mssbo, int(unsafe.Sizeof(y3d.Mat4{})*uintptr(maxInstances)), nil, gl.DYNAMIC_STORAGE_BIT)
+	gl.NamedBufferStorage(mssbo, int(unsafe.Sizeof(y3d.Mat4{})*uintptr(maxInstances)), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
 
 	gl.CreateBuffers(1, &mubo)
 	gl.NamedBufferStorage(mubo, int(unsafe.Sizeof([16]float32{})), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
@@ -114,6 +115,7 @@ func NewVertexCache(
 		Id:              id,
 		SkinId:          skinId,
 		SkinManager:     skinmanager,
+		VManager:        vertexManger,
 		Format:          format,
 	}
 }
@@ -122,15 +124,13 @@ func (v *VertexCache) IsFull(size int) bool {
 	return v.NumVertics+int32(n) >= v.MaxVertices
 }
 
-func (v *VertexCache) Add(command DrawCommand,
+func (v *VertexCache) Add(command *DrawCommand,
 	instanceCount int,
-	world []y3d.Mat4,
 	dataV, dataI *bytes.Buffer) error {
-	if (v.Stride*v.MaxVertices) >= int32(dataV.Len()) ||
-		(v.MaxIndices*4) >= int32(dataI.Len()) ||
+	if int32(dataV.Len()) >= (v.Stride*v.MaxVertices) ||
+		int32(dataI.Len()) >= (v.MaxIndices*4) ||
 		v.NumDrawCommands >= v.MaxDrawCommands ||
-		v.NumOfInstances >= v.MaxInstances ||
-		len(world) != instanceCount {
+		v.NumOfInstances >= v.MaxInstances {
 		return errors.New("cannot add data, please check parameters")
 	}
 	//vertex data
@@ -148,10 +148,11 @@ func (v *VertexCache) Add(command DrawCommand,
 	v.NumIndices += int32(dataI.Len() / 4)
 	//draw commands
 	command.BaseInstance = uint32(v.NumOfInstances)
+	d := *command
 	gl.NamedBufferSubData(v.DrawCommandBo, int(unsafe.Sizeof(command)*uintptr(v.NumDrawCommands)),
-		int(unsafe.Sizeof(command)), gl.Ptr(&command))
+		int(unsafe.Sizeof(command)), unsafe.Pointer(&d))
 	v.NumDrawCommands += 1
-
+	//instance indices
 	id := make([]uint32, instanceCount)
 	for i := range instanceCount {
 		id[i] = uint32(i + int(command.BaseInstance))
@@ -161,11 +162,6 @@ func (v *VertexCache) Add(command DrawCommand,
 		int(4*v.NumOfInstances),
 		int(4*len(id)),
 		gl.Ptr(id))
-
-	//world transforms
-	gl.NamedBufferSubData(v.WorldMatrixSSBO, int(unsafe.Sizeof(y3d.Mat4{})*uintptr(v.NumOfInstances)),
-		int(unsafe.Sizeof(y3d.Mat4{}))*instanceCount,
-		gl.Ptr(world))
 	v.NumOfInstances += int32(instanceCount)
 
 	return nil
@@ -174,7 +170,29 @@ func (v *VertexCache) IsEmpty() bool {
 	return v.NumVertics == 0
 }
 
+func (v *VertexCache) LoadMatrix(baseInstance int, world []y3d.Mat4) {
+	ptr := gl.MapNamedBufferRange(
+		v.WorldMatrixSSBO,
+		int(unsafe.Sizeof(y3d.Mat4{}))*int(baseInstance),
+		int(len(world)*int(unsafe.Sizeof(y3d.Mat4{}))),
+		gl.MAP_WRITE_BIT|gl.MAP_INVALIDATE_RANGE_BIT,
+	)
+	if ptr == nil {
+		CheckError()
+		panic("cannot load world matrix")
+	}
+	slice := unsafe.Slice((*y3d.Mat4)(ptr), len(world))
+	copy(slice, world)
+	if !gl.UnmapNamedBuffer(v.WorldMatrixSSBO) {
+		CheckError()
+		panic("cannot release world matrix buffer")
+	}
+}
+
 func (v *VertexCache) Render() {
+	if v.IsEmpty() {
+		return
+	}
 	if v.NumDrawCommands != 0 {
 		//setup skin
 		if v.VManager.ActiveSkin != v.SkinId && v.SkinId != -1 {
@@ -191,7 +209,7 @@ func (v *VertexCache) Render() {
 				0,
 				4*16,
 				gl.MAP_WRITE_BIT|gl.MAP_INVALIDATE_BUFFER_BIT)
-			if mPtr != nil {
+			if mPtr == nil {
 				panic("cannot set material for vertex cache")
 			}
 			m := unsafe.Slice((*float32)(mPtr), 16)
@@ -241,7 +259,6 @@ func (v *VertexCache) Render() {
 			gl.MultiDrawArraysIndirect(v.VManager.RenderManager.DrawMode, nil, int32(v.NumDrawCommands),
 				int32(unsafe.Sizeof(DrawCommand{})))
 		}
-		v.Reset()
 	}
 }
 
@@ -277,6 +294,7 @@ func (v *VertexCache) Clear() {
 func (v *VertexCache) SetSkin(skin int) {
 	if !v.IsEmpty() {
 		v.Render()
+		v.Reset()
 	}
 	v.SkinId = skin
 }

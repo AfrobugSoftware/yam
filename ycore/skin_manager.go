@@ -18,6 +18,10 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+const (
+	NO_SKINID = -1
+)
+
 var (
 	EmptySkin = Skin{
 		Material: -1,

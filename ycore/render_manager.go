@@ -141,7 +141,9 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 	)
 	rm.SetStage(MODE_3D_PERSPECTIVE, 0) //SET TO THE 0TH stage
 	rm.LineCache = NewVertexCache(
-		rm.SkinManager, 1000, 100, 100, 100, 12, -1, 0,
+		rm.SkinManager,
+		rm.VertextManager,
+		1000, 100, 100, 100, 12, -1, 0,
 		[]VertexFormat{
 			{
 				ComponentSize:  3,
@@ -542,6 +544,10 @@ func (r *RenderManager) Render() {
 
 	if r.Root != nil {
 		r.Root.Draw()
+		err := r.VertextManager.ForceRenderAll()
+		if err != nil {
+			log.Println(err)
+		}
 	}
 	r.Window.GLSwap()
 }
@@ -589,7 +595,7 @@ func (r *RenderManager) RenderLine(l y3d.LineSegment, w y3d.Mat4) {
 	}
 	v := bytes.NewBuffer(unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(vt))), 12))
 	i := bytes.NewBuffer(unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(ii))), 8))
-	err := r.LineCache.Add(r.LineDrawCommand, 1, []y3d.Mat4{w}, v, i)
+	err := r.LineCache.Add(&r.LineDrawCommand, 1, v, i)
 	if err != nil {
 		log.Println(err)
 	}

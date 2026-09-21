@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"log"
 	"unsafe"
 	"yam/y3d"
 
@@ -190,10 +191,17 @@ func NewVertexCacheManager(
 			RelativeOffset: uint32(unsafe.Sizeof(uint32(0)) * 17),
 		},
 	}
+	vm.Caches[VP] = [MAX_CACHES]*VertexCache{}
+	vm.Caches[VPNT] = [MAX_CACHES]*VertexCache{}
+	vm.Caches[VPNTT] = [MAX_CACHES]*VertexCache{}
+	vm.Caches[VPNTTB] = [MAX_CACHES]*VertexCache{}
+	vm.Caches[VPNTWJ] = [MAX_CACHES]*VertexCache{}
+	vm.Caches[VPNTTBWJ] = [MAX_CACHES]*VertexCache{}
 	for i := range MAX_CACHES {
 		c := vm.Caches[VP]
 		c[i] = NewVertexCache(
 			renderManager.SkinManager,
+			vm,
 			maxVerts,
 			maxIndices,
 			maxDrawCommands,
@@ -203,10 +211,12 @@ func NewVertexCacheManager(
 			vm.CacheId,
 			vm.Formats[VP],
 		)
+		vm.Caches[VP] = c
 		vm.CacheId++
 		c = vm.Caches[VPNTT]
 		c[i] = NewVertexCache(
 			renderManager.SkinManager,
+			vm,
 			maxVerts,
 			maxIndices,
 			maxDrawCommands,
@@ -216,10 +226,12 @@ func NewVertexCacheManager(
 			vm.CacheId,
 			vm.Formats[VPNTT],
 		)
+		vm.Caches[VPNTT] = c
 		vm.CacheId++
 		c = vm.Caches[VPNT]
 		c[i] = NewVertexCache(
 			renderManager.SkinManager,
+			vm,
 			maxVerts,
 			maxIndices,
 			maxDrawCommands,
@@ -229,10 +241,12 @@ func NewVertexCacheManager(
 			vm.CacheId,
 			vm.Formats[VPNT],
 		)
+		vm.Caches[VPNT] = c
 		vm.CacheId++
 		c = vm.Caches[VPNTWJ]
 		c[i] = NewVertexCache(
 			renderManager.SkinManager,
+			vm,
 			maxVerts,
 			maxIndices,
 			maxDrawCommands,
@@ -242,10 +256,12 @@ func NewVertexCacheManager(
 			vm.CacheId,
 			vm.Formats[VPNTWJ],
 		)
+		vm.Caches[VPNTWJ] = c
 		vm.CacheId++
 		c = vm.Caches[VPNTTBWJ]
 		c[i] = NewVertexCache(
 			renderManager.SkinManager,
+			vm,
 			maxVerts,
 			maxIndices,
 			maxDrawCommands,
@@ -255,10 +271,12 @@ func NewVertexCacheManager(
 			vm.CacheId,
 			vm.Formats[VPNTTBWJ],
 		)
+		vm.Caches[VPNTTBWJ] = c
 		vm.CacheId++
 		c = vm.Caches[VPNTTB]
 		c[i] = NewVertexCache(
 			renderManager.SkinManager,
+			vm,
 			maxVerts,
 			maxIndices,
 			maxDrawCommands,
@@ -268,6 +286,7 @@ func NewVertexCacheManager(
 			vm.CacheId,
 			vm.Formats[VPNTTB],
 		)
+		vm.Caches[VPNTTB] = c
 	}
 	return vm
 }
@@ -285,12 +304,28 @@ func (vm *VertexCacheManager) Destory() {
 	clear(vm.Caches)
 }
 
-func (vm *VertexCacheManager) Render(
+func (vm *VertexCacheManager) LoadMatrix(vertexType string,
+	baseInstance int,
+	skinId int, world []y3d.Mat4) error {
+	vc, ok := vm.Caches[vertexType]
+	if !ok {
+		return errors.New("invalid vertex type")
+	}
+	for i := range MAX_CACHES {
+		if vc[i].SkinId == skinId {
+			vc[i].LoadMatrix(
+				baseInstance, world)
+			return nil
+		}
+	}
+	return nil
+}
+
+func (vm *VertexCacheManager) LoadCache(
 	vertexType string,
 	dataV, dataI *bytes.Buffer,
 	skinID int,
-	world []y3d.Mat4,
-	command DrawCommand,
+	command *DrawCommand,
 ) error {
 	var empty, fullest *VertexCache
 	vc, ok := vm.Caches[vertexType]
@@ -302,8 +337,7 @@ func (vm *VertexCacheManager) Render(
 		if vc[i].SkinId == skinID {
 			return vc[i].Add(
 				command,
-				len(world),
-				world,
+				int(command.InstanceCount),
 				dataV,
 				dataI,
 			)
@@ -319,8 +353,7 @@ func (vm *VertexCacheManager) Render(
 		empty.SetSkin(skinID)
 		return empty.Add(
 			command,
-			len(world),
-			world,
+			int(command.InstanceCount),
 			dataV,
 			dataI,
 		)
@@ -328,8 +361,7 @@ func (vm *VertexCacheManager) Render(
 	fullest.SetSkin(skinID)
 	return fullest.Add(
 		command,
-		len(world),
-		world,
+		int(command.InstanceCount),
 		dataV,
 		dataI,
 	)
@@ -337,6 +369,7 @@ func (vm *VertexCacheManager) Render(
 
 func (vm *VertexCacheManager) ForceRender(vertexType string) error {
 	vc, ok := vm.Caches[vertexType]
+	log.Println(vertexType)
 	if !ok {
 		return errors.New("invalid vertex type")
 	}

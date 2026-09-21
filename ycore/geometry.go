@@ -36,7 +36,7 @@ func NewGeometry(
 	skinId int,
 	staticBuf int,
 ) *Geometry {
-	return &Geometry{
+	g := &Geometry{
 		Spatial: Spatial{
 			RenderManager:    renderManager,
 			Parent:           parent,
@@ -50,25 +50,34 @@ func NewGeometry(
 		SkinId:      skinId,
 		StaticBuf:   staticBuf,
 	}
+	g.Setup()
+	return g
+}
+func (g *Geometry) Setup() {
+	if g.DataI != nil && g.DataV != nil {
+		err := g.RenderManager.VertextManager.LoadCache(g.VertexType,
+			g.DataV, g.DataI, g.SkinId,
+			&g.DrawCommand)
+		if err != nil {
+			log.Println(err)
+		}
+		return
+	}
 }
 
 func (g *Geometry) Draw() {
 	if g.LocalEffect != nil {
 		g.LocalEffect.Bind(g.RenderManager.ShaderManager)
 	}
-	if g.StaticBuf != NO_STATICBUF {
-		g.RenderManager.VertextManager.RenderSB(g.StaticBuf, []y3d.Mat4{g.Transform.World})
-		return
-	}
-	if g.DataI != nil && g.DataV != nil {
-		err := g.RenderManager.VertextManager.Render(g.VertexType,
-			g.DataV, g.DataI, g.SkinId, []y3d.Mat4{g.Transform.World},
-			g.DrawCommand)
-		if err != nil {
-			log.Println(err)
-		}
-		return
-	}
+	// if g.StaticBuf != NO_STATICBUF {
+	// 	g.RenderManager.VertextManager.RenderSB(g.StaticBuf, []y3d.Mat4{g.Transform.World})
+	// 	return
+	// } else {
+	// }
+	g.RenderManager.VertextManager.LoadMatrix(
+		g.VertexType, int(g.DrawCommand.BaseInstance),
+		g.SkinId, []y3d.Mat4{g.Transform.World},
+	)
 	if g.LocalEffect != nil {
 		g.LocalEffect.Unbind()
 	}
