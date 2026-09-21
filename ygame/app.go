@@ -46,17 +46,18 @@ func (t *TestApplication) Startup() {
 	}
 	dc := t.RenderManager.VertextManager.CreateDrawCommand(i, 1)
 	s, box := t.RenderManager.VertextManager.GetScalingAndBox(v, i, 0.5, ycore.VP)
-	staticbuf, err := t.RenderManager.VertextManager.CreateStaticBuffer(
-		ycore.VP,
-		v, i,
-		[]ycore.DrawCommand{dc},
-		skin,
-		1,
-		gl.UNSIGNED_INT,
-	)
-	if err != nil {
-		panic(err)
-	}
+	//USE STATIC BUFER
+	// staticbuf, err := t.RenderManager.VertextManager.CreateStaticBuffer(
+	// 	ycore.VP,
+	// 	v, i,
+	// 	[]ycore.DrawCommand{dc},
+	// 	skin,
+	// 	1,
+	// 	gl.UNSIGNED_INT,
+	// )
+	// if err != nil {
+	// 	panic(err)
+	// }
 	sp := ycore.NewGeometry(
 		t.RenderManager,
 		nil, box,
@@ -66,7 +67,7 @@ func (t *TestApplication) Startup() {
 		i,
 		dc,
 		skin,
-		staticbuf)
+		ycore.NO_STATICBUF)
 	t.RenderManager.Root = sp
 	sp.Transform.Position = y3d.Vec3{
 		X: 0.0,
