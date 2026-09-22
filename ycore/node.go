@@ -43,6 +43,13 @@ func (n *Node) Add(s SpatialInterface) {
 	//propagate to the root if not root
 }
 
+func (n *Node) UpdateWorldTransform() {
+	n.Spatial.UpdateWorldTransform()
+	for _, s := range n.Children {
+		s.UpdateWorldTransform()
+	}
+}
+
 func (n *Node) Draw() {
 	for _, s := range n.Children {
 		s.Draw()

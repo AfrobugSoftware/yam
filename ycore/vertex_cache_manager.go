@@ -17,12 +17,13 @@ const (
 )
 
 const (
-	VP       = "pos"
-	VPNT     = "pos.normal.tex"
-	VPNTTB   = "pos.normal.tex.tangent.bitangent"
-	VPNTT    = "pos.normal.tex.tex2"
-	VPNTWJ   = "pos.normal.tex.weight.joint"
-	VPNTTBWJ = "pos.normal.tex.tangent.bitangent.weight.joint"
+	INVALID_VERTEX_FORMAT = "invalid"
+	VP                    = "pos"
+	VPNT                  = "pos.normal.tex"
+	VPNTTB                = "pos.normal.tex.tangent.bitangent"
+	VPNTT                 = "pos.normal.tex.tex2"
+	VPNTWJ                = "pos.normal.tex.weight.joint"
+	VPNTTBWJ              = "pos.normal.tex.tangent.bitangent.weight.joint"
 )
 
 type VertexCacheManager struct {
@@ -291,6 +292,10 @@ func NewVertexCacheManager(
 	return vm
 }
 
+func (vm *VertexCacheManager) AddVertexFormat(vt string, stride int, format []VertexFormat) {
+
+}
+
 func (vm *VertexCacheManager) Destory() {
 	for _, cs := range vm.Caches {
 		for _, c := range cs {
@@ -405,7 +410,6 @@ func (vm *VertexCacheManager) CreateStaticBuffer(
 		skinId,
 		vm.Strides[vertexType],
 		vm.Formats[vertexType],
-		idxType,
 		id,
 	)
 	if s == nil {

@@ -7,6 +7,8 @@ import (
 type SpatialInterface interface {
 	UpdateRS(dt float32)
 	UpdateGS(dt float32)
+
+	UpdateWorldTransform()
 	GetParent() SpatialInterface
 	SetParent(p SpatialInterface)
 	Draw()

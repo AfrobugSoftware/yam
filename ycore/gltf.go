@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"unsafe"
 	"yam/y3d"
 
 	"github.com/qmuntal/gltf"
@@ -56,9 +57,8 @@ func ProcessNode(p *Node, node *gltf.Node, doc *gltf.Document, r *RenderManager,
 	ynode := NewNode(r, p, y3d.UnitAABB, NewTransform())
 	if node.Mesh != nil {
 		mesh := doc.Meshes[*node.Mesh]
-		var v, i *bytes.Buffer
+		v, i := &bytes.Buffer{}, &bytes.Buffer{}
 		vertexType := VP
-		//var idxType uint32 = gl.UNSIGNED_INT
 		format := make([]VertexFormat, 0)
 		for _, primitive := range mesh.Primitives {
 			attrib := primitive.Attributes
@@ -76,15 +76,20 @@ func ProcessNode(p *Node, node *gltf.Node, doc *gltf.Document, r *RenderManager,
 				bv := doc.BufferViews[*ass.BufferView]
 				b, ok := data[bv.Buffer]
 				if !ok {
-					b, err := loadBufferURI(doc, ass)
+					i, err := loadBufferURI(doc, ass)
 					if err != nil {
 						return err
 					}
-					data[bv.Buffer] = b
+					data[bv.Buffer] = i
+					b = i
 				}
 				//but we need to pack this buffer
 				//I need to sleep
-				v.Write(b[bv.ByteOffset:bv.ByteLength])
+				v.Write(b[bv.ByteOffset : bv.ByteOffset+bv.ByteLength])
+			}
+			vertexType = GetVertexFormat(format, r)
+			if vertexType == INVALID_VERTEX_FORMAT {
+				return errors.New("unsuppored vertex format")
 			}
 			if primitive.Indices != nil {
 				ass := doc.Accessors[*primitive.Indices]
@@ -100,16 +105,27 @@ func ProcessNode(p *Node, node *gltf.Node, doc *gltf.Document, r *RenderManager,
 					}
 					data[bv.Buffer] = b
 				}
-				//idxType = uint32(compMap[ass.ComponentType])
-				i.Write(b[bv.ByteOffset:bv.ByteLength])
+				if ass.ComponentType == gltf.ComponentUshort {
+					//convert to unsigned int
+					b = b[bv.ByteOffset:bv.ByteLength]
+					id := make([]uint32, len(b)/2)
+					sb := unsafe.Slice((*uint16)(unsafe.Pointer(unsafe.SliceData(b))), len(b)/2)
+					for _, i := range sb {
+						id[i] = uint32(i)
+					}
+					b = unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(id))), len(id)*4)
+					i.Write(b[bv.ByteOffset : bv.ByteOffset+(bv.ByteLength*2)])
+				} else {
+					i.Write(b[bv.ByteOffset : bv.ByteOffset+bv.ByteLength])
+				}
 			}
 		}
 		geo := NewGeometry(r, ynode, y3d.UnitAABB,
 			NewTransform(),
 			vertexType,
 			v, i,
-			DrawCommand{},
-			-1, -1)
+			r.VertextManager.CreateDrawCommand(i, 1),
+			NO_SKINID, NO_STATICBUF)
 		ynode.Add(geo)
 	}
 	if node.Skin != nil {
@@ -169,4 +185,20 @@ func loadBufferURI(doc *gltf.Document, accessor *gltf.Accessor) ([]byte, error) 
 		}
 		return decoded, nil
 	}
+}
+
+func GetVertexFormat(vf []VertexFormat, r *RenderManager) string {
+	vm := r.VertextManager
+	for vt, f := range vm.Formats {
+		if len(f) == len(vf) {
+			for i := range f {
+				if f[i].ComponentSize == vf[i].ComponentSize &&
+					f[i].RelativeOffset == vf[i].RelativeOffset &&
+					f[i].Type == vf[i].Type {
+					return vt
+				}
+			}
+		}
+	}
+	return INVALID_VERTEX_FORMAT
 }
