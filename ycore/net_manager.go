@@ -27,6 +27,7 @@ const (
 	TY_CLIENT_ACCEPT
 	TY_NEW_CLIENT
 	TY_PING
+	TY_PONG
 )
 
 type NetPackage struct {
@@ -44,7 +45,6 @@ type NetManager struct {
 	Ip         string
 	Port       string
 	Address    string
-	Client     net.Conn
 	BlockCount int16
 	LastSent   int16
 	Ctx        context.Context
@@ -135,7 +135,7 @@ func ProcessClient(ctx context.Context, id xid.ID, c net.Conn, out <-chan NetPac
 				}
 				return
 			}
-			if np.TY == uint32(TY_PING) {
+			if np.TY == uint32(TY_PING) || np.TY == uint32(TY_PONG) {
 				continue
 			}
 			select {
@@ -174,11 +174,88 @@ func ProcessClient(ctx context.Context, id xid.ID, c net.Conn, out <-chan NetPac
 	}
 }
 
-func (n *NetManager) CreateClient() error {
+func (n *NetManager) CreateClient() (*NetClient, error) {
 	conn, err := net.Dial("tcp", net.JoinHostPort(n.Address, n.Port))
 	if err != nil {
-		return err
+		return nil, err
 	}
-	n.Client = conn
-	return nil
+	out := make(chan NetPackage, 64)
+	in := make(chan NetPackage, 64)
+	go RunClient(n.Ctx, conn, out, in)
+	return &NetClient{
+		In:  in,
+		Out: out,
+	}, nil
+}
+
+func RunClient(ctx context.Context, c net.Conn, out chan NetPackage, in chan<- NetPackage) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	go func() {
+		<-ctx.Done()
+		c.Close()
+	}()
+
+	encoder := gob.NewEncoder(c)
+	decoder := gob.NewDecoder(c)
+
+	encode := func(np NetPackage) error {
+		if err := c.SetWriteDeadline(time.Now().Add(5 * time.Second)); err != nil {
+			return err
+		}
+		return encoder.Encode(np)
+	}
+
+	//reader
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		defer close(in)
+		defer cancel()
+		for {
+			if err := c.SetReadDeadline(time.Now().Add(30 * time.Second)); err != nil {
+				log.Printf("client: set read deadline: %v", err)
+				return
+			}
+			var np NetPackage
+			if err := decoder.Decode(&np); err != nil {
+				if !errors.Is(err, io.EOF) && !errors.Is(err, net.ErrClosed) {
+					log.Printf("read: %v", err)
+				}
+				return
+			}
+			if np.TY == uint32(TY_PING) {
+				out <- NetPackage{
+					TY: uint32(TY_PONG),
+				}
+				continue
+			}
+			select {
+			case in <- np:
+			case <-ctx.Done():
+				return
+			}
+		}
+	})
+
+	defer func() {
+		cancel()
+		wg.Wait()
+	}()
+
+	//writer
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case np, ok := <-out:
+			if !ok {
+				return
+			}
+			if err := encode(np); err != nil {
+				log.Printf("write: %v", err)
+				return
+			}
+		}
+	}
 }
