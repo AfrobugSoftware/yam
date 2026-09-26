@@ -1,7 +1,6 @@
 package ygame
 
 import (
-	"os"
 	"time"
 	"yam/ycore"
 
@@ -12,22 +11,17 @@ var (
 	MS_PER_FRAME = 16 * time.Millisecond
 )
 
-type Game struct {
-	Running       bool
-	Ticks         uint64
-	NeedsReset    bool
-	ShowGrid      bool
-	DoReset       func()
-	OnExit        func() bool
-	logFile       *os.File
+type Engine struct {
 	App           Application
 	RenderManager *ycore.RenderManager
 	InputManager  *ycore.InputManager
+	AudioManager  *ycore.AudioManager
+	NetManager    *ycore.NetManager
 }
 
-var gGame *Game
+var gEngine *Engine
 
-func NewGame(title string, width, height int32) (*Game, error) {
+func NewGame(title string, width, height int32) (*Engine, error) {
 	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
 		return nil, err
 	}
@@ -38,46 +32,46 @@ func NewGame(title string, width, height int32) (*Game, error) {
 	sdl.GLSetAttribute(sdl.GL_CONTEXT_PROFILE_MASK, sdl.GL_CONTEXT_PROFILE_CORE)
 	sdl.GLSetAttribute(sdl.GL_DOUBLEBUFFER, 1)
 	sdl.GLSetAttribute(sdl.GL_DEPTH_SIZE, 24)
+	sdl.GLSetSwapInterval(1)
 	window, err := sdl.CreateWindow(title, sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, width, height,
 		sdl.WINDOW_OPENGL|sdl.WINDOW_ALLOW_HIGHDPI|sdl.WINDOW_SHOWN)
 	if err != nil {
 		return nil, err
 	}
-	gGame = &Game{
-		Ticks: sdl.GetTicks64(),
-	}
-	gGame.RenderManager = ycore.NewRenderManager(window, int(width), int(height))
-	gGame.InputManager = ycore.NewInputManager()
-
-	return gGame, nil
+	gEngine = &Engine{}
+	gEngine.RenderManager = ycore.NewRenderManager(window, int(width), int(height))
+	gEngine.InputManager = ycore.NewInputManager(int(width), int(height))
+	gEngine.AudioManager = ycore.NewAudioManager()
+	return gEngine, nil
 }
 
-func GetGame() *Game {
-	return gGame
+func GetGame() *Engine {
+	return gEngine
 }
 
-func (g *Game) SetApplication(app Application) {
+func (g *Engine) SetApplication(app Application) {
 	g.App = app
-	g.App.Startup()
+	g.App.Startup(g)
 }
 
-func (g *Game) Update(dt float64) {
+func (g *Engine) Update(dt float64) {
 	if g.App != nil {
 		g.App.Update(dt)
 	}
 }
 
-func (g *Game) Draw() {
+func (g *Engine) Draw() {
+	g.RenderManager.BeginRender()
 	if g.App != nil {
 		g.App.Draw()
 	}
 	g.RenderManager.Render() //how to I allow the frontend render
+	g.RenderManager.EndRender()
 }
 
-func (g *Game) Run() {
+func (g *Engine) Run() {
 	defer g.Quit()
 	var dt time.Duration
-	g.Running = true
 	lastTime := time.Now()
 	for g.InputManager.ProcessInput() {
 		now := time.Now()
@@ -92,7 +86,7 @@ func (g *Game) Run() {
 	}
 }
 
-func (g *Game) Quit() {
+func (g *Engine) Quit() {
 	if g.App != nil {
 		g.App.Shutdown()
 	}

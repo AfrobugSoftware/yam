@@ -1,7 +1,8 @@
 package ycore
 
 import (
-	"encoding/gob"
+	"encoding/binary"
+	"io"
 )
 
 const (
@@ -16,22 +17,34 @@ const (
 )
 
 type Chunk interface {
-	Write(w *gob.Encoder) error
-	Read(r *gob.Decoder) error
+	Write(w io.Writer) error
+	Read(r io.Reader) error
 }
 
 type ChunkHeader struct {
-	id uint32
+	ClassId  uint32
+	ObjectId uint64
 }
 
-func (p *ChunkHeader) Write(w *gob.Encoder) error {
-	return w.Encode(*p)
+func (p *ChunkHeader) Write(w io.Writer) error {
+	buf := make([]byte, 8)
+	binary.LittleEndian.PutUint32(buf, p.ClassId)
+	binary.LittleEndian.PutUint64(buf, p.ObjectId)
+	return nil
 }
 
-func (p *ChunkHeader) Read(r *gob.Decoder) error {
-	return r.Decode(p)
+func (p *ChunkHeader) Read(r io.Reader) error {
+	err := binary.Read(r, binary.LittleEndian, &p.ClassId)
+	if err != nil {
+		return err
+	}
+	err = binary.Read(r, binary.LittleEndian, &p.ObjectId)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (c *ChunkHeader) Id() uint32 {
-	return c.id
+func (c *ChunkHeader) ObjId() uint64 {
+	return c.ObjectId
 }

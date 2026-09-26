@@ -1,7 +1,7 @@
 package ygame
 
 type Application interface {
-	Startup()
+	Startup(e *Engine)
 	Update(currentTime float64)
 	Draw()
 	Shutdown()

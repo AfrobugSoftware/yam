@@ -86,7 +86,7 @@ func NewSkeletalAnimator(
 	sa := &SkeletalAnimator{
 		Animation:        animations,
 		MaxJoints:        maxJoints,
-		CurrentAnimation: -1,
+		CurrentAnimation: NO_ANIMATION,
 	}
 	gl.CreateBuffers(1, &sa.JointBufferObject)
 	gl.NamedBufferStorage(sa.JointBufferObject, int(unsafe.Sizeof(y3d.Mat4{}))*maxJoints, nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)

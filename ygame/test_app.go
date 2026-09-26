@@ -6,25 +6,29 @@ import (
 	"yam/ygl"
 
 	"github.com/go-gl/gl/v4.3-core/gl"
+	"github.com/veandco/go-sdl2/sdl"
 )
 
 type TestApplication struct {
-	RenderManager *ycore.RenderManager
-	Obj           ycore.SpatialInterface
+	engine    *Engine
+	Obj       ycore.SpatialInterface
+	ObjPlayer ycore.SpatialInterface
+	Root      ycore.SpatialInterface
 }
 
-func (t *TestApplication) Startup() {
+func (t *TestApplication) Startup(e *Engine) {
+	t.engine = e
 	v, i := ygl.CreateCube()
 	if v == nil || i == nil {
 		panic("failed to create cube")
 	}
 
-	gt, err := ycore.LoadGLTF("assets/gltf/testgltf.gltf", t.RenderManager)
+	gt, err := ycore.LoadGLTF("assets/gltf/testgltf.gltf", t.engine.RenderManager)
 	if err != nil {
 		panic(err)
 	}
-	skin := t.RenderManager.SkinManager.AddSkin(ygl.IdentityMaterial)
-	err = t.RenderManager.SkinManager.AddTexture(skin, "assets/earth.jpg",
+	skin := t.engine.RenderManager.SkinManager.AddSkin(ygl.IdentityMaterial)
+	err = t.engine.RenderManager.SkinManager.AddTexture(skin, "assets/img/earth.jpg",
 		gl.LINEAR,
 		gl.LINEAR,
 		gl.CLAMP_TO_EDGE,
@@ -33,7 +37,7 @@ func (t *TestApplication) Startup() {
 	if err != nil {
 		panic(err)
 	}
-	err = t.RenderManager.SkinManager.AddTexture(skin, "assets/earth.jpg",
+	err = t.engine.RenderManager.SkinManager.AddTexture(skin, "assets/img/earth.jpg",
 		gl.LINEAR,
 		gl.LINEAR,
 		gl.CLAMP_TO_EDGE,
@@ -42,8 +46,8 @@ func (t *TestApplication) Startup() {
 	if err != nil {
 		panic(err)
 	}
-	dc := t.RenderManager.VertextManager.CreateDrawCommand(i, 1)
-	s, box := t.RenderManager.VertextManager.GetScalingAndBox(v, i, 0.5, ycore.VP)
+	dc := t.engine.RenderManager.VertextManager.CreateDrawCommand(i, 1)
+	s, box := t.engine.RenderManager.VertextManager.GetScalingAndBox(v, i, 0.5, ycore.VP)
 	//USE STATIC BUFER
 	// staticbuf, err := t.RenderManager.VertextManager.CreateStaticBuffer(
 	// 	ycore.VP,
@@ -56,7 +60,7 @@ func (t *TestApplication) Startup() {
 	// 	panic(err)
 	// }
 	sp := ycore.NewGeometry(
-		t.RenderManager,
+		t.engine.RenderManager,
 		nil, box,
 		ycore.NewTransform(),
 		ycore.VP,
@@ -79,16 +83,17 @@ func (t *TestApplication) Startup() {
 		Y: 0.0,
 		Z: -0.25,
 	}
-	gt.Transform.SetScale(s)
+	gt.Transform.SetScale(0.025)
 	gt.Transform.Recalulate()
 	gt.UpdateWorldTransform()
 
-	nt := ycore.NewNode(t.RenderManager, nil, y3d.UnitAABB, ycore.NewTransform())
+	nt := ycore.NewNode(t.engine.RenderManager, nil, y3d.UnitAABB, ycore.NewTransform())
 	nt.Add(sp)
 	nt.Add(gt)
+	t.Root = nt
 
 	t.Obj = sp
-	t.RenderManager.Root = nt
+	t.ObjPlayer = gt
 }
 
 func (t *TestApplication) Update(deltaTime float64) {
@@ -97,10 +102,23 @@ func (t *TestApplication) Update(deltaTime float64) {
 	trans.Position = y3d.Add(trans.Position, y3d.Smul(y3d.NegateVec3(y3d.UNIT_Z), speed*float32(deltaTime)))
 
 	trans.Recalulate()
-	s := t.Obj.(*ycore.Geometry)
-	s.UpdateWorldTransform()
+	t.Obj.UpdateWorldTransform()
+
+	speed = 0
+	trans = t.ObjPlayer.GetTransform()
+	if gEngine.InputManager.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_RELEASED || gEngine.InputManager.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_HELD {
+		speed = 5
+	}
+	if gEngine.InputManager.GetKeyState(sdl.SCANCODE_DOWN) == ycore.BUTTON_RELEASED || gEngine.InputManager.GetKeyState(sdl.SCANCODE_DOWN) == ycore.BUTTON_HELD {
+		speed = -5
+	}
+	trans.Position = y3d.Add(trans.Position, y3d.Smul(y3d.UNIT_Y, speed*float32(deltaTime)))
+	trans.Recalulate()
+	t.ObjPlayer.UpdateWorldTransform()
 }
 
-func (t *TestApplication) Draw() {}
+func (t *TestApplication) Draw() {
+	t.Root.Draw()
+}
 
 func (t *TestApplication) Shutdown() {}

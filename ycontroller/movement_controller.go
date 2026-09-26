@@ -1,6 +1,6 @@
 package ycontroller
 
-type Control struct {
+type MovementController struct {
 	MaxForwardSpeed      float64
 	MaxAngularSpeed      float64
 	ForwardKey           int

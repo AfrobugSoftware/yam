@@ -2,10 +2,11 @@ package ycore
 
 import (
 	"bytes"
-	"encoding/gob"
 	"errors"
 	"fmt"
+	"io"
 	"log"
+	"reflect"
 	"strings"
 	"unsafe"
 	"yam/y3d"
@@ -68,7 +69,6 @@ type RenderManager struct {
 	RenderStates    []RenderState
 	DrawMode        uint32
 	ActiveProgram   uint32
-	Root            SpatialInterface
 	Lights          []ygl.Light
 	LightUBO        uint32
 	screenVao       uint32
@@ -169,13 +169,18 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 
 	return rm
 }
-func (r *RenderManager) Write(e *gob.Encoder) error {
-	e.Encode(r.ClearColor)
+func (r *RenderManager) Write(w io.Writer) error {
+	c := ChunkHeader{
+		ClassId:  RENDER_MANAGER_CHUNK_IDENTIFIER,
+		ObjectId: uint64(reflect.ValueOf(r).Elem().UnsafeAddr()),
+	}
+	c.Write(w)
+
 	return nil
 }
 
-func (r *RenderManager) Read(d *gob.Decoder) error {
-	d.Decode(&r.ClearColor)
+func (r *RenderManager) Read(d io.Reader) error {
+	//chuck is already read
 	return nil
 }
 
@@ -451,7 +456,7 @@ func (r *RenderManager) Transfrom3Dto2D(pos y3d.Vec3) y3d.Vec2 {
 	}
 }
 
-func (r *RenderManager) Transfrom2Dto3D(pos y3d.Vec2) (y3d.Vec3, y3d.Vec3) {
+func (r *RenderManager) GetPickRay(pos y3d.Vec2) (y3d.Vec3, y3d.Vec3) {
 	var width, height float32
 	if r.Mode == MODE_2D {
 		width, height = float32(r.Width), float32(r.Height)
@@ -536,19 +541,21 @@ func (r *RenderManager) CreateDefaultShader() {
 	}
 }
 
-// hmmm
-func (r *RenderManager) Render() {
+func (r *RenderManager) BeginRender() {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
 	gl.UseProgram(r.ActiveProgram)
 	gl.UniformMatrix4fv(0, 1, false, &r.ViewProj[0])
+}
 
-	if r.Root != nil {
-		r.Root.Draw()
-		err := r.VertextManager.ForceRenderAll()
-		if err != nil {
-			log.Println(err)
-		}
+// hmmm
+func (r *RenderManager) Render() {
+	err := r.VertextManager.ForceRenderAll()
+	if err != nil {
+		log.Println(err)
 	}
+}
+
+func (r *RenderManager) EndRender() {
 	r.Window.GLSwap()
 }
 

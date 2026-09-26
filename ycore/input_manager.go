@@ -22,6 +22,12 @@ const (
 	MOUSE_MAX    = 6
 )
 
+type Controller struct {
+	Control    *sdl.GameController
+	PreButtons []byte
+	CurButtons []byte
+}
+
 type InputManager struct {
 	CurKeyState       []uint8
 	PrevKeyState      []uint8
@@ -33,12 +39,21 @@ type InputManager struct {
 	ScrollWheelPos    y3d.Vec3
 	ScrollWheelDir    uint32
 	MaxMouseSpeed     float32
+	MouseCage         y3d.Rect
+	Controllers       map[int]*Controller
 }
 
-func NewInputManager() *InputManager {
+func NewInputManager(width, height int) *InputManager {
 	return &InputManager{
 		CurKeyState:  make([]uint8, sdl.NUM_SCANCODES),
 		PrevKeyState: make([]uint8, sdl.NUM_SCANCODES),
+		Controllers:  make(map[int]*Controller),
+		MouseCage: y3d.Rect{
+			X:      0,
+			Y:      0,
+			Width:  width,
+			Height: height,
+		},
 	}
 }
 
@@ -94,6 +109,27 @@ func (im *InputManager) GetMouseButtonState(button int) uint8 {
 	return r
 }
 
+func (im *InputManager) ConnectController(idx int) {
+	if sdl.IsGameController(idx) {
+		controller := sdl.GameControllerOpen(idx)
+		if controller != nil {
+			im.Controllers[idx] = &Controller{
+				PreButtons: make([]byte, 7),
+				CurButtons: make([]byte, 7),
+				Control:    controller,
+			}
+		}
+	}
+}
+
+func (im *InputManager) DisconnectController(idx int) {
+	c, ok := im.Controllers[idx]
+	if ok {
+		c.Control.Close()
+		delete(im.Controllers, idx)
+	}
+}
+
 func (im *InputManager) ProcessInput() bool {
 	copy(im.PrevKeyState, im.CurKeyState)
 	im.PrevMouseKeyState = im.CurMouseKeyState
@@ -101,11 +137,18 @@ func (im *InputManager) ProcessInput() bool {
 	im.CurMouseKeyState = 0
 	im.ScrollWheelDir = 0
 	im.ScrollWheelPos = y3d.Vec3{}
+	im.MousePosition = y3d.Vec2{}
 
 	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 		switch event.GetType() {
 		case sdl.QUIT:
 			return false
+		case sdl.CONTROLLERDEVICEADDED:
+			c := event.(*sdl.ControllerDeviceEvent)
+			im.ConnectController(int(c.Which))
+		case sdl.CONTROLLERDEVICEREMOVED:
+			c := event.(*sdl.ControllerDeviceEvent)
+			im.DisconnectController(int(c.Which))
 		case sdl.MOUSEWHEEL:
 			w := event.(*sdl.MouseWheelEvent)
 			im.ScrollWheelPos = y3d.Vec3{
@@ -128,10 +171,8 @@ func (im *InputManager) ProcessInput() bool {
 		} else {
 			x, y, mState = sdl.GetMouseState()
 		}
-		im.MousePosition = y3d.Vec2{
-			X: float32(x),
-			Y: float32(y),
-		}
+		im.MousePosition.X = float32(min(max(x, int32(im.MouseCage.X)), int32(im.MouseCage.Width)))
+		im.MousePosition.Y = float32(min(max(y, int32(im.MouseCage.Y)), int32(im.MouseCage.Height)))
 		im.CurMouseKeyState = mState
 	}
 	return true

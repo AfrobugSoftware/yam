@@ -87,6 +87,8 @@ func ProcessNode(p *Node, node *gltf.Node, doc *gltf.Document, r *RenderManager,
 				//I need to sleep
 				v.Write(b[bv.ByteOffset : bv.ByteOffset+bv.ByteLength])
 			}
+			//creat a method that takes the vertex buffer, array of accessors, the buffer cache and the verect forma
+			//the method then constructs the vertex packed lists
 			vertexType = GetVertexFormat(format, r)
 			if vertexType == INVALID_VERTEX_FORMAT {
 				return errors.New("unsuppored vertex format")

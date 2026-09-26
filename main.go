@@ -2,19 +2,16 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"yam/ygame"
 )
 
 func main() {
-	// fmt.Println("kiwi island 1.0.2!")
-	g, error := ygame.NewGame("Kiwi Island", 1000, 600)
-	if error != nil {
-		fmt.Println("Error creating game:", error)
-		return
+	g, err := ygame.NewGame("Kiwi Island", 1000, 600)
+	if err != nil {
+		log.Panicf("Error creating game: %v", err)
 	}
 	fmt.Println("Game created successfully!")
-	g.SetApplication(&ygame.TestApplication{
-		RenderManager: g.RenderManager,
-	})
+	g.SetApplication(&ygame.TestApplication{})
 	g.Run()
 }

@@ -609,3 +609,11 @@ func (vm *VertexCacheManager) GetScalingAndBox(dataV, dataI *bytes.Buffer, scale
 	scaling := (box.Max.Y - box.Min.Y) / scale
 	return 1.0 / scaling, box
 }
+
+func (vm *VertexCacheManager) ResetCache() {
+	for _, v := range vm.Caches {
+		for i := range MAX_CACHES {
+			v[i].Reset()
+		}
+	}
+}
