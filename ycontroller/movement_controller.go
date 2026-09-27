@@ -1,6 +1,7 @@
 package ycontroller
 
 import (
+	"fmt"
 	"math"
 	"yam/y3d"
 )
@@ -78,6 +79,9 @@ func (m *MovementController) Update(deltaTime float32) {
 	m.RotX = m.RotSpeedPitch * deltaTime
 	m.RotY = m.RotSpeedYaw * deltaTime
 	m.RotZ = m.RotSpeedRoll * deltaTime
+	if m.RotZ > 0 {
+		fmt.Println(m.RotZ)
+	}
 	m.RecalAxes()
 
 	m.Velocity = y3d.Smul(m.Dir, (m.Thrust * deltaTime))

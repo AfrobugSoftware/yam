@@ -123,7 +123,6 @@ func (q Quaternion) Euler() (float64, float64, float64) {
 }
 
 func FromEuler(phi, theta, psi float64) Quaternion {
-	// Each half-angle sin/cos is computed once; trig calls dominate the cost.
 	cp, sp := math.Cos(phi/2), math.Sin(phi/2)
 	ct, st := math.Cos(theta/2), math.Sin(theta/2)
 	cs, ss := math.Cos(psi/2), math.Sin(psi/2)

@@ -86,21 +86,35 @@ func (t *TestApplication) Startup(e *Engine) {
 func (t *TestApplication) Update(deltaTime float64) {
 	g := t.Obj.(*ycore.Geometry)
 	if g.MoveController != nil {
-		g.MoveController.Thrust = 0
-		g.MoveController.RotSpeedRoll = 0
-		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_RELEASED || gEngine.InputManager.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_HELD {
+		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_PRESSED {
 			g.MoveController.Thrust = -15
 		}
-		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_DOWN) == ycore.BUTTON_RELEASED || gEngine.InputManager.GetKeyState(sdl.SCANCODE_DOWN) == ycore.BUTTON_HELD {
+		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_DOWN) == ycore.BUTTON_PRESSED {
 			g.MoveController.Thrust = 15
 		}
 
-		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_LEFT) == ycore.BUTTON_RELEASED || gEngine.InputManager.GetKeyState(sdl.SCANCODE_LEFT) == ycore.BUTTON_HELD {
+		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_LEFT) == ycore.BUTTON_PRESSED {
 			g.MoveController.RotSpeedRoll = -15
 		}
 
-		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_RIGHT) == ycore.BUTTON_RELEASED || gEngine.InputManager.GetKeyState(sdl.SCANCODE_RIGHT) == ycore.BUTTON_HELD {
+		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_RIGHT) == ycore.BUTTON_PRESSED {
 			g.MoveController.RotSpeedRoll = 15
+		}
+
+		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_RELEASED {
+			g.MoveController.Thrust = 0
+		}
+
+		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_DOWN) == ycore.BUTTON_RELEASED {
+			g.MoveController.Thrust = 0
+		}
+
+		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_RIGHT) == ycore.BUTTON_RELEASED {
+			g.MoveController.RotSpeedRoll = 0
+		}
+
+		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_LEFT) == ycore.BUTTON_RELEASED {
+			g.MoveController.RotSpeedRoll = 0
 		}
 	}
 	t.Root.UpdateControllers(float32(deltaTime))
