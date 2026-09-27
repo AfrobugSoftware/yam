@@ -39,6 +39,15 @@ func (m Mat4) MulVec4(v Vec4) Vec4 {
 	}
 }
 
+func FromAxis(right, up, dir Vec3) Mat4 {
+	return Mat4{
+		right.X, right.Y, right.Z, 0,
+		up.X, up.Y, up.Y, 0,
+		dir.X, dir.Y, dir.Z, 0,
+		0, 0, 0, 1,
+	}
+}
+
 func (m Mat4) MulVec3(v Vec3) Vec3 {
 	r := m.MulVec4(Vec4{v.X, v.Y, v.Z, 0})
 	return Vec3{r.X, r.Y, r.Z}

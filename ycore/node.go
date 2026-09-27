@@ -50,6 +50,13 @@ func (n *Node) UpdateWorldTransform() {
 	}
 }
 
+func (n *Node) UpdateControllers(dt float32) {
+	n.Spatial.UpdateControllers(dt)
+	for _, s := range n.Children {
+		s.UpdateControllers(dt)
+	}
+}
+
 func (n *Node) Draw() {
 	for _, s := range n.Children {
 		s.Draw()

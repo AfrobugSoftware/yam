@@ -22,7 +22,7 @@ const (
 	MOUSE_MAX    = 6
 )
 
-type Controller struct {
+type PadController struct {
 	Control    *sdl.GameController
 	PreButtons []byte
 	CurButtons []byte
@@ -40,14 +40,14 @@ type InputManager struct {
 	ScrollWheelDir    uint32
 	MaxMouseSpeed     float32
 	MouseCage         y3d.Rect
-	Controllers       map[int]*Controller
+	Controllers       map[int]*PadController
 }
 
 func NewInputManager(width, height int) *InputManager {
 	return &InputManager{
 		CurKeyState:  make([]uint8, sdl.NUM_SCANCODES),
 		PrevKeyState: make([]uint8, sdl.NUM_SCANCODES),
-		Controllers:  make(map[int]*Controller),
+		Controllers:  make(map[int]*PadController),
 		MouseCage: y3d.Rect{
 			X:      0,
 			Y:      0,
@@ -113,7 +113,7 @@ func (im *InputManager) ConnectController(idx int) {
 	if sdl.IsGameController(idx) {
 		controller := sdl.GameControllerOpen(idx)
 		if controller != nil {
-			im.Controllers[idx] = &Controller{
+			im.Controllers[idx] = &PadController{
 				PreButtons: make([]byte, 7),
 				CurButtons: make([]byte, 7),
 				Control:    controller,

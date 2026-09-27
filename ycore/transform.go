@@ -12,23 +12,20 @@ var (
 )
 
 type Transform struct {
-	Position  y3d.Vec3
-	Rotation  y3d.Quaternion
-	Scale     y3d.Vec3
-	Local     y3d.Mat4
-	World     y3d.Mat4
-	IsDirty   bool
-	IsCurrent bool
+	Position y3d.Vec3
+	Rotation y3d.Quaternion
+	Scale    y3d.Vec3
+	Local    y3d.Mat4
+	World    y3d.Mat4
 }
 
 func NewTransform() *Transform {
 	return &Transform{
-		Position:  y3d.Vec3{},
-		Rotation:  y3d.IdenQuat(),
-		Scale:     y3d.Vec3{X: 1.0, Y: 1.0, Z: 1.0},
-		Local:     y3d.Identity,
-		World:     y3d.Identity,
-		IsCurrent: false,
+		Position: y3d.Vec3{},
+		Rotation: y3d.IdenQuat(),
+		Scale:    y3d.Vec3{X: 1.0, Y: 1.0, Z: 1.0},
+		Local:    y3d.Identity,
+		World:    y3d.Identity,
 	}
 }
 
@@ -38,6 +35,13 @@ func (trans *Transform) SetScale(factor float32) {
 		Y: factor,
 		Z: factor,
 	}
+	trans.Recalulate()
+}
+
+func (trans *Transform) SetPositionOrientation(pos y3d.Vec3, orient y3d.Quaternion) {
+	trans.Position = pos
+	trans.Rotation = orient
+	trans.Recalulate()
 }
 
 func (trans *Transform) UpdateWorld(parent *Transform) {
@@ -56,18 +60,6 @@ func (trans *Transform) RecalulateNoScale() {
 		m[6], m[7], m[8], 0,
 		trans.Position.X, trans.Position.Y, trans.Position.Z, 1,
 	}
-}
-func (trans *Transform) GetForward() y3d.Vec3 {
-	return trans.Rotation.Rotate(FORWARD)
-}
-
-func (trans *Transform) GetRight() y3d.Vec3 {
-	t := trans.Rotation.Rotate(RIGHT)
-	return y3d.Normalize(t)
-}
-
-func (trans *Transform) GetUp() y3d.Vec3 {
-	return trans.Rotation.Rotate(UP)
 }
 
 func (t *Transform) TransformAABB(b y3d.AABB) y3d.AABB {

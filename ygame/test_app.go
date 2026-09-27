@@ -2,6 +2,7 @@ package ygame
 
 import (
 	"yam/y3d"
+	"yam/ycontroller"
 	"yam/ycore"
 	"yam/ygl"
 
@@ -68,53 +69,42 @@ func (t *TestApplication) Startup(e *Engine) {
 		i,
 		dc,
 		skin,
-		ycore.NO_STATICBUF)
+		ycore.NO_STATICBUF, ycontroller.NewMovementController())
 
-	sp.Transform.Position = y3d.Vec3{
-		X: 0.0,
-		Y: 0.0,
-		Z: -1.0,
-	}
 	sp.Transform.SetScale(s)
-	sp.Transform.Recalulate()
-	sp.UpdateWorldTransform()
-	gt.Transform.Position = y3d.Vec3{
-		X: 0.0,
-		Y: 0.0,
-		Z: -0.25,
-	}
 	gt.Transform.SetScale(0.025)
-	gt.Transform.Recalulate()
-	gt.UpdateWorldTransform()
-
 	nt := ycore.NewNode(t.engine.RenderManager, nil, y3d.UnitAABB, ycore.NewTransform())
 	nt.Add(sp)
 	nt.Add(gt)
 	t.Root = nt
+	t.Root.UpdateWorldTransform()
 
 	t.Obj = sp
 	t.ObjPlayer = gt
 }
 
 func (t *TestApplication) Update(deltaTime float64) {
-	speed := float32(0.5)
-	trans := t.Obj.GetTransform()
-	trans.Position = y3d.Add(trans.Position, y3d.Smul(y3d.NegateVec3(y3d.UNIT_Z), speed*float32(deltaTime)))
+	g := t.Obj.(*ycore.Geometry)
+	if g.MoveController != nil {
+		g.MoveController.Thrust = 0
+		g.MoveController.RotSpeedRoll = 0
+		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_RELEASED || gEngine.InputManager.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_HELD {
+			g.MoveController.Thrust = -15
+		}
+		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_DOWN) == ycore.BUTTON_RELEASED || gEngine.InputManager.GetKeyState(sdl.SCANCODE_DOWN) == ycore.BUTTON_HELD {
+			g.MoveController.Thrust = 15
+		}
 
-	trans.Recalulate()
-	t.Obj.UpdateWorldTransform()
+		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_LEFT) == ycore.BUTTON_RELEASED || gEngine.InputManager.GetKeyState(sdl.SCANCODE_LEFT) == ycore.BUTTON_HELD {
+			g.MoveController.RotSpeedRoll = -15
+		}
 
-	speed = 0
-	trans = t.ObjPlayer.GetTransform()
-	if gEngine.InputManager.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_RELEASED || gEngine.InputManager.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_HELD {
-		speed = 5
+		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_RIGHT) == ycore.BUTTON_RELEASED || gEngine.InputManager.GetKeyState(sdl.SCANCODE_RIGHT) == ycore.BUTTON_HELD {
+			g.MoveController.RotSpeedRoll = 15
+		}
 	}
-	if gEngine.InputManager.GetKeyState(sdl.SCANCODE_DOWN) == ycore.BUTTON_RELEASED || gEngine.InputManager.GetKeyState(sdl.SCANCODE_DOWN) == ycore.BUTTON_HELD {
-		speed = -5
-	}
-	trans.Position = y3d.Add(trans.Position, y3d.Smul(y3d.UNIT_Y, speed*float32(deltaTime)))
-	trans.Recalulate()
-	t.ObjPlayer.UpdateWorldTransform()
+	t.Root.UpdateControllers(float32(deltaTime))
+	t.Root.UpdateWorldTransform()
 }
 
 func (t *TestApplication) Draw() {

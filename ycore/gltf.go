@@ -127,7 +127,7 @@ func ProcessNode(p *Node, node *gltf.Node, doc *gltf.Document, r *RenderManager,
 			vertexType,
 			v, i,
 			r.VertextManager.CreateDrawCommand(i, 1),
-			NO_SKINID, NO_STATICBUF)
+			NO_SKINID, NO_STATICBUF, nil)
 		ynode.Add(geo)
 	}
 	if node.Skin != nil {

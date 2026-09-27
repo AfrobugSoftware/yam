@@ -122,38 +122,28 @@ func (q Quaternion) Euler() (float64, float64, float64) {
 	return phi, theta, psi
 }
 
-func FromEuler(fpitch, fyaw, froll float64) Quaternion {
-	pitch := fpitch * 0.5
-	yaw := fyaw * 0.5
-	roll := froll * 0.5
-	cX := math.Cos(pitch)
-	cY := math.Cos(yaw)
-	cZ := math.Cos(roll)
-	sX := math.Sin(pitch)
-	sY := math.Sin(yaw)
-	sZ := math.Sin(roll)
-
-	cYcZ := cY * cZ
-	sYsZ := sY * sZ
-	cYsZ := cY * sZ
-	sYcZ := sY * cZ
-
+func FromEuler(phi, theta, psi float64) Quaternion {
+	// Each half-angle sin/cos is computed once; trig calls dominate the cost.
+	cp, sp := math.Cos(phi/2), math.Sin(phi/2)
+	ct, st := math.Cos(theta/2), math.Sin(theta/2)
+	cs, ss := math.Cos(psi/2), math.Sin(psi/2)
 	return Quaternion{
-		W: cX*cYcZ + sX*sYsZ,
-		X: sX*cYcZ - cX*sYsZ,
-		Y: cX*sYcZ + sX*cYsZ,
-		Z: cX*cYsZ - sX*sYcZ,
+		W: cp*ct*cs + sp*st*ss,
+		X: sp*ct*cs - cp*st*ss,
+		Y: cp*st*cs + sp*ct*ss,
+		Z: cp*ct*ss - sp*st*cs,
 	}
 }
 
 func (qin Quaternion) RotMat() Mat3 {
 	q := qin.Unit()
-	w, x, y, z := q.W, q.X, q.Y, q.Z
-
+	xx, yy, zz := q.X*q.X, q.Y*q.Y, q.Z*q.Z
+	xy, xz, yz := q.X*q.Y, q.X*q.Z, q.Y*q.Z
+	wx, wy, wz := q.W*q.X, q.W*q.Y, q.W*q.Z
 	return Mat3{
-		float32(1 - 2*y*y - 2*z*z), float32(2*x*y + 2*w*z), float32(2*x*z - 2*w*y),
-		float32(2*x*y - 2*w*z), float32(1 - 2*x*x - 2*z*z), float32(2*y*z + 2*w*x),
-		float32(2*x*z + 2*w*y), float32(2*y*z + 2*w*x), float32(1 - 2*x*x - 2*y*y),
+		float32(1 - 2*(yy+zz)), float32(2 * (xy - wz)), float32(2 * (wy + xz)),
+		float32(2 * (wz + xy)), float32(1 - 2*(zz+xx)), float32(2 * (yz - wx)),
+		float32(2 * (xz - wy)), float32(2 * (wx + yz)), float32(1 - 2*(xx+yy)),
 	}
 }
 

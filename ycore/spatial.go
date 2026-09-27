@@ -2,6 +2,7 @@ package ycore
 
 import (
 	"yam/y3d"
+	"yam/ycontroller"
 )
 
 type SpatialInterface interface {
@@ -9,6 +10,7 @@ type SpatialInterface interface {
 	UpdateGS(dt float32)
 
 	UpdateWorldTransform()
+	UpdateControllers(dt float32)
 	GetParent() SpatialInterface
 	SetParent(p SpatialInterface)
 	Draw()
@@ -25,6 +27,7 @@ type Spatial struct {
 	LocalBoundingBox y3d.AABB
 	WorldBoundingBox y3d.AABB
 	Transform        *Transform
+	MoveController   *ycontroller.MovementController
 }
 
 func (s *Spatial) GetParent() SpatialInterface {
@@ -64,6 +67,10 @@ func (s *Spatial) UpdateWorldBound() {
 	s.WorldBoundingBox = s.Transform.TransformAABB(s.LocalBoundingBox)
 }
 func (s *Spatial) UpdateWorldTransform() {
+	if s.MoveController != nil {
+		//assume updated
+		s.Transform.SetPositionOrientation(s.MoveController.Position, s.MoveController.Orientation)
+	}
 	if s.Parent != nil {
 		s.Transform.UpdateWorld(s.Parent.GetTransform())
 	} else {
@@ -73,4 +80,10 @@ func (s *Spatial) UpdateWorldTransform() {
 
 func (s *Spatial) GetEffect() Effect {
 	return s.LocalEffect
+}
+
+func (s *Spatial) UpdateControllers(dt float32) {
+	if s.MoveController != nil {
+		s.MoveController.Update(dt)
+	}
 }

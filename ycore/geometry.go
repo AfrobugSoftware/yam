@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"log"
 	"yam/y3d"
+	"yam/ycontroller"
 )
 
 type Geometry struct {
@@ -35,6 +36,7 @@ func NewGeometry(
 	drawCommand DrawCommand,
 	skinId int,
 	staticBuf int,
+	movec *ycontroller.MovementController,
 ) *Geometry {
 	g := &Geometry{
 		Spatial: Spatial{
@@ -42,6 +44,7 @@ func NewGeometry(
 			Parent:           parent,
 			LocalBoundingBox: boundingBox,
 			Transform:        tranform,
+			MoveController:   movec,
 		},
 		VertexType:  vertexType,
 		DataV:       dataV,
