@@ -1,13 +1,7 @@
 package ycontroller
 
 import (
-	"fmt"
-	"math"
 	"yam/y3d"
-)
-
-const (
-	twoPI = float32(math.Pi * 2)
 )
 
 type MovementController struct {
@@ -29,7 +23,7 @@ type MovementController struct {
 	Position         y3d.Vec3
 }
 
-func NewMovementController() *MovementController {
+func NewMovementController(pos y3d.Vec3, orient y3d.Quaternion) *MovementController {
 	return &MovementController{
 		Orientation: y3d.IdenQuat(),
 		Right:       y3d.UNIT_X,
@@ -39,20 +33,20 @@ func NewMovementController() *MovementController {
 }
 
 func (m *MovementController) RecalAxes() {
-	if m.RotX > twoPI {
-		m.RotX -= twoPI
-	} else if m.RotX < -twoPI {
-		m.RotX += twoPI
+	if m.RotX > y3d.TwoPI {
+		m.RotX -= y3d.TwoPI
+	} else if m.RotX < -y3d.TwoPI {
+		m.RotX += y3d.TwoPI
 	}
-	if m.RotY > twoPI {
-		m.RotY -= twoPI
-	} else if m.RotY < -twoPI {
-		m.RotY += twoPI
+	if m.RotY > y3d.TwoPI {
+		m.RotY -= y3d.TwoPI
+	} else if m.RotY < -y3d.TwoPI {
+		m.RotY += y3d.TwoPI
 	}
-	if m.RotZ > twoPI {
-		m.RotZ -= twoPI
-	} else if m.RotZ < -twoPI {
-		m.RotZ += twoPI
+	if m.RotZ > y3d.TwoPI {
+		m.RotZ -= y3d.TwoPI
+	} else if m.RotZ < -y3d.TwoPI {
+		m.RotZ += y3d.TwoPI
 	}
 	frame := y3d.FromEuler(float64(m.RotX), float64(m.RotY), float64(m.RotZ))
 	m.Orientation = y3d.ProdQuaternion(m.Orientation, frame)
@@ -76,14 +70,28 @@ func (m *MovementController) RecalAxes() {
 }
 
 func (m *MovementController) Update(deltaTime float32) {
-	m.RotX = m.RotSpeedPitch * deltaTime
-	m.RotY = m.RotSpeedYaw * deltaTime
-	m.RotZ = m.RotSpeedRoll * deltaTime
-	if m.RotZ > 0 {
-		fmt.Println(m.RotZ)
-	}
+	m.RotX = (m.RotSpeedPitch * deltaTime)
+	m.RotY = (m.RotSpeedYaw * deltaTime)
+	m.RotZ = (m.RotSpeedRoll * deltaTime)
 	m.RecalAxes()
 
 	m.Velocity = y3d.Smul(m.Dir, (m.Thrust * deltaTime))
 	m.Position = y3d.Add(m.Position, m.Velocity)
+}
+
+func (m *MovementController) GetDir() y3d.Vec3 {
+	return m.Dir
+}
+
+func (m *MovementController) GetUp() y3d.Vec3 {
+	return m.Up
+}
+func (m *MovementController) GetRight() y3d.Vec3 {
+	return m.Right
+}
+func (m *MovementController) GetPosition() y3d.Vec3 {
+	return m.Position
+}
+func (m *MovementController) GetOrientation() y3d.Quaternion {
+	return m.Orientation
 }

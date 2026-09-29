@@ -10,6 +10,9 @@ const (
 	RADTODEG = math.Pi / 180.0
 	NearZero = 1e-10
 )
+const (
+	TwoPI = float32(math.Pi * 2)
+)
 
 func ToDegree(rad float64) float64 {
 	return rad * DEGTORAD

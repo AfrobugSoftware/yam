@@ -37,12 +37,16 @@ type IVec3 struct {
 	X, Y, Z int
 }
 
-func Add(lhs, rhs Vec3) Vec3 {
-	return Vec3{
-		X: lhs.X + rhs.X,
-		Y: lhs.Y + rhs.Y,
-		Z: lhs.Z + rhs.Z,
+func Add(v ...Vec3) Vec3 {
+	lhs := Vec3{}
+	for _, rhs := range v {
+		lhs = Vec3{
+			X: lhs.X + rhs.X,
+			Y: lhs.Y + rhs.Y,
+			Z: lhs.Z + rhs.Z,
+		}
 	}
+	return lhs
 }
 
 func (v Vec3) Equal(q Vec3) bool {

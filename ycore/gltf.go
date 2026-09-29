@@ -53,6 +53,13 @@ func LoadGLTF(filename string, r *RenderManager) (*Node, error) {
 	return root, nil
 }
 
+func makeVBuffer(v *bytes.Buffer, _ []VertexFormat, bufs ...[]byte) error {
+	if len(bufs) == 1 {
+		v.Write(bufs[0])
+	}
+	return nil
+}
+
 func ProcessNode(p *Node, node *gltf.Node, doc *gltf.Document, r *RenderManager, data map[int][]byte) error {
 	ynode := NewNode(r, p, y3d.UnitAABB, NewTransform())
 	if node.Mesh != nil {
@@ -62,6 +69,7 @@ func ProcessNode(p *Node, node *gltf.Node, doc *gltf.Document, r *RenderManager,
 		format := make([]VertexFormat, 0)
 		for _, primitive := range mesh.Primitives {
 			attrib := primitive.Attributes
+			bufs := make([][]byte, 0)
 			for _, i := range attrib {
 				ass := doc.Accessors[i]
 				vf := VertexFormat{
@@ -83,12 +91,9 @@ func ProcessNode(p *Node, node *gltf.Node, doc *gltf.Document, r *RenderManager,
 					data[bv.Buffer] = i
 					b = i
 				}
-				//but we need to pack this buffer
-				//I need to sleep
-				v.Write(b[bv.ByteOffset : bv.ByteOffset+bv.ByteLength])
+				bufs = append(bufs, b[bv.ByteOffset:bv.ByteOffset+bv.ByteLength])
 			}
-			//creat a method that takes the vertex buffer, array of accessors, the buffer cache and the verect forma
-			//the method then constructs the vertex packed lists
+			makeVBuffer(v, format, bufs...)
 			vertexType = GetVertexFormat(format, r)
 			if vertexType == INVALID_VERTEX_FORMAT {
 				return errors.New("unsuppored vertex format")

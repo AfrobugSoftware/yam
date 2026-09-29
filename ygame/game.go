@@ -73,13 +73,15 @@ func (g *Engine) Run() {
 	defer g.Quit()
 	var dt time.Duration
 	lastTime := time.Now()
-	for g.InputManager.ProcessInput() {
+	running := true
+	for running {
 		now := time.Now()
 		dt = now.Sub(lastTime)
 		frameTime := dt.Seconds()
 		if frameTime > 0.05 {
 			frameTime = 0.05
 		}
+		running = g.InputManager.ProcessInput()
 		g.Update(frameTime)
 		g.Draw()
 		lastTime = now

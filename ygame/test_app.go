@@ -69,7 +69,9 @@ func (t *TestApplication) Startup(e *Engine) {
 		i,
 		dc,
 		skin,
-		ycore.NO_STATICBUF, ycontroller.NewMovementController())
+		ycore.NO_STATICBUF, ycontroller.NewMovementController(
+			y3d.Vec3{Z: -0.24}, y3d.IdenQuat(),
+		))
 
 	sp.Transform.SetScale(s)
 	gt.Transform.SetScale(0.025)
@@ -81,6 +83,8 @@ func (t *TestApplication) Startup(e *Engine) {
 
 	t.Obj = sp
 	t.ObjPlayer = gt
+
+	t.engine.RenderManager.FpCamera = ycore.NewCamera(y3d.ZEROV)
 }
 
 func (t *TestApplication) Update(deltaTime float64) {
@@ -117,6 +121,26 @@ func (t *TestApplication) Update(deltaTime float64) {
 			g.MoveController.RotSpeedRoll = 0
 		}
 	}
+
+	cam := t.engine.RenderManager.FpCamera
+	if cam != nil {
+		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_W) == ycore.BUTTON_PRESSED {
+			cam.ForwardSpeed = 10
+		}
+
+		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_S) == ycore.BUTTON_PRESSED {
+			cam.ForwardSpeed = -10
+		}
+		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_W) == ycore.BUTTON_RELEASED {
+			cam.ForwardSpeed = 0
+		}
+
+		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_S) == ycore.BUTTON_RELEASED {
+			cam.ForwardSpeed = 0
+		}
+	}
+
+	t.engine.RenderManager.UpdateFPCamera(float32(deltaTime))
 	t.Root.UpdateControllers(float32(deltaTime))
 	t.Root.UpdateWorldTransform()
 }

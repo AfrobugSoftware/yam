@@ -158,6 +158,97 @@ func (s *SkinManager) AddTexture(skin int, filename string,
 	return nil
 }
 
+func (s *SkinManager) AddSpriteSheet(skin int, filename string, spriteHeight, spriteWidth int,
+	minFilter, maxFilter int32,
+	wraps, wrapt int32) error {
+	if _, exists := s.Skins[skin]; !exists {
+		return errors.New("invalid skin id")
+	}
+	if s.Skins[skin].Texture[7] != EmptyTexture {
+		return errors.New("skin texture slots are full")
+	}
+	id, found := s.FindTextureByFile(filename)
+	if found {
+		sk := s.Skins[skin]
+		for slot := range sk.Texture {
+			if sk.Texture[slot] == EmptyTexture {
+				sk.Texture[slot] = id
+				break
+			}
+		}
+		s.Skins[skin] = sk
+		return nil
+	}
+	surface, err := img.Load(filename)
+	if err != nil {
+		return fmt.Errorf("img.Load(%q): %w", filename, err)
+	}
+	defer surface.Free()
+	converted, err := surface.ConvertFormat(uint32(sdl.PIXELFORMAT_RGBA32), 0)
+	if err != nil {
+		return fmt.Errorf("ConvertFormat: %w", err)
+	}
+	defer converted.Free()
+	w, h := int32(converted.W), int32(converted.H)
+	var texId uint32
+	cols := w / int32(spriteWidth)
+	rows := h / int32(spriteHeight)
+
+	gl.CreateTextures(gl.TEXTURE_2D_ARRAY, 1, &texId)
+	gl.BindTexture(gl.TEXTURE_2D, texId)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wraps)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrapt)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, minFilter)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, maxFilter)
+	gl.TextureStorage3D(texId, 0, gl.RGBA, int32(spriteWidth), int32(spriteHeight), cols*rows)
+
+	pix := converted.Pixels()
+	pitch := converted.Pitch
+	bpp := converted.BytesPerPixel()
+	rowSize := spriteWidth * bpp
+
+	sprite := make([]byte, spriteWidth*spriteHeight*bpp)
+	for i := range rows {
+		for j := range cols {
+			offsetX := i * int32(spriteWidth)
+			offsetY := j * int32(spriteHeight)
+
+			for h := range spriteHeight {
+				p := (offsetY+int32(h))*pitch + offsetX*int32(bpp)
+				copy(sprite[(h*rowSize):(h*rowSize)+rowSize], pix[p:p+int32(rowSize)])
+			}
+			gl.TextureSubImage3D(
+				texId,
+				0,
+				0, 0,
+				i*rows+j,
+				int32(spriteWidth), int32(spriteHeight),
+				1,
+				gl.RGBA,
+				gl.UNSIGNED_BYTE,
+				gl.Ptr(sprite))
+			//clear(sprite) no need to clear the buffer, it would be refiled
+		}
+	}
+	td := TextureData{
+		Handle:       texId,
+		Size:         uint32(len(converted.Pixels())),
+		LastAccessed: time.Now(),
+		FileOnDisc:   filename,
+	}
+	id = generateRandomId()
+	s.Textures[id] = td
+	sk := s.Skins[skin]
+	for slot := range sk.Texture {
+		if sk.Texture[slot] == EmptyTexture {
+			sk.Texture[slot] = id
+			break
+		}
+	}
+	s.Skins[skin] = sk
+	return nil
+}
+
 func (s *SkinManager) GetTexture(skin int, slot int) (uint32, error) {
 	if _, exists := s.Skins[skin]; !exists {
 		return 0, errors.New("invalid skin id")

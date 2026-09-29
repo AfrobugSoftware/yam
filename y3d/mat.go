@@ -333,8 +333,16 @@ func LookAt(eye, center, up Vec3) Mat4 {
 		}
 	}
 	vUp = Smul(vUp, 1.0/l)
-	vRight := Cross(vUp, dir)
-	vRight = Normalize(vRight)
+	vRight := Normalize(Cross(vUp, dir))
+	return Mat4{
+		vRight.X, vUp.X, dir.X, 0,
+		vRight.Y, vUp.Y, dir.Y, 0,
+		vRight.Z, vUp.Z, dir.Z, 0,
+		-Dot(vRight, eye), -Dot(vUp, eye), -Dot(dir, eye), 1,
+	}
+}
+
+func ViewFromAxis(vRight, vUp, dir, eye Vec3) Mat4 {
 	return Mat4{
 		vRight.X, vUp.X, dir.X, 0,
 		vRight.Y, vUp.Y, dir.Y, 0,

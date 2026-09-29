@@ -82,6 +82,8 @@ type RenderManager struct {
 	lightSphere     int
 	LineCache       *VertexCache
 	LineDrawCommand DrawCommand
+	FpCamera        *FPCamera
+	FollowCamera    *FollowCamera
 }
 
 func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
@@ -619,4 +621,29 @@ func (r *RenderManager) RenderLightingPass() {
 
 	gl.BindVertexArray(r.screenVao)
 	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
+}
+
+func (r *RenderManager) UpdateFPCamera(dt float32) {
+	if r.FpCamera != nil {
+		//using first person camera
+		r.FpCamera.Update(dt)
+		r.View3D = y3d.ViewFromAxis(
+			r.FpCamera.Right,
+			r.FpCamera.Up,
+			r.FpCamera.Dir,
+			r.FpCamera.Position)
+		r.CalcViewProj()
+	}
+}
+
+func (r *RenderManager) UpdateFollowCamera(dt float32) {
+	if r.FollowCamera != nil {
+		r.FollowCamera.Update(dt)
+		r.View3D = y3d.ViewFromAxis(
+			r.FollowCamera.Right,
+			r.FollowCamera.Up,
+			r.FollowCamera.Dir,
+			r.FollowCamera.Position)
+		r.CalcViewProj()
+	}
 }
