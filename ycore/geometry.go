@@ -79,6 +79,7 @@ func (g *Geometry) Draw() {
 		}
 		return
 	} else {
+		g.RenderManager.VertextManager.LoadDrawCommand(g.VertexType, g.SkinId, g.DrawCommand)
 		g.RenderManager.VertextManager.LoadMatrix(
 			g.VertexType, int(g.DrawCommand.BaseInstance),
 			g.SkinId, []y3d.Mat4{g.Transform.World},

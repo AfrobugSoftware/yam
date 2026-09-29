@@ -147,12 +147,13 @@ func (v *VertexCache) Add(command *DrawCommand,
 		gl.Ptr(dataI.Bytes()))
 	v.NumIndices += int32(dataI.Len() / 4)
 	//draw commands
-	command.BaseInstance = uint32(v.NumOfInstances)
-	d := *command
-	gl.NamedBufferSubData(v.DrawCommandBo, int(unsafe.Sizeof(command)*uintptr(v.NumDrawCommands)),
-		int(unsafe.Sizeof(command)), unsafe.Pointer(&d))
-	v.NumDrawCommands += 1
+	// d := *command
+	// gl.NamedBufferSubData(v.DrawCommandBo, int(unsafe.Sizeof(command)*uintptr(v.NumDrawCommands)),
+	// 	int(unsafe.Sizeof(command)), unsafe.Pointer(&d))
+	// v.NumDrawCommands += 1
+
 	//instance indices
+	command.BaseInstance = uint32(v.NumOfInstances)
 	id := make([]uint32, instanceCount)
 	for i := range instanceCount {
 		id[i] = uint32(i + int(command.BaseInstance))
@@ -163,11 +164,16 @@ func (v *VertexCache) Add(command *DrawCommand,
 		int(4*len(id)),
 		gl.Ptr(id))
 	v.NumOfInstances += int32(instanceCount)
-
 	return nil
 }
 func (v *VertexCache) IsEmpty() bool {
 	return v.NumVertics == 0
+}
+
+func (v *VertexCache) LoadDrawCommand(command DrawCommand) {
+	gl.NamedBufferSubData(v.DrawCommandBo, int(unsafe.Sizeof(command)*uintptr(v.NumDrawCommands)),
+		int(unsafe.Sizeof(command)), unsafe.Pointer(&command))
+	v.NumDrawCommands += 1
 }
 
 func (v *VertexCache) LoadMatrix(baseInstance int, world []y3d.Mat4) {
@@ -259,6 +265,8 @@ func (v *VertexCache) Render() {
 			gl.MultiDrawArraysIndirect(v.VManager.RenderManager.DrawMode, nil, int32(v.NumDrawCommands),
 				int32(unsafe.Sizeof(DrawCommand{})))
 		}
+		//reset draw command buffer
+		v.NumDrawCommands = 0
 	}
 }
 
