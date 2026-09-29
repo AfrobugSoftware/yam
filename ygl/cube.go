@@ -41,10 +41,27 @@ func CreateQuad() (dataV, dataI *bytes.Buffer) {
 	dataV = &bytes.Buffer{}
 	dataI = &bytes.Buffer{}
 	buf := []float32{
-		-1.00, -1.00, -0.25,
-		-1.00, 1.00, -0.25,
-		1.00, -1.00, -0.25,
-		1.00, 1.00, -0.25,
+		-1.00, -1.00, 0,
+		-1.00, 1.00, 0,
+		1.00, -1.00, 0,
+		1.00, 1.00, 0,
+	}
+	binary.Write(dataV, binary.NativeEndian, buf)
+	indices := []uint32{
+		0, 1, 2,
+		2, 1, 3,
+	}
+	binary.Write(dataI, binary.NativeEndian, indices)
+	return
+}
+func CreateYPlaneQuad() (dataV, dataI *bytes.Buffer) {
+	dataV = &bytes.Buffer{}
+	dataI = &bytes.Buffer{}
+	buf := []float32{
+		-1.00, 0, -1.00,
+		-1.00, 0, 1.00,
+		1.00, 0, -1.00,
+		1.00, 0, 1.00,
 	}
 	binary.Write(dataV, binary.NativeEndian, buf)
 	indices := []uint32{

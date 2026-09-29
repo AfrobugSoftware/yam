@@ -146,11 +146,6 @@ func (v *VertexCache) Add(command *DrawCommand,
 		dataI.Len(),
 		gl.Ptr(dataI.Bytes()))
 	v.NumIndices += int32(dataI.Len() / 4)
-	//draw commands
-	// d := *command
-	// gl.NamedBufferSubData(v.DrawCommandBo, int(unsafe.Sizeof(command)*uintptr(v.NumDrawCommands)),
-	// 	int(unsafe.Sizeof(command)), unsafe.Pointer(&d))
-	// v.NumDrawCommands += 1
 
 	//instance indices
 	command.BaseInstance = uint32(v.NumOfInstances)

@@ -30,6 +30,7 @@ type VertexCacheManager struct {
 	ActiveSkin    int
 	RenderManager *RenderManager
 	CacheId       int
+	Terrian       *Terrian
 	Strides       map[string]int32
 	Formats       map[string][]VertexFormat
 	Caches        map[string][MAX_CACHES]*VertexCache
