@@ -132,9 +132,7 @@ func (v *VertexCache) Add(command *DrawCommand,
 		return errors.New("cannot load empty vertex or index buffer")
 	}
 	if int32(dataV.Len()) >= (v.Stride*v.MaxVertices) ||
-		int32(dataI.Len()) >= (v.MaxIndices*4) ||
-		v.NumDrawCommands >= v.MaxDrawCommands ||
-		v.NumOfInstances >= v.MaxInstances {
+		int32(dataI.Len()) >= (v.MaxIndices*4) {
 		return errors.New("cannot add data, please check parameters")
 	}
 	//vertex data
@@ -176,13 +174,20 @@ func (v *VertexCache) AddInstances(command *DrawCommand, instanceCount int) erro
 	return nil
 }
 
-func (v *VertexCache) LoadDrawCommand(command DrawCommand) {
+func (v *VertexCache) AddDrawCommand(command DrawCommand) error {
+	if v.NumDrawCommands >= v.MaxDrawCommands {
+		return errors.New("no space for command")
+	}
 	gl.NamedBufferSubData(v.DrawCommandBo, int(unsafe.Sizeof(command)*uintptr(v.NumDrawCommands)),
 		int(unsafe.Sizeof(command)), unsafe.Pointer(&command))
 	v.NumDrawCommands += 1
+	return nil
 }
 
-func (v *VertexCache) LoadMatrix(baseInstance int, world []y3d.Mat4) {
+func (v *VertexCache) LoadMatrix(baseInstance int, world []y3d.Mat4) error {
+	if baseInstance+len(world) >= int(v.MaxInstances) {
+		return errors.New("invalid matrix instance range")
+	}
 	ptr := gl.MapNamedBufferRange(
 		v.WorldMatrixSSBO,
 		int(unsafe.Sizeof(y3d.Mat4{}))*int(baseInstance),
@@ -199,6 +204,7 @@ func (v *VertexCache) LoadMatrix(baseInstance int, world []y3d.Mat4) {
 		CheckError()
 		panic("cannot release world matrix buffer")
 	}
+	return nil
 }
 
 func (v *VertexCache) Render() {

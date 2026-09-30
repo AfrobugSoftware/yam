@@ -361,7 +361,7 @@ func (vm *VertexCacheManager) LoadDrawCommand(vertexType string, skinId int, com
 	}
 	for i := range MAX_CACHES {
 		if vc[i].SkinId == skinId {
-			vc[i].LoadDrawCommand(command)
+			vc[i].AddDrawCommand(command)
 			return nil
 		}
 	}

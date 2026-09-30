@@ -8,6 +8,7 @@ import (
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
+	"math/bits"
 	"strings"
 	"time"
 	"yam/y3d"
@@ -55,6 +56,16 @@ func NewSkinManager() *SkinManager {
 		Materials: make(map[int]ygl.Material),
 	}
 }
+
+func mipLevels(minFilter, w, h int32) int32 {
+	switch minFilter {
+	case gl.NEAREST_MIPMAP_NEAREST, gl.LINEAR_MIPMAP_NEAREST,
+		gl.NEAREST_MIPMAP_LINEAR, gl.LINEAR_MIPMAP_LINEAR:
+		return int32(bits.Len32(uint32(max(w, h))))
+	}
+	return 1
+}
+
 func generateRandomId() int {
 	return int(time.Now().UnixNano())
 }
@@ -161,6 +172,9 @@ func (s *SkinManager) AddTexture(skin int, filename string,
 func (s *SkinManager) AddSpriteSheet(skin int, filename string, spriteHeight, spriteWidth int,
 	minFilter, maxFilter int32,
 	wraps, wrapt int32) error {
+	if spriteWidth <= 0 || spriteHeight <= 0 {
+		return errors.New("sprite dimensions must be positive")
+	}
 	if _, exists := s.Skins[skin]; !exists {
 		return errors.New("invalid skin id")
 	}
@@ -189,46 +203,60 @@ func (s *SkinManager) AddSpriteSheet(skin int, filename string, spriteHeight, sp
 		return fmt.Errorf("ConvertFormat: %w", err)
 	}
 	defer converted.Free()
+	if converted.MustLock() {
+		if err := converted.Lock(); err != nil {
+			return fmt.Errorf("surface lock: %w", err)
+		}
+		defer converted.Unlock()
+	}
 	w, h := int32(converted.W), int32(converted.H)
 	var texId uint32
 	cols := w / int32(spriteWidth)
 	rows := h / int32(spriteHeight)
-
-	gl.CreateTextures(gl.TEXTURE_2D_ARRAY, 1, &texId)
-	gl.BindTexture(gl.TEXTURE_2D, texId)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wraps)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrapt)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, minFilter)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, maxFilter)
-	gl.TextureStorage3D(texId, 0, gl.RGBA, int32(spriteWidth), int32(spriteHeight), cols*rows)
+	if cols == 0 || rows == 0 {
+		return errors.New("sprite larger than sheet")
+	}
 
 	pix := converted.Pixels()
-	pitch := converted.Pitch
+	pitch := int(converted.Pitch)
 	bpp := converted.BytesPerPixel()
-	rowSize := spriteWidth * bpp
+	if int(pitch)%bpp != 0 {
+		return errors.New("surface pitch is not a multiple of pixel size")
+	}
+	sw, sh := int32(spriteWidth), int32(spriteHeight)
+	layers := int32(cols * rows)
+	levels := mipLevels(minFilter, sw, sh)
+	gl.CreateTextures(gl.TEXTURE_2D_ARRAY, 1, &texId)
+	gl.TextureParameteri(texId, gl.TEXTURE_WRAP_S, wraps)
+	gl.TextureParameteri(texId, gl.TEXTURE_WRAP_T, wrapt)
+	gl.TextureParameteri(texId, gl.TEXTURE_MIN_FILTER, minFilter)
+	gl.TextureParameteri(texId, gl.TEXTURE_MAG_FILTER, maxFilter)
+	gl.TextureStorage3D(texId, levels, gl.RGBA8, sw, sh, layers)
 
-	sprite := make([]byte, spriteWidth*spriteHeight*bpp)
-	for i := range rows {
-		for j := range cols {
-			offsetX := i * int32(spriteWidth)
-			offsetY := j * int32(spriteHeight)
+	gl.BindBuffer(gl.PIXEL_UNPACK_BUFFER, 0)
+	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(pitch/bpp))
+	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
 
-			for h := range spriteHeight {
-				p := (offsetY+int32(h))*pitch + offsetX*int32(bpp)
-				copy(sprite[(h*rowSize):(h*rowSize)+rowSize], pix[p:p+int32(rowSize)])
-			}
-			gl.TextureSubImage3D(
-				texId,
-				0,
-				0, 0,
-				i*rows+j,
-				int32(spriteWidth), int32(spriteHeight),
-				1,
-				gl.RGBA,
-				gl.UNSIGNED_BYTE,
-				gl.Ptr(sprite))
-			//clear(sprite) no need to clear the buffer, it would be refiled
+	for row := 0; row < int(rows); row++ {
+		for col := 0; col < int(cols); col++ {
+			offset := row*spriteHeight*pitch + col*spriteWidth*bpp
+			layer := int32(row*int(cols) + col)
+			gl.TextureSubImage3D(texId, 0,
+				0, 0, layer,
+				sw, sh, 1,
+				gl.RGBA, gl.UNSIGNED_BYTE,
+				gl.Ptr(&pix[offset]))
 		}
+	}
+	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
+	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 4)
+
+	if levels > 1 {
+		gl.GenerateTextureMipmap(texId)
+	}
+	if e := gl.GetError(); e != gl.NO_ERROR {
+		gl.DeleteTextures(1, &texId)
+		return fmt.Errorf("GL error 0x%x uploading %q", e, filename)
 	}
 	td := TextureData{
 		Handle:       texId,
