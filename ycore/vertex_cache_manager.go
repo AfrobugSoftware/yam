@@ -368,6 +368,20 @@ func (vm *VertexCacheManager) LoadDrawCommand(vertexType string, skinId int, com
 	return nil
 }
 
+func (vm *VertexCacheManager) LoadInstances(vertexType string, skinId int, command *DrawCommand, instanceCount int) error {
+	vc, ok := vm.Caches[vertexType]
+	if !ok {
+		return errors.New("invalid vertex type")
+	}
+	for i := range MAX_CACHES {
+		if vc[i].SkinId == skinId {
+			vc[i].AddInstances(command, instanceCount)
+			return nil
+		}
+	}
+	return nil
+}
+
 func (vm *VertexCacheManager) LoadCache(
 	vertexType string,
 	dataV, dataI *bytes.Buffer,

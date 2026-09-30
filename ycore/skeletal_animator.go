@@ -265,3 +265,7 @@ func (a *Animation) CalcBindPoses() {
 func (a *Animation) Destory() {
 	clear(a.Joints)
 }
+
+func (s *SkeletalAnimator) BindBuffer() {
+	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, JOINTS_SSBO_BINDING, s.JointBufferObject)
+}

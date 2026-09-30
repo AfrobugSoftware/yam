@@ -53,7 +53,6 @@ func (t *TestApplication) Startup(e *Engine) {
 	if err != nil {
 		panic(err)
 	}
-	dc := t.engine.RenderManager.VertextManager.CreateDrawCommand(i, 1)
 	s, box := t.engine.RenderManager.VertextManager.GetScalingAndBox(v, i, 0.5, ycore.VP)
 	sp := ycore.NewGeometry(
 		t.engine.RenderManager,
@@ -62,7 +61,6 @@ func (t *TestApplication) Startup(e *Engine) {
 		ycore.VP,
 		v,
 		i,
-		dc,
 		skin,
 		ycore.NO_STATICBUF, ycontroller.NewMovementController(
 			y3d.Vec3{Z: -0.24}, y3d.IdenQuat(),

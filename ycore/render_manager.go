@@ -128,7 +128,7 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 		rm.ClearColor.W)
 	rm.SkinManager = NewSkinManager()
 	rm.VertextManager = NewVertexCacheManager(rm,
-		10000, 10000*3, 10000, 10000)
+		1000000, 1000000*3, 10000, 10000)
 	rm.ShaderManager = NewShaderManager()
 	rm.CreateDefaultShader()
 	rm.SetClippingPlanes(0.1, 1000.0)

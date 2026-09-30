@@ -128,6 +128,9 @@ func (v *VertexCache) IsFull(size int) bool {
 func (v *VertexCache) Add(command *DrawCommand,
 	instanceCount int,
 	dataV, dataI *bytes.Buffer) error {
+	if dataV == nil || dataI == nil {
+		return errors.New("cannot load empty vertex or index buffer")
+	}
 	if int32(dataV.Len()) >= (v.Stride*v.MaxVertices) ||
 		int32(dataI.Len()) >= (v.MaxIndices*4) ||
 		v.NumDrawCommands >= v.MaxDrawCommands ||
@@ -147,9 +150,19 @@ func (v *VertexCache) Add(command *DrawCommand,
 		dataI.Len(),
 		gl.Ptr(dataI.Bytes()))
 	v.NumIndices += int32(dataI.Len() / 4)
+	command.VertexCount = uint32(dataI.Len() / 4)
+	return nil
+}
+func (v *VertexCache) IsEmpty() bool {
+	return v.NumVertics == 0
+}
 
-	//instance indices
+func (v *VertexCache) AddInstances(command *DrawCommand, instanceCount int) error {
+	if v.NumOfInstances >= v.MaxInstances {
+		return errors.New("no space for new instances")
+	}
 	command.BaseInstance = uint32(v.NumOfInstances)
+	command.InstanceCount = uint32(instanceCount)
 	id := make([]uint32, instanceCount)
 	for i := range instanceCount {
 		id[i] = uint32(i + int(command.BaseInstance))
@@ -161,9 +174,6 @@ func (v *VertexCache) Add(command *DrawCommand,
 		gl.Ptr(id))
 	v.NumOfInstances += int32(instanceCount)
 	return nil
-}
-func (v *VertexCache) IsEmpty() bool {
-	return v.NumVertics == 0
 }
 
 func (v *VertexCache) LoadDrawCommand(command DrawCommand) {
@@ -263,6 +273,7 @@ func (v *VertexCache) Render() {
 		}
 		//reset draw command buffer
 		v.NumDrawCommands = 0
+		v.NumOfInstances = 0
 	}
 }
 

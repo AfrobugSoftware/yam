@@ -13,6 +13,7 @@ type Geometry struct {
 	VertexType       string
 	DataV, DataI     *bytes.Buffer
 	DrawCommand      DrawCommand
+	InstanceCount    int
 	SkinId           int
 	StaticBuf        int
 	SkeletalAnimator *SkeletalAnimator
@@ -33,7 +34,6 @@ func NewGeometry(
 	tranform *Transform,
 	vertexType string,
 	dataV, dataI *bytes.Buffer,
-	drawCommand DrawCommand,
 	skinId int,
 	staticBuf int,
 	movec *ycontroller.MovementController,
@@ -46,12 +46,12 @@ func NewGeometry(
 			Transform:        tranform,
 			MoveController:   movec,
 		},
-		VertexType:  vertexType,
-		DataV:       dataV,
-		DataI:       dataI,
-		DrawCommand: drawCommand,
-		SkinId:      skinId,
-		StaticBuf:   staticBuf,
+		VertexType:    vertexType,
+		DataV:         dataV,
+		DataI:         dataI,
+		InstanceCount: 1,
+		SkinId:        skinId,
+		StaticBuf:     staticBuf,
 	}
 	g.Setup()
 	return g
@@ -69,6 +69,9 @@ func (g *Geometry) Setup() {
 }
 
 func (g *Geometry) Draw() {
+	if g.SkeletalAnimator != nil {
+		g.SkeletalAnimator.BindBuffer()
+	}
 	if g.StaticBuf != NO_STATICBUF {
 		if g.LocalEffect != nil {
 			g.LocalEffect.Bind(g.RenderManager.ShaderManager)
@@ -79,10 +82,13 @@ func (g *Geometry) Draw() {
 		}
 		return
 	} else {
+		g.RenderManager.VertextManager.LoadInstances(g.VertexType, g.SkinId, &g.DrawCommand, g.InstanceCount)
 		g.RenderManager.VertextManager.LoadDrawCommand(g.VertexType, g.SkinId, g.DrawCommand)
 		g.RenderManager.VertextManager.LoadMatrix(
-			g.VertexType, int(g.DrawCommand.BaseInstance),
-			g.SkinId, []y3d.Mat4{g.Transform.World},
+			g.VertexType,
+			int(g.DrawCommand.BaseInstance),
+			g.SkinId,
+			[]y3d.Mat4{g.Transform.World},
 		)
 	}
 }
