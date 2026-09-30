@@ -15,6 +15,7 @@ type VertexFormat struct {
 	ComponentSize  int32
 	Type           uint32
 	RelativeOffset uint32
+	Normalized     bool
 }
 
 type DrawCommand struct {
@@ -71,7 +72,7 @@ func NewVertexCache(
 		case gl.UNSIGNED_INT, gl.UNSIGNED_BYTE, gl.UNSIGNED_SHORT:
 			gl.VertexArrayAttribIFormat(vao, uint32(i), f.ComponentSize, f.Type, f.RelativeOffset)
 		default:
-			gl.VertexArrayAttribFormat(vao, uint32(i), f.ComponentSize, f.Type, false, f.RelativeOffset)
+			gl.VertexArrayAttribFormat(vao, uint32(i), f.ComponentSize, f.Type, f.Normalized, f.RelativeOffset)
 		}
 		gl.EnableVertexArrayAttrib(vao, uint32(i))
 	}

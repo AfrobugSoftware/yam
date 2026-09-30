@@ -27,14 +27,18 @@ const (
 )
 
 type VertexCacheManager struct {
-	ActiveSkin    int
-	RenderManager *RenderManager
-	CacheId       int
-	Terrian       *Terrian
-	Strides       map[string]int32
-	Formats       map[string][]VertexFormat
-	Caches        map[string][MAX_CACHES]*VertexCache
-	StaticBuffers []*StaticBuffer
+	ActiveSkin      int
+	RenderManager   *RenderManager
+	CacheId         int
+	Terrian         *Terrian
+	Strides         map[string]int32
+	Formats         map[string][]VertexFormat
+	Caches          map[string][MAX_CACHES]*VertexCache
+	StaticBuffers   []*StaticBuffer
+	MaxVerts        int32
+	MaxIndices      int32
+	MaxDrawCommands int32
+	MaxInstances    int32
 }
 
 func NewVertexCacheManager(
@@ -42,12 +46,16 @@ func NewVertexCacheManager(
 	maxVerts, maxIndices, maxDrawCommands, maxInstances int32,
 ) *VertexCacheManager {
 	vm := &VertexCacheManager{
-		ActiveSkin:    -1,
-		RenderManager: renderManager,
-		Caches:        make(map[string][MAX_CACHES]*VertexCache),
-		Formats:       make(map[string][]VertexFormat),
-		StaticBuffers: make([]*StaticBuffer, 0),
-		Strides:       make(map[string]int32),
+		ActiveSkin:      -1,
+		RenderManager:   renderManager,
+		Caches:          make(map[string][MAX_CACHES]*VertexCache),
+		Formats:         make(map[string][]VertexFormat),
+		StaticBuffers:   make([]*StaticBuffer, 0),
+		Strides:         make(map[string]int32),
+		MaxVerts:        maxVerts,
+		MaxIndices:      maxIndices,
+		MaxDrawCommands: maxDrawCommands,
+		MaxInstances:    maxInstances,
 	}
 	vm.Strides[VP] = 12
 	vm.Strides[VPNT] = 32
@@ -295,6 +303,25 @@ func NewVertexCacheManager(
 
 func (vm *VertexCacheManager) AddVertexFormat(vt string, stride int, format []VertexFormat) {
 
+}
+
+func (vm *VertexCacheManager) CreateVertexCache(name string, skinId, stride int, format []VertexFormat) {
+	c := [MAX_CACHES]*VertexCache{}
+	for i := range MAX_CACHES {
+		c[i] = NewVertexCache(
+			vm.RenderManager.SkinManager,
+			vm,
+			vm.MaxVerts,
+			vm.MaxIndices,
+			vm.MaxDrawCommands,
+			vm.MaxInstances,
+			int32(stride),
+			skinId,
+			vm.CacheId,
+			format,
+		)
+		vm.CacheId++
+	}
 }
 
 func (vm *VertexCacheManager) Destory() {

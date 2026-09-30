@@ -3,11 +3,14 @@ package ycore
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"net/url"
 	"os"
-	"unsafe"
+	"sort"
+	"strings"
 	"yam/y3d"
 
 	"github.com/qmuntal/gltf"
@@ -29,6 +32,24 @@ var (
 		gltf.ComponentFloat:  5126,
 	}
 )
+
+type vertexAttrib struct {
+	src    []byte
+	size   int
+	stride int
+	count  int
+}
+
+var attribOrder = []string{
+	"POSITION",
+	"NORMAL",
+	"TEXCOORD_0",
+	"TEXCOORD_1",
+	"COLOR_0",
+	"TANGENT",
+	"JOINTS_0",
+	"WEIGHTS_0",
+}
 
 func LoadGLTF(filename string, r *RenderManager) (*Node, error) {
 	doc, err := gltf.Open(filename)
@@ -53,10 +74,141 @@ func LoadGLTF(filename string, r *RenderManager) (*Node, error) {
 	return root, nil
 }
 
-func makeVBuffer(v *bytes.Buffer, _ []VertexFormat, bufs ...[]byte) error {
-	if len(bufs) == 1 {
-		v.Write(bufs[0])
+func attributeNames[V any](attrs map[string]V) []string {
+	rank := func(name string) int {
+		for k, n := range attribOrder {
+			if n == name {
+				return k
+			}
+		}
+		return len(attribOrder)
 	}
+	names := make([]string, 0, len(attrs))
+	for name := range attrs {
+		names = append(names, name)
+	}
+	sort.Slice(names, func(a, b int) bool {
+		ra, rb := rank(names[a]), rank(names[b])
+		if ra != rb {
+			return ra < rb
+		}
+		return names[a] < names[b]
+	})
+	return names
+}
+
+func align4(n int) int { return (n + 3) &^ 3 }
+
+func makeVBuffer(v *bytes.Buffer, format []VertexFormat, attribs []vertexAttrib) (int, int, error) {
+	if len(format) != len(attribs) {
+		return 0, 0, errors.New("format list must match attribute list")
+	}
+	if len(attribs) == 0 {
+		return 0, 0, nil
+	}
+	count := attribs[0].count
+	vertexSize := 0
+	for k, a := range attribs {
+		if a.count != count {
+			return 0, 0, fmt.Errorf("attribute %d has %d elements, expected %d", k, a.count, count)
+		}
+		if a.src != nil && count > 0 {
+			if need := (count-1)*a.stride + a.size; len(a.src) < need {
+				return 0, 0, fmt.Errorf("attribute %d: buffer too short (%d < %d)", k, len(a.src), need)
+			}
+		}
+		format[k].RelativeOffset = uint32(vertexSize)
+		vertexSize += align4(a.size) //GL wants 4-byte aligned attributes
+	}
+	out := make([]byte, count*vertexSize)
+	for k, a := range attribs {
+		if a.src == nil {
+			continue
+		}
+		off := int(format[k].RelativeOffset)
+		for n := range count {
+			dst := n*vertexSize + off
+			src := n * a.stride
+			copy(out[dst:dst+a.size], a.src[src:src+a.size])
+		}
+	}
+	v.Write(out)
+	return count, vertexSize, nil
+}
+
+func appendIndices(ib *bytes.Buffer, ct gltf.ComponentType, a vertexAttrib, base uint32) error {
+	if a.src == nil || len(a.src) < a.count*a.size {
+		return errors.New("index accessor has no data")
+	}
+	var tmp [4]byte
+	for n := 0; n < a.count; n++ {
+		e := a.src[n*a.size:]
+		var idx uint32
+		switch ct {
+		case gltf.ComponentUbyte:
+			idx = uint32(e[0])
+		case gltf.ComponentUshort:
+			idx = uint32(binary.LittleEndian.Uint16(e))
+		case gltf.ComponentUint:
+			idx = binary.LittleEndian.Uint32(e)
+		default:
+			return errors.New("unsupported index component type")
+		}
+		binary.LittleEndian.PutUint32(tmp[:], idx+base)
+		ib.Write(tmp[:])
+	}
+	return nil
+}
+
+func bufferData(doc *gltf.Document, acc *gltf.Accessor, idx int, data map[int][]byte) ([]byte, error) {
+	if b, ok := data[idx]; ok {
+		return b, nil
+	}
+	b, err := loadBufferURI(doc, acc)
+	if err != nil {
+		return nil, err
+	}
+	data[idx] = b
+	return b, nil
+}
+
+func sameFormat(a, b []VertexFormat) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k := range a {
+		if a[k].ComponentSize != b[k].ComponentSize || a[k].Type != b[k].Type ||
+			a[k].RelativeOffset != b[k].RelativeOffset || a[k].Normalized != b[k].Normalized {
+			return false
+		}
+	}
+	return true
+}
+
+func accessorAttrib(doc *gltf.Document, acc *gltf.Accessor, data map[int][]byte) (vertexAttrib, error) {
+	size := int(acc.ComponentType.ByteSize()) * int(acc.Type.Components())
+	a := vertexAttrib{size: size, stride: size, count: int(acc.Count)}
+	if acc.BufferView == nil {
+		return a, nil
+	}
+	bv := doc.BufferViews[*acc.BufferView]
+	buf, err := bufferData(doc, acc, int(bv.Buffer), data)
+	if err != nil {
+		return a, err
+	}
+	if bv.ByteStride != 0 {
+		a.stride = int(bv.ByteStride)
+	}
+	start := int(bv.ByteOffset) + int(acc.ByteOffset)
+	end := int(bv.ByteOffset) + int(bv.ByteLength)
+	if start > end || end > len(buf) {
+		return a, errors.New("accessor out of buffer range")
+	}
+	a.src = buf[start:end]
+	return a, nil
+}
+
+func addNodeSkin(p *Node, skin *gltf.Skin, node *gltf.Node, doc *gltf.Document, r *RenderManager) error {
 	return nil
 }
 
@@ -65,67 +217,61 @@ func ProcessNode(p *Node, node *gltf.Node, doc *gltf.Document, r *RenderManager,
 	if node.Mesh != nil {
 		mesh := doc.Meshes[*node.Mesh]
 		v, i := &bytes.Buffer{}, &bytes.Buffer{}
-		vertexType := VP
-		format := make([]VertexFormat, 0)
+		vertexType := ""
+		var format []VertexFormat
+		var base uint32
+		var vertexSize int
 		for _, primitive := range mesh.Primitives {
-			attrib := primitive.Attributes
-			bufs := make([][]byte, 0)
-			for _, i := range attrib {
-				ass := doc.Accessors[i]
-				vf := VertexFormat{
-					ComponentSize:  int32(ass.Type.Components()),
-					Type:           uint32(compMap[ass.ComponentType]),
-					RelativeOffset: uint32(ass.ByteOffset), //how to calculate
+			names := attributeNames(primitive.Attributes)
+			pf := make([]VertexFormat, 0, len(names))
+			attribs := make([]vertexAttrib, 0, len(names))
+			for _, name := range names {
+				acc := doc.Accessors[primitive.Attributes[name]]
+				a, err := accessorAttrib(doc, acc, data)
+				if err != nil {
+					return fmt.Errorf("attribute %s: %w", name, err)
 				}
-				format = append(format, vf)
-				if ass.BufferView == nil {
-					continue
-				}
-				bv := doc.BufferViews[*ass.BufferView]
-				b, ok := data[bv.Buffer]
-				if !ok {
-					i, err := loadBufferURI(doc, ass)
-					if err != nil {
-						return err
-					}
-					data[bv.Buffer] = i
-					b = i
-				}
-				bufs = append(bufs, b[bv.ByteOffset:bv.ByteOffset+bv.ByteLength])
+				pf = append(pf, VertexFormat{
+					ComponentSize: int32(acc.Type.Components()),
+					Type:          uint32(compMap[acc.ComponentType]),
+					Normalized:    acc.Normalized,
+				})
+				attribs = append(attribs, a)
+				vertexType = strings.Join([]string{vertexType, name}, ".")
 			}
-			makeVBuffer(v, format, bufs...)
-			vertexType = GetVertexFormat(format, r)
-			if vertexType == INVALID_VERTEX_FORMAT {
-				return errors.New("unsuppored vertex format")
+			count, vs, err := makeVBuffer(v, pf, attribs)
+			vertexSize = vs
+			if err != nil {
+				return err
+			}
+			if format == nil {
+				format = pf
+			} else if !sameFormat(format, pf) {
+				return errors.New("primitives of one mesh must share a vertex format")
 			}
 			if primitive.Indices != nil {
-				ass := doc.Accessors[*primitive.Indices]
-				if ass.BufferView == nil {
-					continue
+				acc := doc.Accessors[*primitive.Indices]
+				a, err := accessorAttrib(doc, acc, data)
+				if err != nil {
+					return fmt.Errorf("indices: %w", err)
 				}
-				bv := doc.BufferViews[*ass.BufferView]
-				b, ok := data[bv.Buffer]
-				if !ok {
-					b, err := loadBufferURI(doc, ass)
-					if err != nil {
-						return err
-					}
-					data[bv.Buffer] = b
+				if err := appendIndices(i, acc.ComponentType, a, base); err != nil {
+					return err
 				}
-				if ass.ComponentType == gltf.ComponentUshort {
-					//convert to unsigned int
-					b = b[bv.ByteOffset:bv.ByteLength]
-					id := make([]uint32, len(b)/2)
-					sb := unsafe.Slice((*uint16)(unsafe.Pointer(unsafe.SliceData(b))), len(b)/2)
-					for _, i := range sb {
-						id[i] = uint32(i)
-					}
-					b = unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(id))), len(id)*4)
-					i.Write(b[bv.ByteOffset : bv.ByteOffset+(bv.ByteLength*2)])
-				} else {
-					i.Write(b[bv.ByteOffset : bv.ByteOffset+bv.ByteLength])
+			} else {
+				var tmp [4]byte
+				for n := range count {
+					binary.LittleEndian.PutUint32(tmp[:], base+uint32(n))
+					i.Write(tmp[:])
 				}
 			}
+			base += uint32(count)
+		}
+		tempVertexType := GetVertexFormat(format, r)
+		if tempVertexType == INVALID_VERTEX_FORMAT {
+			r.VertextManager.CreateVertexCache(vertexType, NO_SKINID, vertexSize, format)
+		} else {
+			vertexType = tempVertexType
 		}
 		geo := NewGeometry(r, ynode, y3d.UnitAABB,
 			NewTransform(),
@@ -137,6 +283,7 @@ func ProcessNode(p *Node, node *gltf.Node, doc *gltf.Document, r *RenderManager,
 	}
 	if node.Skin != nil {
 		//skin := doc.Skins[*node.Skin]
+
 		//for animation
 	}
 	if node.Camera != nil {
@@ -167,7 +314,9 @@ func loadBufferURI(doc *gltf.Document, accessor *gltf.Accessor) ([]byte, error) 
 	}
 	bv := doc.BufferViews[*accessor.BufferView]
 	buffer := doc.Buffers[bv.Buffer]
-	if buffer.IsEmbeddedResource() {
+	if len(buffer.Data) > 0 {
+		return buffer.Data, nil
+	} else if buffer.IsEmbeddedResource() {
 		startPos := len(mimetypeApplicationOctet) + 1
 		if len(buffer.URI) < startPos {
 			return nil, errors.New("gltf: Invalid base64 content")
@@ -201,7 +350,8 @@ func GetVertexFormat(vf []VertexFormat, r *RenderManager) string {
 			for i := range f {
 				if f[i].ComponentSize == vf[i].ComponentSize &&
 					f[i].RelativeOffset == vf[i].RelativeOffset &&
-					f[i].Type == vf[i].Type {
+					f[i].Type == vf[i].Type &&
+					f[i].Normalized == vf[i].Normalized {
 					return vt
 				}
 			}

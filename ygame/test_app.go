@@ -28,6 +28,12 @@ func (t *TestApplication) Startup(e *Engine) {
 	if err != nil {
 		panic(err)
 	}
+
+	helmet, err := ycore.LoadGLTF("assets/gltf/DamagedHelmet.glb", t.engine.RenderManager)
+	if err != nil {
+		panic(err)
+	}
+
 	skin := t.engine.RenderManager.SkinManager.AddSkin(ygl.IdentityMaterial)
 	err = t.engine.RenderManager.SkinManager.AddTexture(skin, "assets/img/earth.jpg",
 		gl.LINEAR,
@@ -49,17 +55,6 @@ func (t *TestApplication) Startup(e *Engine) {
 	}
 	dc := t.engine.RenderManager.VertextManager.CreateDrawCommand(i, 1)
 	s, box := t.engine.RenderManager.VertextManager.GetScalingAndBox(v, i, 0.5, ycore.VP)
-	//USE STATIC BUFER
-	// staticbuf, err := t.RenderManager.VertextManager.CreateStaticBuffer(
-	// 	ycore.VP,
-	// 	v, i,
-	// 	[]ycore.DrawCommand{dc},
-	// 	skin,
-	// 	1,
-	// )
-	// if err != nil {
-	// 	panic(err)
-	// }
 	sp := ycore.NewGeometry(
 		t.engine.RenderManager,
 		nil, box,
@@ -78,6 +73,8 @@ func (t *TestApplication) Startup(e *Engine) {
 	nt := ycore.NewNode(t.engine.RenderManager, nil, y3d.UnitAABB, ycore.NewTransform())
 	nt.Add(sp)
 	nt.Add(gt)
+	nt.Add(helmet)
+
 	t.Root = nt
 	t.Root.UpdateWorldTransform()
 
