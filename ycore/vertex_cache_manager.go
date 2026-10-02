@@ -28,6 +28,7 @@ const (
 
 type VertexCacheManager struct {
 	ActiveSkin      int
+	ActiveCache     int
 	RenderManager   *RenderManager
 	CacheId         int
 	Terrian         *Terrian
@@ -46,7 +47,8 @@ func NewVertexCacheManager(
 	maxVerts, maxIndices, maxDrawCommands, maxInstances int32,
 ) *VertexCacheManager {
 	vm := &VertexCacheManager{
-		ActiveSkin:      -1,
+		ActiveSkin:      NO_SKINID,
+		ActiveCache:     INVALID_CACHE,
 		RenderManager:   renderManager,
 		Caches:          make(map[string][MAX_CACHES]*VertexCache),
 		Formats:         make(map[string][]VertexFormat),

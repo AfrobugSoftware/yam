@@ -43,6 +43,32 @@ func (n *Node) Add(s SpatialInterface) {
 	//propagate to the root if not root
 }
 
+func (n *Node) UpdateWorldBound() {
+	box := y3d.AABB{
+		Min: y3d.Vec3{
+			X: 999999.99,
+			Y: 999999.99,
+			Z: 999999.99,
+		},
+		Max: y3d.Vec3{
+			X: -999999.99,
+			Y: -999999.99,
+			Z: -999999.99,
+		},
+	}
+	for _, s := range n.Children {
+		s.UpdateWorldBound()
+
+		b := s.GetBoundingBox()
+		box.Max = y3d.Max(box.Max, b.Max)
+		box.Min = y3d.Min(box.Min, b.Min)
+	}
+	n.WorldBoundingBox = box
+	// if n.Parent != nil {
+	// 	n.Parent.UpdateWorldBound()
+	// }
+}
+
 func (n *Node) UpdateWorldTransform() {
 	n.Spatial.UpdateWorldTransform()
 	for _, s := range n.Children {

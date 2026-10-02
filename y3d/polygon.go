@@ -1,5 +1,7 @@
 package y3d
 
+import "math"
+
 type Polygon struct {
 	Plane       Plane
 	BoundingBox AABB
@@ -9,6 +11,9 @@ type Polygon struct {
 }
 
 func (p Polygon) CalculateBoundingBox() {
+	// if p.VertexBuffer != nil {
+	// 	p.LoadPos()
+	// }
 	min := p.Points[0]
 	max := min
 	for i := range len(p.Points) {
@@ -39,6 +44,7 @@ func NewPolygon(points []Vec3, indices []uint) Polygon {
 		panic("cannot create a polygon without data")
 	}
 	var p Polygon
+	//points is a slice of a bigger buffer
 	copy(p.Points, points)
 	copy(p.Indices, indices)
 
@@ -216,6 +222,27 @@ func (p Polygon) Cull(aabb AABB) int {
 		}
 	}
 	return CULLED
+}
+
+func (p Polygon) ContainsPoint(point Vec3) bool {
+	for i := 0; i < len(p.Indices); i += 3 {
+		if PointInTriangle(point, p.Points[p.Indices[i]], p.Points[p.Indices[i+1]], p.Points[p.Indices[i+2]]) {
+			return true
+		}
+	}
+	return false
+}
+
+func PointInTriangle(point, vec1, vec2, vec3 Vec3) bool {
+	area := func(a, b, c Vec3) float32 {
+		return float32(math.Abs(float64(0.5 * (a.X*(b.Y-c.Y) + b.X*(c.Y-a.Y) + c.X*(a.Y-b.Y)))))
+	}
+	a := area(vec1, vec2, vec3)
+	a1 := area(point, vec2, vec3)
+	a2 := area(vec1, point, vec3)
+	a3 := area(vec1, vec2, point)
+
+	return a == a1+a2+a3
 }
 
 func (p Polygon) IntersectsRay(r Ray, cull bool) (float32, bool) {

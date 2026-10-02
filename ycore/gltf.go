@@ -273,8 +273,25 @@ func ProcessNode(p *Node, node *gltf.Node, doc *gltf.Document, r *RenderManager,
 		} else {
 			vertexType = tempVertexType
 		}
+		trans := NewTransform()
+		trans.Position = y3d.Vec3{
+			X: float32(node.Translation[0]),
+			Y: float32(node.Translation[1]),
+			Z: float32(node.Translation[2]),
+		}
+		trans.Rotation = y3d.Quaternion{
+			W: node.Rotation[3],
+			Z: node.Rotation[2],
+			Y: node.Rotation[1],
+			X: node.Rotation[0],
+		}
+		trans.Scale = y3d.Vec3{
+			X: float32(node.Scale[0]),
+			Y: float32(node.Scale[1]),
+			Z: float32(node.Scale[2]),
+		}
 		geo := NewGeometry(r, ynode, y3d.UnitAABB,
-			NewTransform(),
+			trans,
 			vertexType,
 			v, i,
 			NO_SKINID,
@@ -282,6 +299,7 @@ func ProcessNode(p *Node, node *gltf.Node, doc *gltf.Document, r *RenderManager,
 			nil)
 		ynode.Add(geo)
 	}
+
 	if node.Skin != nil {
 		//skin := doc.Skins[*node.Skin]
 

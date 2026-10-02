@@ -49,6 +49,38 @@ func Add(v ...Vec3) Vec3 {
 	return lhs
 }
 
+func Max(v ...Vec3) Vec3 {
+	lhs := Vec3{
+		X: -999999.99,
+		Y: -999999.99,
+		Z: -999999.99,
+	}
+	for _, rhs := range v {
+		lhs = Vec3{
+			X: max(lhs.X, rhs.X),
+			Y: max(lhs.Y, rhs.Y),
+			Z: max(lhs.Z, rhs.Z),
+		}
+	}
+	return lhs
+}
+
+func Min(v ...Vec3) Vec3 {
+	lhs := Vec3{
+		X: 9999999.99,
+		Y: 9999999.99,
+		Z: 9999999.99,
+	}
+	for _, rhs := range v {
+		lhs = Vec3{
+			X: min(lhs.X, rhs.X),
+			Y: min(lhs.Y, rhs.Y),
+			Z: min(lhs.Z, rhs.Z),
+		}
+	}
+	return lhs
+}
+
 func (v Vec3) Equal(q Vec3) bool {
 	return v.X == q.X && v.Y == q.Y && v.Z == q.Z
 }

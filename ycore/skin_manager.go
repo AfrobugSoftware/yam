@@ -245,7 +245,7 @@ func (s *SkinManager) AddSpriteSheet(skin int, filename string, spriteHeight, sp
 				0, 0, layer,
 				sw, sh, 1,
 				gl.RGBA, gl.UNSIGNED_BYTE,
-				gl.Ptr(&pix[offset]))
+				gl.Ptr(pix[offset:]))
 		}
 	}
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)

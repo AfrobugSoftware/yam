@@ -27,28 +27,27 @@ type DrawCommand struct {
 }
 
 type VertexCache struct {
-	Vao              uint32
-	VertexVbo        uint32
-	IndexVbo         uint32
-	DrawCommandBo    uint32
-	DrawIndexVbo     uint32
-	WorldMatrixSSBO  uint32
-	MaterialUBO      uint32
-	MaxVertices      int32
-	MaxIndices       int32
-	MaxDrawCommands  int32
-	MaxInstances     int32
-	NumVertics       int32
-	NumIndices       int32
-	NumDrawCommands  int32
-	NumOfInstances   int32
-	Stride           int32
-	SkinId           int
-	Id               int
-	Format           []VertexFormat
-	SkinManager      *SkinManager
-	VManager         *VertexCacheManager
-	SkeletalAnimator *SkeletalAnimator
+	Vao             uint32
+	VertexVbo       uint32
+	IndexVbo        uint32
+	DrawCommandBo   uint32
+	DrawIndexVbo    uint32
+	WorldMatrixSSBO uint32
+	MaterialUBO     uint32
+	MaxVertices     int32
+	MaxIndices      int32
+	MaxDrawCommands int32
+	MaxInstances    int32
+	NumVertics      int32
+	NumIndices      int32
+	NumDrawCommands int32
+	NumOfInstances  int32
+	Stride          int32
+	SkinId          int
+	Id              int
+	Format          []VertexFormat
+	SkinManager     *SkinManager
+	VManager        *VertexCacheManager
 }
 
 func NewVertexCache(
@@ -83,7 +82,7 @@ func NewVertexCache(
 	gl.VertexArrayElementBuffer(vao, ivbo)
 
 	gl.CreateBuffers(1, &divbo)
-	gl.NamedBufferStorage(divbo, int(maxInstances*int32(unsafe.Sizeof(uint32(0)))), nil, gl.DYNAMIC_STORAGE_BIT)
+	gl.NamedBufferStorage(divbo, int(maxInstances*int32(unsafe.Sizeof(uint32(0)))), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
 	gl.VertexArrayAttribBinding(vao, 10, DRAW_INDEX_BINDING)
 	gl.VertexArrayVertexBuffer(vao, DRAW_INDEX_BINDING, divbo, 0, int32(unsafe.Sizeof(uint32(0))))
 	gl.VertexArrayAttribIFormat(vao, 10, 1, gl.UNSIGNED_INT, 0)
@@ -152,7 +151,7 @@ func (v *VertexCache) Add(command *DrawCommand,
 	return nil
 }
 func (v *VertexCache) IsEmpty() bool {
-	return v.NumVertics == 0
+	return v.NumVertics == 0 || v.NumDrawCommands == 0
 }
 
 func (v *VertexCache) AddInstances(command *DrawCommand, instanceCount int) error {
@@ -161,15 +160,24 @@ func (v *VertexCache) AddInstances(command *DrawCommand, instanceCount int) erro
 	}
 	command.BaseInstance = uint32(v.NumOfInstances)
 	command.InstanceCount = uint32(instanceCount)
-	id := make([]uint32, instanceCount)
+	ptr := gl.MapNamedBufferRange(
+		v.DrawIndexVbo,
+		int(unsafe.Sizeof(uint32(0)))*int(command.BaseInstance),
+		int(unsafe.Sizeof(uint32(0)))*instanceCount,
+		gl.MAP_WRITE_BIT|gl.MAP_INVALIDATE_RANGE_BIT,
+	)
+	if ptr == nil {
+		CheckError()
+		panic("cannot map instance indices")
+	}
+	id := unsafe.Slice((*uint32)(ptr), instanceCount)
 	for i := range instanceCount {
 		id[i] = uint32(i + int(command.BaseInstance))
 	}
-	gl.NamedBufferSubData(
-		v.DrawIndexVbo,
-		int(4*v.NumOfInstances),
-		int(4*len(id)),
-		gl.Ptr(id))
+	if !gl.UnmapNamedBuffer(v.DrawIndexVbo) {
+		CheckError()
+		panic("cannot release instance indices")
+	}
 	v.NumOfInstances += int32(instanceCount)
 	return nil
 }
@@ -261,14 +269,14 @@ func (v *VertexCache) Render() {
 			v.VManager.ActiveSkin = v.SkinId
 		}
 		//how to handle render states ???
+		if v.VManager.ActiveCache != v.Id {
+			gl.BindVertexArray(v.Vao)
+			gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, WORLD_MATRIX_BINDING, v.WorldMatrixSSBO)
+			gl.BindBufferBase(gl.UNIFORM_BUFFER, MATERIAL_UBO_BINDING, v.MaterialUBO)
+			gl.BindBuffer(gl.DRAW_INDIRECT_BUFFER, v.DrawCommandBo)
 
-		gl.BindVertexArray(v.Vao)
-		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, WORLD_MATRIX_BINDING, v.WorldMatrixSSBO)
-		gl.BindBufferBase(gl.UNIFORM_BUFFER, MATERIAL_UBO_BINDING, v.MaterialUBO)
-		if v.SkeletalAnimator != nil {
-			gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, JOINTS_SSBO_BINDING, v.SkeletalAnimator.JointBufferObject)
+			v.VManager.ActiveCache = v.Id
 		}
-		gl.BindBuffer(gl.DRAW_INDIRECT_BUFFER, v.DrawCommandBo)
 		switch v.VManager.RenderManager.DrawMode {
 		case gl.TRIANGLES, gl.LINES, gl.LINE_STRIP:
 			gl.MultiDrawElementsIndirect(v.VManager.RenderManager.DrawMode,

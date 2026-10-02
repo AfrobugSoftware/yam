@@ -38,6 +38,19 @@ func (p Plane) SignedDistance(point Vec3) float32 {
 	return Dot(p.N, point) - p.D
 }
 
+func (p Plane) ClipRay(r Ray, fl float32) (Ray, Ray, bool) {
+	line := LineSegmentFromRay(r, fl)
+	t, hit := line.IntersectsPlane(p)
+	if hit {
+		hitPoint := line.PointOnLine(t)
+		return r, Ray{
+			O: hitPoint,
+			D: Normalize(Sub(hitPoint, r.O)),
+		}, true
+	}
+	return Ray{}, Ray{}, false
+}
+
 func (p Plane) Classify(v Vec3) Side {
 	f := Dot(p.N, v) - p.D
 	switch {

@@ -13,8 +13,9 @@ type SpatialInterface interface {
 	UpdateControllers(dt float32)
 	GetParent() SpatialInterface
 	SetParent(p SpatialInterface)
-	Draw()
+	Draw() //add position and frustum to sort by view order or cull with frustum
 	PropagateToRoot()
+	UpdateWorldBound()
 	GetTransform() *Transform
 	GetBoundingBox() y3d.AABB
 	GetEffect() Effect
