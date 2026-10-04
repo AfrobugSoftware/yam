@@ -162,8 +162,8 @@ func (im *InputManager) ProcessInput() bool {
 			if state[sdl.SCANCODE_ESCAPE] != 0 {
 				return false
 			}
+			copy(im.CurKeyState, state)
 		}
-		copy(im.CurKeyState, state)
 		var x, y int32
 		var mState uint32
 		if im.IsRelative {

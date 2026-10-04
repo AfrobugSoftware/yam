@@ -38,6 +38,7 @@ type TextureData struct {
 }
 
 type Skin struct {
+	Program  uint32
 	Material int
 	Texture  [8]int
 }
@@ -90,6 +91,16 @@ func (s *SkinManager) FindTextureByFile(filename string) (int, bool) {
 		}
 	}
 	return 0, false
+}
+
+func (s *SkinManager) AddProgramToSkin(skin int, program uint32) error {
+	if _, exists := s.Skins[skin]; !exists {
+		return errors.New("invalid skin id")
+	}
+	sk := s.Skins[skin]
+	sk.Program = program
+	s.Skins[skin] = sk
+	return nil
 }
 
 func (s *SkinManager) AddTexture(skin int, filename string,
@@ -392,6 +403,9 @@ func (s *SkinManager) Destroy() {
 	clear(s.Materials)
 	for _, t := range s.Textures {
 		gl.DeleteTextures(1, &t.Handle)
+	}
+	for _, sk := range s.Skins {
+		gl.DeleteProgram(sk.Program)
 	}
 	clear(s.Textures)
 	clear(s.Skins)

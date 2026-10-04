@@ -126,7 +126,7 @@ func (bs *BSPTree) CreateChild() {
 		}
 	}
 	clear(bs.Polys)
-
+	bs.Polys = nil
 	bs.Front.CreateChild()
 	bs.Back.CreateChild()
 }
@@ -218,6 +218,7 @@ func (bs *BSPTree) TestCollision(r Ray, fl float32) (bool, float32, Vec3) {
 
 func (bs *BSPTree) Clear() {
 	clear(bs.Polys)
+	bs.Polys = nil
 	if bs.Front != nil {
 		bs.Front.Clear()
 	}

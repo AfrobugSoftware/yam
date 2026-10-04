@@ -17,6 +17,10 @@ func LineSegmentFromRay(r Ray, t float32) LineSegment {
 	return l
 }
 
+func (ls LineSegment) InstersectsLineSegment(other LineSegment) (float32, bool) {
+	r, s, t := ls.SquaredDistanceLineLine(other)
+	return r, t >= 0 && t <= 1 && s >= 0 && s <= 1
+}
 func (ls LineSegment) PointOnLine(t float32) Vec3 {
 	return Add(ls.Start, Smul(Sub(ls.End, ls.Start), t))
 }

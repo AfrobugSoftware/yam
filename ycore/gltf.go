@@ -237,8 +237,8 @@ func ProcessNode(p *Node, node *gltf.Node, doc *gltf.Document, r *RenderManager,
 					Normalized:    acc.Normalized,
 				})
 				attribs = append(attribs, a)
-				vertexType = strings.Join([]string{vertexType, name}, ".")
 			}
+			vertexType = strings.Join(names, ".")
 			count, vs, err := makeVBuffer(v, pf, attribs)
 			vertexSize = vs
 			if err != nil {

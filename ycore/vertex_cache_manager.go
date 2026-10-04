@@ -20,6 +20,7 @@ const (
 	INVALID_VERTEX_FORMAT = "invalid"
 	VP                    = "pos"
 	VPNT                  = "pos.normal.tex"
+	VPNTC                 = "pos.normal.tex.color"
 	VPNTTB                = "pos.normal.tex.tangent.bitangent"
 	VPNTT                 = "pos.normal.tex.tex2"
 	VPNTWJ                = "pos.normal.tex.weight.joint"
