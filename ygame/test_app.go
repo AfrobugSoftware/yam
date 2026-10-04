@@ -120,18 +120,31 @@ func (t *TestApplication) Update(deltaTime float64) {
 	cam := t.engine.RenderManager.FpCamera
 	if cam != nil {
 		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_W) == ycore.BUTTON_PRESSED {
-			cam.ForwardSpeed = 10
-		}
-
-		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_S) == ycore.BUTTON_PRESSED {
 			cam.ForwardSpeed = -10
 		}
 		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_W) == ycore.BUTTON_RELEASED {
 			cam.ForwardSpeed = 0
 		}
 
+		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_S) == ycore.BUTTON_PRESSED {
+			cam.ForwardSpeed = 10
+		}
 		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_S) == ycore.BUTTON_RELEASED {
 			cam.ForwardSpeed = 0
+		}
+
+		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_A) == ycore.BUTTON_PRESSED {
+			cam.RotSpeedYaw = -10
+		}
+		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_A) == ycore.BUTTON_RELEASED {
+			cam.RotSpeedYaw = 0
+		}
+
+		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_D) == ycore.BUTTON_PRESSED {
+			cam.RotSpeedYaw = 10
+		}
+		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_D) == ycore.BUTTON_RELEASED {
+			cam.RotSpeedYaw = 0
 		}
 	}
 

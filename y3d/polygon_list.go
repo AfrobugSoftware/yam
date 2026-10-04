@@ -2,6 +2,7 @@ package y3d
 
 import (
 	"bytes"
+	"encoding/binary"
 	"unsafe"
 )
 
@@ -33,4 +34,27 @@ func MakePolygonListFromVertexBuffer(v, i *bytes.Buffer, componentSize, relative
 	}
 
 	return pl
+}
+
+// for debug rendering
+func MakeVertexBufferFromPolygon(polys []Polygon, v, i *bytes.Buffer) {
+	base := uint32(0)
+	for _, p := range polys {
+		normal := p.Plane.N
+		maxX := p.BoundingBox.Max.X - p.BoundingBox.Min.X
+		maxY := p.BoundingBox.Max.Y - p.BoundingBox.Min.Y
+		for _, pt := range p.Points {
+			binary.Write(v, binary.NativeEndian, pt.ToSlice())
+			binary.Write(v, binary.NativeEndian, normal.ToSlice())
+			tx := [2]float32{
+				pt.X - p.BoundingBox.Min.X/maxX,
+				pt.Y - p.BoundingBox.Min.Y/maxY,
+			}
+			binary.Write(v, binary.NativeEndian, tx)
+		}
+		for _, in := range p.Indices {
+			binary.Write(i, binary.NativeEndian, uint32(in)+base)
+		}
+		base += uint32(len(p.Indices))
+	}
 }

@@ -2,6 +2,7 @@ package ygame
 
 import (
 	"time"
+	"yam/y3d"
 	"yam/ycore"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -17,6 +18,7 @@ type Engine struct {
 	InputManager  *ycore.InputManager
 	AudioManager  *ycore.AudioManager
 	NetManager    *ycore.NetManager
+	Level         *y3d.Octree //should this be here
 }
 
 var gEngine *Engine
@@ -73,15 +75,13 @@ func (g *Engine) Run() {
 	defer g.Quit()
 	var dt time.Duration
 	lastTime := time.Now()
-	running := true
-	for running {
+	for g.InputManager.ProcessInput() {
 		now := time.Now()
 		dt = now.Sub(lastTime)
 		frameTime := dt.Seconds()
 		if frameTime > 0.05 {
 			frameTime = 0.05
 		}
-		running = g.InputManager.ProcessInput()
 		g.Update(frameTime)
 		g.Draw()
 		lastTime = now

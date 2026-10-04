@@ -286,3 +286,94 @@ func (o *Octree) GetFloor(origin Vec3) (bool, float32, Plane) {
 	}
 	return bhit, pf, plane
 }
+
+func GetAABBPoly(aabb *AABB, polys []Polygon) {
+	indices := [6]uint{0, 1, 2, 2, 3, 0}
+	hs := aabb.GetHalfSize()
+	c := aabb.GetCenter()
+
+	var points [24]Vec3
+	points[0] = Vec3{
+		X: c.X - hs.X,
+		Y: c.Y + hs.Y,
+		Z: c.Z - hs.Z,
+	}
+	points[1] = Vec3{
+		X: c.X - hs.X,
+		Y: c.Y + hs.Y,
+		Z: c.Z + hs.Z,
+	}
+	points[2] = Vec3{
+		X: c.X + hs.X,
+		Y: c.Y + hs.Y,
+		Z: c.Z + hs.Z,
+	}
+	points[3] = Vec3{
+		X: c.X + hs.X,
+		Y: c.Y + hs.Y,
+		Z: c.Z - hs.Z,
+	}
+	polys = append(polys, NewPolygon(points[0:3], indices[:]))
+
+	points[4] = points[3]
+	points[5] = points[2]
+	points[6] = Vec3{
+		X: c.X + hs.X,
+		Y: c.Y - hs.Y,
+		Z: c.Z + hs.Z,
+	}
+	points[7] = Vec3{
+		X: c.X + hs.X,
+		Y: c.Y - hs.Y,
+		Z: c.Z - hs.Z,
+	}
+	polys = append(polys, NewPolygon(points[4:7], indices[:]))
+
+	points[8] = points[0]
+	points[9] = points[1]
+	points[10] = Vec3{
+		X: c.X - hs.X,
+		Y: c.Y - hs.Y,
+		Z: c.Z + hs.Z,
+	}
+	points[11] = Vec3{
+		X: c.X - hs.X,
+		Y: c.Y - hs.Y,
+		Z: c.Z - hs.Z,
+	}
+	polys = append(polys, NewPolygon(points[8:11], indices[:]))
+
+	points[12] = points[2]
+	points[13] = points[1]
+	points[14] = points[10]
+	points[15] = points[6]
+	polys = append(polys, NewPolygon(points[12:15], indices[:]))
+
+	points[16] = points[0]
+	points[17] = points[3]
+	points[18] = points[7]
+	points[19] = points[11]
+	polys = append(polys, NewPolygon(points[16:19], indices[:]))
+
+	points[20] = points[7]
+	points[21] = points[6]
+	points[22] = points[10]
+	points[23] = points[11]
+	polys = append(polys, NewPolygon(points[4:7], indices[:]))
+}
+
+func (o *Octree) Traverse(frustum []Plane, polys []Polygon, aabbpolys []Polygon) {
+	if o.BoundingBox.Cull(frustum) == CULLED {
+		return
+	}
+	if o.IsLeaf() {
+		polys = append(polys, o.Polys...)
+		if aabbpolys != nil {
+			GetAABBPoly(&o.BoundingBox, aabbpolys)
+		}
+	} else {
+		for _, c := range o.Children {
+			c.Traverse(frustum, polys, aabbpolys)
+		}
+	}
+}
