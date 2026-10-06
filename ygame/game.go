@@ -1,6 +1,7 @@
 package ygame
 
 import (
+	"runtime"
 	"time"
 	"yam/y3d"
 	"yam/ycore"
@@ -12,12 +13,17 @@ var (
 	MS_PER_FRAME = 16 * time.Millisecond
 )
 
+func init() {
+	runtime.LockOSThread()
+}
+
 type Engine struct {
 	App           Application
 	RenderManager *ycore.RenderManager
 	InputManager  *ycore.InputManager
 	AudioManager  *ycore.AudioManager
 	NetManager    *ycore.NetManager
+	Editor        *Editor
 	Level         *y3d.Octree //should this be here
 }
 
@@ -44,6 +50,14 @@ func NewGame(title string, width, height int32) (*Engine, error) {
 	gEngine.RenderManager = ycore.NewRenderManager(window, int(width), int(height))
 	gEngine.InputManager = ycore.NewInputManager(int(width), int(height))
 	gEngine.AudioManager = ycore.NewAudioManager()
+
+	gEngine.Editor = NewEditor(
+		gEngine.InputManager,
+		gEngine.RenderManager,
+		gEngine.RenderManager.VertextManager,
+		gEngine.RenderManager.ShaderManager,
+		window,
+	)
 	return gEngine, nil
 }
 
@@ -73,24 +87,30 @@ func (g *Engine) Draw() {
 
 func (g *Engine) Run() {
 	defer g.Quit()
-	var dt time.Duration
-	lastTime := time.Now()
+	last := time.Now()
 	for g.InputManager.ProcessInput() {
 		now := time.Now()
-		dt = now.Sub(lastTime)
-		frameTime := dt.Seconds()
-		if frameTime > 0.05 {
-			frameTime = 0.05
+		dt := float32(now.Sub(last).Seconds())
+		if dt <= 0 {
+			dt = 1.0 / 60.0
 		}
-		g.Update(frameTime)
+		last = now
+		g.Update(float64(dt))
 		g.Draw()
-		lastTime = now
+
+		if g.Editor != nil {
+			g.Editor.UpdateInput()
+			g.Editor.Frame(dt)
+		}
 	}
 }
 
 func (g *Engine) Quit() {
 	if g.App != nil {
 		g.App.Shutdown()
+	}
+	if g.Editor != nil {
+		g.Editor.Destroy()
 	}
 	g.RenderManager.Destroy()
 	sdl.Quit()

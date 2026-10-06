@@ -3,7 +3,6 @@ package ycore
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
@@ -94,17 +93,13 @@ func (s *ShaderManager) AddFromFile(name string, filename []string, shaderType [
 	return nil
 }
 
-func (s *ShaderManager) Add(name string, r []io.Reader, shaderType []uint32) error {
+func (s *ShaderManager) Add(name string, r []string, shaderType []uint32) error {
 	if len(r) != len(shaderType) {
 		return errors.New("shader type must match shader file names")
 	}
 	shaders := make([]uint32, len(r))
 	for i, f := range r {
-		b, err := io.ReadAll(f)
-		if err != nil {
-			return err
-		}
-		sh, err := createShader(string(b), shaderType[i])
+		sh, err := createShader(f, shaderType[i])
 		if err != nil {
 			return err
 		}

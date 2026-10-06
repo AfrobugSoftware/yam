@@ -11,6 +11,8 @@ require (
 )
 
 require (
+	github.com/AllenDang/cimgui-go v1.6.0 // indirect
+	github.com/damntourists/cimgui-go v0.2.11 // indirect
 	github.com/ebitengine/purego v0.11.0 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/jfreymuth/pulse v0.1.3 // indirect

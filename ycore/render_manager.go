@@ -69,7 +69,6 @@ type RenderManager struct {
 	RenderStates    []RenderState
 	DrawMode        uint32
 	ActiveProgram   uint32
-	Lights          []ygl.Light
 	LightUBO        uint32
 	screenVao       uint32
 	screenVbo       uint32
@@ -133,11 +132,12 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 	rm.CreateDefaultShader()
 	rm.SetClippingPlanes(0.1, 1000.0)
 
+	fbW, fbH := window.GLGetDrawableSize()
 	rm.InitStage(0, y3d.Rect{
 		X:      0,
 		Y:      0,
-		Height: height,
-		Width:  width,
+		Height: int(fbH),
+		Width:  int(fbW),
 	},
 		float32(y3d.ToRadians(45)),
 	)
@@ -253,6 +253,14 @@ func (r *RenderManager) CreateFrameBuffer() error {
 	}
 	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 	return nil
+}
+
+func (r *RenderManager) DestroyFrameBuffer() {
+	gl.DeleteFramebuffers(1, &r.gBuffer)
+	gl.DeleteTextures(1, &r.gNormal)
+	gl.DeleteTextures(1, &r.gPosition)
+	gl.DeleteTextures(1, &r.gAlbedoSpec)
+	gl.DeleteTextures(1, &r.gDepth)
 }
 
 func (r *RenderManager) CreateScreenQuad() {
@@ -544,6 +552,12 @@ func (r *RenderManager) CreateDefaultShader() {
 }
 
 func (r *RenderManager) BeginRender() {
+	gl.Viewport(int32(r.ViewPort[r.Stage].X),
+		int32(r.ViewPort[r.Stage].Y),
+		int32(r.ViewPort[r.Stage].Width),
+		int32(r.ViewPort[r.Stage].Height))
+	r.CalcViewProj()
+
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
 	gl.UseProgram(r.ActiveProgram)
 	gl.UniformMatrix4fv(0, 1, false, &r.ViewProj[0])
@@ -610,19 +624,6 @@ func (r *RenderManager) RenderLine(l y3d.LineSegment, w y3d.Mat4) {
 	}
 }
 
-func (r *RenderManager) RenderLightingPass() {
-	gl.BindFramebuffer(gl.FRAMEBUFFER, 0) // set up default frame buffer
-	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
-	gl.NamedBufferSubData(r.LightUBO, 0, int(unsafe.Sizeof(ygl.Light{})*uintptr(MAX_LIGHT)), gl.Ptr(r.Lights))
-	gl.BindBufferBase(gl.UNIFORM_BUFFER, LIGHT_BINDING, r.LightUBO)
-	gl.BindTextureUnit(0, r.gPosition)
-	gl.BindTextureUnit(1, r.gNormal)
-	gl.BindTextureUnit(2, r.gAlbedoSpec)
-
-	gl.BindVertexArray(r.screenVao)
-	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
-}
-
 func (r *RenderManager) UpdateFPCamera(dt float32) {
 	if r.FpCamera != nil {
 		//using first person camera
@@ -632,7 +633,7 @@ func (r *RenderManager) UpdateFPCamera(dt float32) {
 			r.FpCamera.Up,
 			r.FpCamera.Dir,
 			r.FpCamera.Position)
-		r.CalcViewProj()
+		//r.CalcViewProj()
 	}
 }
 
@@ -644,6 +645,6 @@ func (r *RenderManager) UpdateFollowCamera(dt float32) {
 			r.FollowCamera.Up,
 			r.FollowCamera.Dir,
 			r.FollowCamera.Position)
-		r.CalcViewProj()
+		//r.CalcViewProj()
 	}
 }

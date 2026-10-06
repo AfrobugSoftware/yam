@@ -22,6 +22,13 @@ const (
 	MOUSE_MAX    = 6
 )
 
+const (
+	CTRL = iota
+	SHIFT
+	ALT
+	SUPER
+)
+
 type PadController struct {
 	Control    *sdl.GameController
 	PreButtons []byte
@@ -31,6 +38,8 @@ type PadController struct {
 type InputManager struct {
 	CurKeyState       []uint8
 	PrevKeyState      []uint8
+	ModKeyState       [4]uint8
+	PrevModKeyState   [4]uint8
 	CurMouseKeyState  uint32
 	PrevMouseKeyState uint32
 	MousePosition     y3d.Vec2
@@ -40,6 +49,7 @@ type InputManager struct {
 	ScrollWheelDir    uint32
 	MaxMouseSpeed     float32
 	MouseCage         y3d.Rect
+	TextInput         string
 	Controllers       map[int]*PadController
 }
 
@@ -63,6 +73,31 @@ func (im *InputManager) GetKeyState(key int) uint8 {
 	}
 	p := im.PrevKeyState[key]
 	c := im.CurKeyState[key]
+	r := BUTTON_NONE
+	switch c {
+	case 0:
+		switch p {
+		case 0:
+			r = BUTTON_NONE
+		case 1:
+			r = BUTTON_RELEASED
+		}
+	case 1:
+		switch p {
+		case 0:
+			r = BUTTON_PRESSED
+		case 1:
+			r = BUTTON_HELD
+		}
+	}
+	return r
+}
+func (im *InputManager) GetKeyStateMod(key int) uint8 {
+	if key < 0 || key >= SUPER {
+		return BUTTON_NONE
+	}
+	p := im.PrevModKeyState[key]
+	c := im.ModKeyState[key]
 	r := BUTTON_NONE
 	switch c {
 	case 0:
@@ -132,8 +167,10 @@ func (im *InputManager) DisconnectController(idx int) {
 
 func (im *InputManager) ProcessInput() bool {
 	copy(im.PrevKeyState, im.CurKeyState)
+	copy(im.PrevModKeyState[:], im.ModKeyState[:])
 	im.PrevMouseKeyState = im.CurMouseKeyState
 	clear(im.CurKeyState)
+	clear(im.ModKeyState[:])
 	im.CurMouseKeyState = 0
 	im.ScrollWheelDir = 0
 	im.ScrollWheelPos = y3d.Vec3{}
@@ -156,6 +193,24 @@ func (im *InputManager) ProcessInput() bool {
 				Y: float32(w.Y),
 			}
 			im.ScrollWheelDir = w.Direction
+		case sdl.TEXTINPUT:
+			c := event.(*sdl.TextInputEvent)
+			im.TextInput = c.GetText()
+		case sdl.KEYDOWN:
+			e := event.(*sdl.KeyboardEvent)
+			mod := sdl.Keymod(e.Keysym.Mod)
+			if mod&sdl.KMOD_CTRL != 0 {
+				im.ModKeyState[CTRL] = 1
+			}
+			if mod&sdl.KMOD_ALT != 0 {
+				im.ModKeyState[ALT] = 1
+			}
+			if mod&sdl.KMOD_SHIFT != 0 {
+				im.ModKeyState[SHIFT] = 1
+			}
+			if mod&sdl.KMOD_GUI != 0 {
+				im.ModKeyState[SUPER] = 1
+			}
 		}
 		state := sdl.GetKeyboardState()
 		if state != nil {

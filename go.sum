@@ -1,3 +1,7 @@
+github.com/AllenDang/cimgui-go v1.6.0 h1:fv1M00FcNz3OMK1q0nOt208DxItmRGipSKcKitED4js=
+github.com/AllenDang/cimgui-go v1.6.0/go.mod h1:gz4dVFwmfoyUkBgVzBhiCJj1JXXWISQa8SQ190MlouY=
+github.com/damntourists/cimgui-go v0.2.11 h1:YXR68kA8EHRfRc+XeT7RUUX8JRtwtnqjUmJxZHnEbPY=
+github.com/damntourists/cimgui-go v0.2.11/go.mod h1:lTRZPuUy9QbLQBFLF+hilyKvwsgVLYKpgEhNoDVuB/c=
 github.com/ebitengine/oto/v3 v3.4.0 h1:br0PgASsEWaoWn38b2Goe7m1GKFYfNgnsjSd5Gg+/bQ=
 github.com/ebitengine/oto/v3 v3.4.0/go.mod h1:IOleLVD0m+CMak3mRVwsYY8vTctQgOM0iiL6S7Ar7eI=
 github.com/ebitengine/oto/v3 v3.5.1 h1:7gL5DxxSQp8S1Me2jDSp+gSAyondYxpjM5RPBBqLT0c=
