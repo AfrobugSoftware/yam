@@ -2,6 +2,13 @@ package y3d
 
 import "math"
 
+type PVertex struct {
+	Pos   Vec3
+	Norm  Vec3
+	Tc    Vec2
+	Color [4]uint8
+}
+
 type Polygon struct {
 	Plane       Plane
 	BoundingBox AABB

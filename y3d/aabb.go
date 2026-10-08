@@ -24,6 +24,29 @@ type AABB struct {
 	Max Vec3
 }
 
+func FromPoints(verts []Vec3) AABB {
+	if len(verts) == 0 {
+		return UnitAABB
+	}
+	box := AABB{
+		Min: Vec3{
+			X: 999999.99,
+			Y: 999999.99,
+			Z: 999999.99,
+		},
+		Max: Vec3{
+			X: -999999.99,
+			Y: -999999.99,
+			Z: -999999.99,
+		},
+	}
+	for _, v := range verts {
+		box.Max = Max(box.Max, v)
+		box.Min = Min(box.Min, v)
+	}
+	return box
+}
+
 func FromOBB(obb OBB) AABB {
 	var a [3]Vec3
 	ex := obb.Extents.ToSlice()

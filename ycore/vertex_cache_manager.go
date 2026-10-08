@@ -62,6 +62,7 @@ func NewVertexCacheManager(
 	}
 	vm.Strides[VP] = 12
 	vm.Strides[VPNT] = 32
+	vm.Strides[VPNTC] = 36
 	vm.Strides[VPNTT] = 40
 	vm.Strides[VPNTWJ] = 56
 	vm.Strides[VPNTTB] = 56
@@ -89,6 +90,28 @@ func NewVertexCacheManager(
 			ComponentSize:  2,
 			Type:           gl.FLOAT,
 			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 6),
+		},
+	}
+	vm.Formats[VPNTC] = []VertexFormat{
+		{
+			ComponentSize:  3,
+			Type:           gl.FLOAT,
+			RelativeOffset: 0,
+		},
+		{
+			ComponentSize:  3,
+			Type:           gl.FLOAT,
+			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 3),
+		},
+		{
+			ComponentSize:  2,
+			Type:           gl.FLOAT,
+			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 6),
+		},
+		{
+			ComponentSize:  4,
+			Type:           gl.UNSIGNED_BYTE,
+			RelativeOffset: uint32(32),
 		},
 	}
 	vm.Formats[VPNTT] = []VertexFormat{
@@ -226,6 +249,7 @@ func NewVertexCacheManager(
 		)
 		vm.Caches[VP] = c
 		vm.CacheId++
+
 		c = vm.Caches[VPNTT]
 		c[i] = NewVertexCache(
 			renderManager.SkinManager,
@@ -241,6 +265,7 @@ func NewVertexCacheManager(
 		)
 		vm.Caches[VPNTT] = c
 		vm.CacheId++
+
 		c = vm.Caches[VPNT]
 		c[i] = NewVertexCache(
 			renderManager.SkinManager,
@@ -256,6 +281,23 @@ func NewVertexCacheManager(
 		)
 		vm.Caches[VPNT] = c
 		vm.CacheId++
+
+		c = vm.Caches[VPNTC]
+		c[i] = NewVertexCache(
+			renderManager.SkinManager,
+			vm,
+			maxVerts,
+			maxIndices,
+			maxDrawCommands,
+			maxInstances,
+			vm.Strides[VPNTC],
+			-1,
+			vm.CacheId,
+			vm.Formats[VPNTC],
+		)
+		vm.Caches[VPNTC] = c
+		vm.CacheId++
+
 		c = vm.Caches[VPNTWJ]
 		c[i] = NewVertexCache(
 			renderManager.SkinManager,
@@ -271,6 +313,7 @@ func NewVertexCacheManager(
 		)
 		vm.Caches[VPNTWJ] = c
 		vm.CacheId++
+
 		c = vm.Caches[VPNTTBWJ]
 		c[i] = NewVertexCache(
 			renderManager.SkinManager,
@@ -286,6 +329,7 @@ func NewVertexCacheManager(
 		)
 		vm.Caches[VPNTTBWJ] = c
 		vm.CacheId++
+
 		c = vm.Caches[VPNTTB]
 		c[i] = NewVertexCache(
 			renderManager.SkinManager,
@@ -357,6 +401,20 @@ func (vm *VertexCacheManager) LoadMatrix(vertexType string,
 	return nil
 }
 
+func (vm *VertexCacheManager) GetCache(vertexType string, skinId int) (*VertexCache, error) {
+	vc, ok := vm.Caches[vertexType]
+	if !ok {
+		return nil, errors.New("invalid vertex type")
+	}
+	for i := range MAX_CACHES {
+		if vc[i].SkinId == skinId {
+
+			return vc[i], nil
+		}
+	}
+	return nil, errors.New("cannot find cache with skin id")
+}
+
 func (vm *VertexCacheManager) LoadDrawCommand(vertexType string, skinId int, command DrawCommand) error {
 	vc, ok := vm.Caches[vertexType]
 	if !ok {
@@ -401,7 +459,6 @@ func (vm *VertexCacheManager) LoadCache(
 		if vc[i].SkinId == skinID {
 			return vc[i].Add(
 				command,
-				int(command.InstanceCount),
 				dataV,
 				dataI,
 			)
@@ -417,7 +474,6 @@ func (vm *VertexCacheManager) LoadCache(
 		empty.SetSkin(skinID)
 		return empty.Add(
 			command,
-			int(command.InstanceCount),
 			dataV,
 			dataI,
 		)
@@ -425,7 +481,6 @@ func (vm *VertexCacheManager) LoadCache(
 	fullest.SetSkin(skinID)
 	return fullest.Add(
 		command,
-		int(command.InstanceCount),
 		dataV,
 		dataI,
 	)

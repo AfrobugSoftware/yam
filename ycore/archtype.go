@@ -1,16 +1,23 @@
 package ycore
 
 import (
+	"encoding/gob"
 	"errors"
 	"fmt"
 	"log"
 	"reflect"
+	"slices"
 	"sort"
 	"sync"
 )
 
 const (
 	NullEntity EntityId = 0
+)
+
+const (
+	MAX_ENTITES    = 100000
+	MAX_COMPONENTS = 1000
 )
 
 var (
@@ -106,7 +113,7 @@ func newArchetype(id ArchetypeId, key archetypeKey) *Archetype {
 	return &Archetype{
 		id:            id,
 		key:           key,
-		entities:      []EntityId{},
+		entities:      make([]EntityId, 0, MAX_ENTITES),
 		storageBuffer: make(map[ComponentId]any),
 	}
 
@@ -117,11 +124,14 @@ func appendToStorage[T any](data T, comp ComponentId, a *Archetype) {
 	str, ok := a.storageBuffer[comp]
 	if !ok {
 		a.storageBuffer[comp] = &Storage[T]{
-			Store: make([]T, 0),
+			Store: make([]T, 0, MAX_COMPONENTS),
 		}
 		str = a.storageBuffer[comp]
 	}
 	store := reflect.ValueOf(str).Elem()
+	if store.Len() >= MAX_COMPONENTS {
+		panic("too many components created for this store!")
+	}
 	slc := store.Field(0)
 	slc.Set(reflect.Append(slc, reflect.ValueOf(data)))
 }
@@ -163,9 +173,6 @@ func DumpStorage(a *Archetype) {
 
 func getStorageLen(comp ComponentId, a *Archetype) int {
 	store := reflect.ValueOf(a.storageBuffer[comp]).Elem()
-	if store.Kind() != reflect.Struct {
-		panic(fmt.Errorf("invalid type used for component storage"))
-	}
 	slc := store.Field(0)
 	return slc.Len()
 }
@@ -173,6 +180,9 @@ func getStorageLen(comp ComponentId, a *Archetype) int {
 func getFromStorage(row int, comp ComponentId, a *Archetype) Component {
 	store := reflect.ValueOf(a.storageBuffer[comp]).Elem()
 	slc := store.Field(0)
+	if row >= slc.Len() {
+		panic("trying to access beyond index for storage")
+	}
 	return slc.Index(row).Interface()
 }
 
@@ -211,9 +221,6 @@ func (a *Archetype) removeEntity(row int) (EntityId, bool) {
 }
 
 func (a *Archetype) getComponent(row int, cid ComponentId) Component {
-	if row >= getStorageLen(cid, a) {
-		return nil
-	}
 	return getFromStorage(row, cid, a)
 }
 
@@ -234,7 +241,6 @@ type World struct {
 
 	entities   map[EntityId]*entityRecord
 	archetypes map[string]*Archetype // keyed by archetypeKey.String()
-	systems    []System
 }
 
 func NewWorld() *World {
@@ -296,11 +302,9 @@ func (w *World) AddComponent(entity EntityId, cid ComponentId, comp Component) {
 	var newKey archetypeKey
 
 	if record == nil {
-		// Entity has no archetype yet
 		currentComps = map[ComponentId]Component{cid: comp}
 		newKey = newArchetypeKey([]ComponentId{cid})
 	} else {
-		// Gather existing components
 		currentComps = w.gatherComponents(record)
 		currentComps[cid] = comp
 
@@ -309,15 +313,11 @@ func (w *World) AddComponent(entity EntityId, cid ComponentId, comp Component) {
 			ids = append(ids, id)
 		}
 		newKey = newArchetypeKey(ids)
-
-		// Remove from old archetype
 		swapped, wasSwapped := record.archetype.removeEntity(record.row)
 		if wasSwapped {
 			w.entities[swapped].row = record.row
 		}
 	}
-
-	// Find or create target archetype
 	arch := w.getOrCreateArchetype(newKey)
 	row := arch.addEntity(entity, currentComps)
 	w.entities[entity] = &entityRecord{archetype: arch, row: row}
@@ -327,14 +327,11 @@ func (w *World) HasComponent(entity EntityId, cid ComponentId) bool {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	record := w.entities[entity]
-	if record == nil || record.archetype != nil {
+	record, ok := w.entities[entity]
+	if !ok || record == nil || record.archetype != nil {
 		return false
 	}
-	if _, ok := record.archetype.storageBuffer[cid]; !ok {
-		return false
-	}
-	return true
+	return slices.Contains(record.archetype.key, cid)
 }
 
 func (w *World) RemoveComponent(entity EntityId, cid ComponentId) {
@@ -421,25 +418,53 @@ func (w *World) Query(cids []ComponentId) []EntityId {
 	return result
 }
 
-func (w *World) AddSystem(s System) {
-	w.systems = append(w.systems, s)
-}
+// would not save the component registery because the main
+func (w *World) Save(e *gob.Encoder) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
 
-func (w *World) Update(dt float64) {
-	for _, s := range w.systems {
-		entities := w.Query(s.Query())
-		s.Update(w, dt, entities)
+	e.Encode(w.nextEntity)
+	e.Encode(w.nextArchetype)
+	e.Encode(uint32(len(w.entities)))
+	for ent, record := range w.entities {
+		if record != nil {
+			e.Encode(ent)
+			e.Encode(record)
+		}
+	}
+	e.Encode(uint32(len(w.archetypes)))
+	for archkey, arch := range w.archetypes {
+		if arch != nil {
+			e.Encode(archkey)
+			e.Encode(arch)
+		}
 	}
 }
 
-func (w *World) InitSystems() {
-	for _, s := range w.systems {
-		s.Init()
-	}
-}
+func (w *World) Load(d *gob.Decoder) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
 
-func (w *World) Shutdown() {
-	for _, s := range w.systems {
-		s.Shutdown()
+	d.Decode(&w.nextEntity)
+	d.Decode(&w.nextArchetype)
+
+	w.entities = make(map[EntityId]*entityRecord)
+	var i uint32
+	d.Decode(&i)
+	for range i {
+		var ent EntityId
+		var entite *entityRecord
+		d.Decode(&ent)
+		d.Decode(&entite)
+		w.entities[ent] = entite
+	}
+	w.archetypes = make(map[string]*Archetype)
+	d.Decode(&i)
+	for range i {
+		var key string
+		var arch *Archetype
+		d.Decode(&key)
+		d.Decode(&arch)
+		w.archetypes[key] = arch
 	}
 }

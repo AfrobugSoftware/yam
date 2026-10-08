@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"unsafe"
 	"yam/y3d"
@@ -123,9 +124,37 @@ func (v *VertexCache) IsFull(size int) bool {
 	n := size / int(v.Stride)
 	return v.NumVertics+int32(n) >= v.MaxVertices
 }
+func (v *VertexCache) AddPolygon(indices []uint32,
+	vertices []y3d.PVertex) error {
+	if int32(len(vertices)*12) >= (v.Stride*v.MaxVertices) ||
+		int32(len(indices)*4) >= (v.MaxIndices*4) {
+		return errors.New("cannot add data, please check parameters sizes")
+	}
+	if v.Stride != 36 {
+		return errors.New("cannot write to this cache, stride size not 36")
+	}
+	asBytes := func(v reflect.Value, count int) []byte {
+		addr := unsafe.Pointer(v.Index(0).UnsafeAddr())
+		return unsafe.Slice((*byte)(addr), count)
+	}
+	size := len(vertices) * int(unsafe.Sizeof(y3d.PVertex{}))
+	vb := asBytes(reflect.ValueOf(vertices), size)
+	ib := asBytes(reflect.ValueOf(indices), len(indices)*4)
+	count := len(vertices)
+	gl.NamedBufferSubData(v.VertexVbo,
+		int(v.Stride*v.NumVertics),
+		size,
+		gl.Ptr(vb))
+	v.NumVertics += int32(count)
+	gl.NamedBufferSubData(v.IndexVbo,
+		int(4*v.NumIndices),
+		len(ib),
+		gl.Ptr(ib))
+	v.NumIndices += int32(len(indices))
+	return CheckError()
+}
 
 func (v *VertexCache) Add(command *DrawCommand,
-	instanceCount int,
 	dataV, dataI *bytes.Buffer) error {
 	if dataV == nil || dataI == nil {
 		return errors.New("cannot load empty vertex or index buffer")
@@ -134,21 +163,19 @@ func (v *VertexCache) Add(command *DrawCommand,
 		int32(dataI.Len()) >= (v.MaxIndices*4) {
 		return errors.New("cannot add data, please check parameters")
 	}
-	//vertex data
 	gl.NamedBufferSubData(v.VertexVbo,
 		int(v.Stride*v.NumVertics),
 		dataV.Len(),
 		gl.Ptr(dataV.Bytes()))
 	command.BaseVertex = uint32(v.NumVertics)
 	v.NumVertics += int32(dataV.Len() / int(v.Stride))
-	//index data
 	gl.NamedBufferSubData(v.IndexVbo,
 		int(4*v.NumIndices),
 		dataI.Len(),
 		gl.Ptr(dataI.Bytes()))
 	v.NumIndices += int32(dataI.Len() / 4)
 	command.VertexCount = uint32(dataI.Len() / 4)
-	return nil
+	return CheckError()
 }
 func (v *VertexCache) IsEmpty() bool {
 	return v.NumVertics == 0 || v.NumDrawCommands == 0
@@ -179,7 +206,7 @@ func (v *VertexCache) AddInstances(command *DrawCommand, instanceCount int) erro
 		panic("cannot release instance indices")
 	}
 	v.NumOfInstances += int32(instanceCount)
-	return nil
+	return CheckError()
 }
 
 func (v *VertexCache) AddDrawCommand(command DrawCommand) error {
@@ -189,7 +216,7 @@ func (v *VertexCache) AddDrawCommand(command DrawCommand) error {
 	gl.NamedBufferSubData(v.DrawCommandBo, int(unsafe.Sizeof(command)*uintptr(v.NumDrawCommands)),
 		int(unsafe.Sizeof(command)), unsafe.Pointer(&command))
 	v.NumDrawCommands += 1
-	return nil
+	return CheckError()
 }
 
 func (v *VertexCache) LoadMatrix(baseInstance int, world []y3d.Mat4) error {
@@ -212,7 +239,7 @@ func (v *VertexCache) LoadMatrix(baseInstance int, world []y3d.Mat4) error {
 		CheckError()
 		panic("cannot release world matrix buffer")
 	}
-	return nil
+	return CheckError()
 }
 
 func (v *VertexCache) Render() {

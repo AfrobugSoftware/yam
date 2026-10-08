@@ -27,7 +27,7 @@ func (r Ray) DeTransform(m Mat4) Ray {
 	return r
 }
 
-func (r Ray) IntersectsAABB(aabb AABB) (i bool, hit Vec3) {
+func (r Ray) IntersectsAABB(aabb AABB, fl float32) (i bool, hit Vec3) {
 	isInside := true
 	maxT := Vec3{X: -1.0, Y: -1.0, Z: -1.0}
 	//x
@@ -88,7 +88,7 @@ func (r Ray) IntersectsAABB(aabb AABB) (i bool, hit Vec3) {
 	if maxT.Z > maxTArray[plane] {
 		plane = 2
 	}
-	if maxTArray[plane] < 0.0 {
+	if maxTArray[plane] < 0.0 || maxTArray[plane] > fl {
 		i = false
 		return
 	}

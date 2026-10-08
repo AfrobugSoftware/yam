@@ -33,11 +33,13 @@ type StaticBuffer struct {
 	SkeletalAnimator *SkeletalAnimator
 }
 
-func CheckError() {
+func CheckError() error {
 	ierr := gl.GetError()
 	if ierr != gl.NO_ERROR {
 		fmt.Printf("GL error: 0x%x\n", ierr)
+		return fmt.Errorf("GL error: 0x%x\n", ierr)
 	}
+	return nil
 }
 
 func NewStaticBuffer(

@@ -196,7 +196,7 @@ func (o *Octree) TestCollision(b AABB) (bool, Plane) {
 
 func (o *Octree) TestCollisionWithRay(r Ray, fl float32) (bool, float32) {
 	if o != o.Root {
-		b, _ := r.IntersectsAABB(o.BoundingBox)
+		b, _ := r.IntersectsAABB(o.BoundingBox, fl)
 		if !b {
 			return false, 0
 		}

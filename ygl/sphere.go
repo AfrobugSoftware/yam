@@ -4,10 +4,14 @@ import (
 	"bytes"
 	"encoding/binary"
 	"math"
+	"reflect"
+	"unsafe"
+	"yam/y3d"
 )
 
 func CreateSphere(sectorCount, stackCount int, radius float64) (dataV, dataI *bytes.Buffer) {
 	var count, indx uint32
+	verties := make([]y3d.PVertex, 0, stackCount*sectorCount)
 
 	sectorStep := 2 * math.Pi / float32(sectorCount)
 	stackStep := math.Pi / float32(stackCount)
@@ -30,21 +34,29 @@ func CreateSphere(sectorCount, stackCount int, radius float64) (dataV, dataI *by
 			s := float32(i) / float32(sectorCount)
 			t := float32(j) / float32(stackCount)
 
-			binary.Write(dataV, binary.NativeEndian, x)
-			binary.Write(dataV, binary.NativeEndian, y)
-			binary.Write(dataV, binary.NativeEndian, z)
-
-			binary.Write(dataV, binary.NativeEndian, nx)
-			binary.Write(dataV, binary.NativeEndian, ny)
-			binary.Write(dataV, binary.NativeEndian, nz)
-
-			binary.Write(dataV, binary.NativeEndian, s)
-			binary.Write(dataV, binary.NativeEndian, t)
-
+			verties = append(verties, y3d.PVertex{
+				Pos: y3d.Vec3{
+					X: x,
+					Y: y,
+					Z: z,
+				},
+				Norm: y3d.Vec3{
+					X: nx,
+					Y: ny,
+					Z: nz,
+				},
+				Tc: y3d.Vec2{
+					X: s,
+					Y: t,
+				},
+				Color: [4]uint8{255, 255, 255, 255},
+			})
 			count++
 		}
 	}
-
+	addr := unsafe.Pointer(reflect.ValueOf(verties).Index(0).UnsafeAddr())
+	b := unsafe.Slice((*byte)(addr), 36*len(verties))
+	dataV.Write(b)
 	for i := range stackCount {
 		k1 := uint32(i * (sectorCount + 1))
 		k2 := k1 + uint32(sectorCount) + 1

@@ -3,7 +3,6 @@ package ygame
 import (
 	"log"
 	"unsafe"
-	"yam/y3d"
 	"yam/ycore"
 
 	"github.com/AllenDang/cimgui-go/imgui"
@@ -208,7 +207,6 @@ type Editor struct {
 	window             *sdl.Window
 	IO                 *imgui.IO
 	R                  *renderer
-	OctTree            *y3d.Octree
 }
 
 func NewEditor(input *ycore.InputManager,

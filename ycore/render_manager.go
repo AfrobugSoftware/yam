@@ -467,12 +467,7 @@ func (r *RenderManager) Transfrom3Dto2D(pos y3d.Vec3) y3d.Vec2 {
 }
 
 func (r *RenderManager) GetPickRay(pos y3d.Vec2) (y3d.Vec3, y3d.Vec3) {
-	var width, height float32
-	if r.Mode == MODE_2D {
-		width, height = float32(r.Width), float32(r.Height)
-	} else {
-		width, height = float32(r.ViewPort[r.Stage].Width), float32(r.ViewPort[r.Stage].Height)
-	}
+	width, height := float32(r.ViewPort[r.Stage].Width), float32(r.ViewPort[r.Stage].Height)
 	vcS := y3d.Vec3{
 		X: (((pos.X * 2.0) / width) - 1.0) / r.ProjP[r.Stage][0],
 		Y: (((pos.Y * 2.0) / height) - 1.0) / r.ProjP[r.Stage][5],
@@ -618,7 +613,7 @@ func (r *RenderManager) RenderLine(l y3d.LineSegment, w y3d.Mat4) {
 	}
 	v := bytes.NewBuffer(unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(vt))), 12))
 	i := bytes.NewBuffer(unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(ii))), 8))
-	err := r.LineCache.Add(&r.LineDrawCommand, 1, v, i)
+	err := r.LineCache.Add(&r.LineDrawCommand, v, i)
 	if err != nil {
 		log.Println(err)
 	}
