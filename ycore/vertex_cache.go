@@ -45,6 +45,7 @@ type VertexCache struct {
 	NumOfInstances  int32
 	Stride          int32
 	SkinId          int
+	Program         uint32
 	Id              int
 	Format          []VertexFormat
 	SkinManager     *SkinManager
@@ -57,6 +58,7 @@ func NewVertexCache(
 	maxVertex, maxIndex, maxDraws, maxInstances int32,
 	stride int32,
 	skinId int,
+	program uint32,
 	id int,
 	format []VertexFormat,
 ) *VertexCache {
@@ -115,6 +117,7 @@ func NewVertexCache(
 		Stride:          stride,
 		Id:              id,
 		SkinId:          skinId,
+		Program:         program,
 		SkinManager:     skinmanager,
 		VManager:        vertexManger,
 		Format:          format,

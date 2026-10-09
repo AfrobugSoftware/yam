@@ -145,7 +145,7 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 	rm.LineCache = NewVertexCache(
 		rm.SkinManager,
 		rm.VertextManager,
-		1000, 100, 100, 100, 12, -1, 0,
+		1000, 100, 100, 100, 12, -1, 0, 0,
 		[]VertexFormat{
 			{
 				ComponentSize:  3,

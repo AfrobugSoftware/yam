@@ -23,7 +23,6 @@ type Engine struct {
 	InputManager  *ycore.InputManager
 	AudioManager  *ycore.AudioManager
 	NetManager    *ycore.NetManager
-	Editor        *Editor
 	Level         *y3d.Octree //should this be here
 }
 
@@ -50,14 +49,6 @@ func NewGame(title string, width, height int32) (*Engine, error) {
 	gEngine.RenderManager = ycore.NewRenderManager(window, int(width), int(height))
 	gEngine.InputManager = ycore.NewInputManager(int(width), int(height))
 	gEngine.AudioManager = ycore.NewAudioManager()
-
-	gEngine.Editor = NewEditor(
-		gEngine.InputManager,
-		gEngine.RenderManager,
-		gEngine.RenderManager.VertextManager,
-		gEngine.RenderManager.ShaderManager,
-		window,
-	)
 	return gEngine, nil
 }
 
@@ -97,20 +88,12 @@ func (g *Engine) Run() {
 		last = now
 		g.Update(float64(dt))
 		g.Draw()
-
-		if g.Editor != nil {
-			g.Editor.UpdateInput()
-			g.Editor.Frame(dt)
-		}
 	}
 }
 
 func (g *Engine) Quit() {
 	if g.App != nil {
 		g.App.Shutdown()
-	}
-	if g.Editor != nil {
-		g.Editor.Destroy()
 	}
 	g.RenderManager.Destroy()
 	sdl.Quit()
