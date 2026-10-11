@@ -17,6 +17,7 @@ require (
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/jfreymuth/pulse v0.1.3 // indirect
 	github.com/rs/xid v1.6.0 // indirect
-	golang.org/x/image v0.46.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/image v0.47.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
 )

@@ -101,6 +101,15 @@ func (t TestApplication) TestUI() {
 		Color: [4]uint8{0, 0, 255, 255},
 		Flag:  yui.UI_GROW_Y | yui.UI_GROW_X,
 	}
+
+	font := yui.NewFont(8, 16, "assets/fonts/Mina-Regular.ttf")
+	text := &yui.UIElement{
+		Text:  "Hello world",
+		Font:  font,
+		Flag:  yui.UI_ALIGN_CENTER,
+		Color: [4]uint8{255, 0, 0, 255},
+	}
+	rightP.Add(text)
 	root.Add(leftP, rightP)
 	t.engine.RenderManager.RootUI = root
 }

@@ -22,26 +22,32 @@ const (
 	UI_FOCUSED              = 16384
 	UI_ACTIVE               = 1 << 15
 	UI_SCROLLABLE           = 1 << 16
+	UI_FLOATING             = 1 << 17
+	UI_TEXT                 = 1 << 18
 )
 const (
 	UI_GROW = UI_GROW_X | UI_GROW_Y
 )
 
 type UIElement struct {
-	Position    y3d.Vec2
-	Size        y3d.Vec2
-	BaseSize    y3d.Vec2
-	MinSize     y3d.Vec2
-	MaxSize     y3d.Vec2
-	Color       [4]uint8
-	TextureBase [2]float32
-	Children    []*UIElement
-	Padding     y3d.Vec4
-	Flag        uint32
-	Text        string
-	ChildGap    int
-	minSize     y3d.Vec2
-	Lines       []string
+	Position      y3d.Vec2
+	Size          y3d.Vec2
+	BaseSize      y3d.Vec2
+	MinSize       y3d.Vec2
+	MaxSize       y3d.Vec2
+	Radius        float32
+	Color         [4]uint8
+	TextureBase   [2]float32
+	Children      []*UIElement
+	Padding       y3d.Vec4
+	Flag          uint32
+	RenderFlag    uint32
+	Text          string
+	ChildGap      int
+	minSize       y3d.Vec2
+	Lines         []string
+	MouseCallback func(any)
+	Font          *Font
 }
 
 func NewUIElement(baseSize y3d.Vec2) *UIElement {

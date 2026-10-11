@@ -77,6 +77,65 @@ func Setup() error {
 	return nil
 }
 
+func DrawText(baseInstance int, ui *UIElement) int {
+	if ui.Font == nil {
+		return baseInstance
+	}
+	count := baseInstance
+	x := ui.Position.X
+	y := ui.Position.Y
+	if len(ui.Lines) > 0 {
+		for _, cand := range ui.Lines {
+			for _, c := range cand {
+				char, ok := ui.Font.GetCharacter(c)
+				if !ok {
+					//or render missing charater glyph
+					continue
+				}
+				arrayBuffer.SetQuad(count,
+					x+(char.Min.X),
+					y+(char.Min.Y),
+					(char.Max.X),
+					(char.Max.Y),
+					0,
+					0,
+					1, 1,
+					float32(ui.Color[0]/255),
+					float32(ui.Color[1]/255),
+					float32(ui.Color[2]/255),
+					float32(char.Idx), ui.RenderFlag|UI_TEXT)
+				count++
+				x = x + char.Advance //*float32(ui.Font.ppem)
+			}
+			y += ui.Font.VerticalSpacing + float32(ui.Font.height)
+		}
+	} else {
+		//no wrapping render full text block
+		for _, c := range ui.Text {
+			char, ok := ui.Font.GetCharacter(c)
+			if !ok {
+				//or render missing charater glyph
+				continue
+			}
+			arrayBuffer.SetQuad(count,
+				x+(char.Min.X*float32(ui.Font.ppem)),
+				y+(char.Min.Y*float32(ui.Font.ppem)),
+				(char.Max.X * float32(ui.Font.ppem)),
+				(char.Max.Y * float32(ui.Font.ppem)),
+				0,
+				0,
+				1, 1,
+				float32(ui.Color[0]/255),
+				float32(ui.Color[1]/255),
+				float32(ui.Color[2]/255),
+				float32(char.Idx), ui.RenderFlag|UI_TEXT)
+			count++
+			x = x + char.Advance*float32(ui.Font.ppem)
+		}
+	}
+	return count
+}
+
 func Draw(root *UIElement, proj y3d.Mat4) {
 	flatten(root)
 	gl.UseProgram(arrayProgram)
@@ -85,19 +144,25 @@ func Draw(root *UIElement, proj y3d.Mat4) {
 	if err != nil {
 		panic(err)
 	}
-	for i, ui := range flat {
-		arrayBuffer.SetQuad(i,
-			ui.Position.X,
-			ui.Position.Y,
-			ui.Size.X,
-			ui.Size.Y,
-			ui.TextureBase[0],
-			ui.TextureBase[1],
-			1, 1,
-			float32(ui.Color[0]/255),
-			float32(ui.Color[1]/255),
-			float32(ui.Color[2]/255),
-			float32(ui.Color[3]/255))
+	i := 0
+	for _, ui := range flat {
+		if ui.Text != "" || len(ui.Lines) > 0 {
+			i = DrawText(i, ui)
+		} else {
+			arrayBuffer.SetQuad(i,
+				ui.Position.X,
+				ui.Position.Y,
+				ui.Size.X,
+				ui.Size.Y,
+				ui.TextureBase[0],
+				ui.TextureBase[1],
+				1, 1,
+				float32(ui.Color[0]/255),
+				float32(ui.Color[1]/255),
+				float32(ui.Color[2]/255),
+				float32(ui.Color[3]/255), ui.RenderFlag)
+			i++
+		}
 	}
 	arrayBuffer.CloseArray()
 	arrayBuffer.Draw(len(flat))

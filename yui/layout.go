@@ -23,9 +23,11 @@ const (
 
 const eps = 0.01
 
-// monospace
-var MeasureText = func(s string) y3d.Vec2 {
-	return y3d.Vec2{X: float32(utf8.RuneCountInString(s)) * 8, Y: 16}
+var MeasureText = func(s string, font *Font) y3d.Vec2 {
+	if font != nil {
+		return y3d.Vec2{}
+	}
+	return y3d.Vec2{X: float32(utf8.RuneCountInString(s)) * float32(font.width), Y: float32(font.height)}
 }
 
 func (a axis) other() axis { return 1 - a }
@@ -99,12 +101,12 @@ func reset(ui *UIElement) {
 	ui.minSize = ui.MinSize
 	ui.Lines = nil
 	if ui.Text != "" {
-		full := MeasureText(ui.Text)
+		full := MeasureText(ui.Text, ui.Font)
 		ui.Size.X = max(ui.Size.X, full.X+ui.pad(axisX))
 		ui.Size.Y = max(ui.Size.Y, full.Y+ui.pad(axisY))
 		var longest float32
 		for w := range strings.FieldsSeq(ui.Text) {
-			longest = max(longest, MeasureText(w).X)
+			longest = max(longest, MeasureText(w, ui.Font).X)
 		}
 		ui.minSize.X = max(ui.minSize.X, longest+ui.pad(axisX))
 	}
@@ -161,6 +163,9 @@ func fitSize(ui *UIElement, a axis) {
 	var content, minContent float32
 	if a == ui.mainAxis() {
 		for _, c := range ui.Children {
+			if c.Flag&UI_FLOATING != 0 {
+				continue
+			}
 			content += get(c.Size, a)
 			minContent += get(c.minSize, a)
 		}
@@ -168,6 +173,9 @@ func fitSize(ui *UIElement, a axis) {
 		minContent += ui.gap()
 	} else {
 		for _, c := range ui.Children {
+			if c.Flag&UI_FLOATING != 0 {
+				continue
+			}
 			content = max(content, get(c.Size, a))
 			minContent = max(minContent, get(c.minSize, a))
 		}
@@ -183,6 +191,9 @@ func FitSizeY(ui *UIElement) { fitSize(ui, axisY) }
 func grow(children []*UIElement, a axis, remaining float32) {
 	var cands []*UIElement
 	for _, c := range children {
+		if c.Flag&UI_FLOATING != 0 {
+			continue
+		}
 		if c.grows(a) && get(c.Size, a) < c.max(a) {
 			cands = append(cands, c)
 		}
@@ -298,7 +309,7 @@ func GrowShrinkX(ui *UIElement) { growShrink(ui, axisX) }
 func GrowShrinkY(ui *UIElement) { growShrink(ui, axisY) }
 
 func WrapText(ui *UIElement) {
-	if ui == nil || ui.Text == "" {
+	if ui == nil || ui.Text == "" || ui.Font == nil {
 		return
 	}
 	width := ui.Size.X - ui.pad(axisX)
@@ -310,7 +321,7 @@ func WrapText(ui *UIElement) {
 			if line != "" {
 				candidate = line + " " + w
 			}
-			if line != "" && MeasureText(candidate).X > width+eps {
+			if line != "" && MeasureText(candidate, ui.Font).X > width+eps {
 				lines = append(lines, line)
 				line = w
 			} else {
@@ -321,7 +332,7 @@ func WrapText(ui *UIElement) {
 	}
 	var h float32
 	for _, l := range lines {
-		h += MeasureText(l).Y
+		h += MeasureText(l, ui.Font).Y + ui.Font.VerticalSpacing
 	}
 	ui.Lines = lines
 	ui.Size.Y = max(ui.BaseSize.Y, h+ui.pad(axisY))
@@ -362,6 +373,9 @@ func Position(ui *UIElement) {
 
 	used := ui.gap()
 	for _, c := range ui.Children {
+		if c.Flag&UI_FLOATING != 0 {
+			continue
+		}
 		used += get(c.Size, main)
 	}
 	free := get(ui.Size, main) - ui.pad(main) - used
@@ -369,6 +383,9 @@ func Position(ui *UIElement) {
 	innerCross := get(ui.Size, cross) - ui.pad(cross)
 
 	for _, c := range ui.Children {
+		if c.Flag&UI_FLOATING != 0 {
+			continue
+		}
 		f := ui.Flag
 		if c.Flag&crossFlags(cross) != 0 {
 			f = c.Flag

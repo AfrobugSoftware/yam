@@ -31,11 +31,13 @@ layout (std430, binding = 15) buffer QuadInfo {
     vec4 BasePosWidthHeight[MAX_QUADS];
     vec4 TexCoordsWidthHeight[MAX_QUADS];
     vec4 Color[MAX_QUADS];
+	uint Flag[MAX_QUADS];
 };
 
 out Frag {
     vec4 Color;
     vec2 TexCoords;
+	flat uint Flag;
 }vs_out;
 
 layout(location = 1) uniform mat4 proj;
@@ -52,6 +54,8 @@ void main() {
     
     vs_out.TexCoords = vec2(aTexCoord.x, 1.0 - aTexCoord.y);
     vs_out.Color = Color[gl_InstanceID];
+
+	vs_out.Flag = Flag[gl_InstanceID];
 }`
 	fragShader = `#version 430 core 
 
@@ -61,6 +65,7 @@ uniform sampler2D tex;
 in Frag {
     vec4 Color;
     vec2 TexCoords;
+	flat uint Flag;
 }fs_in;
 
 void main () {
@@ -79,6 +84,7 @@ type QuadArray struct {
 	basePosWidthHeightOffset   int32
 	texCoordsWidthHeightOffset int32
 	colorOffset                int32
+	flagOffset                 int32
 	blockPtr                   unsafe.Pointer
 }
 
@@ -92,7 +98,8 @@ func CreateQuadArray(shader uint32) *QuadArray {
 	q.basePosWidthHeightOffset = 0
 	q.texCoordsWidthHeightOffset = int32(unsafe.Sizeof(y3d.Vec4{})) * MAX_QUADS
 	q.colorOffset = (int32(unsafe.Sizeof(y3d.Vec4{})) * MAX_QUADS) * 2
-	q.blockSize = (int32(unsafe.Sizeof(y3d.Vec4{}) * MAX_QUADS)) * 3
+	q.flagOffset = (int32(unsafe.Sizeof(y3d.Vec4{})) * MAX_QUADS) * 3
+	q.blockSize = (int32(unsafe.Sizeof(y3d.Vec4{})*MAX_QUADS))*3 + (int32(unsafe.Sizeof(uint32(0))) * MAX_QUADS)
 	gl.CreateBuffers(1, &q.ssbo)
 	gl.NamedBufferStorage(q.ssbo, int(q.blockSize), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
 	return q
@@ -106,9 +113,14 @@ func (q *QuadArray) Draw(numQuads int) {
 	}
 	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, BUFFER_BINDING, q.ssbo)
 	gl.Disable(gl.DEPTH_TEST)
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
 	gl.BindVertexArray(q.vbo)
 	gl.DrawArraysInstanced(gl.TRIANGLES, 0, 6, int32(numQuads))
 	gl.BindVertexArray(0)
+
+	gl.Disable(gl.BLEND)
 	gl.Enable(gl.DEPTH_TEST)
 	gl.DepthFunc(gl.LESS)
 }
@@ -137,7 +149,7 @@ func (q *QuadArray) CloseArray() {
 func (q *QuadArray) SetQuad(idx int, x, y,
 	width, height,
 	UBase, VBase,
-	texUSize, texVSize, r, g, b, a float32) {
+	texUSize, texVSize, r, g, b, a float32, flag uint32) {
 	if idx >= MAX_QUADS {
 		return
 	}
@@ -149,6 +161,7 @@ func (q *QuadArray) SetQuad(idx int, x, y,
 	basePos := ViewAsFloat32(block, int(q.basePosWidthHeightOffset), MAX_QUADS)
 	texCoords := ViewAsFloat32(block, int(q.texCoordsWidthHeightOffset), MAX_QUADS)
 	color := ViewAsFloat32(block, int(q.colorOffset), MAX_QUADS)
+	flagb := ViewAsUint32(block, int(q.colorOffset), MAX_QUADS)
 
 	basePos[idx][0] = x
 	basePos[idx][1] = y
@@ -162,6 +175,7 @@ func (q *QuadArray) SetQuad(idx int, x, y,
 	color[idx][1] = g
 	color[idx][2] = b
 	color[idx][3] = a
+	flagb[idx] = flag
 }
 
 func ViewAsFloat32(buf []byte, byteOffset, count int) [][4]float32 {
@@ -172,4 +186,13 @@ func ViewAsFloat32(buf []byte, byteOffset, count int) [][4]float32 {
 	}
 	ptr := unsafe.Pointer(&buf[byteOffset])
 	return unsafe.Slice((*[4]float32)(ptr), count)
+}
+func ViewAsUint32(buf []byte, byteOffset, count int) []uint32 {
+	const pairSize = int(unsafe.Sizeof(uint32(0)))
+	required := byteOffset + count*pairSize
+	if required > len(buf) {
+		panic(fmt.Errorf("ViewAsFloat32Pairs: slice out of bounds, req: %d, len : %d\n", required, len(buf)))
+	}
+	ptr := unsafe.Pointer(&buf[byteOffset])
+	return unsafe.Slice((*uint32)(ptr), count)
 }
