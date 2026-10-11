@@ -80,7 +80,7 @@ func Setup() error {
 func Draw(root *UIElement, proj y3d.Mat4) {
 	flatten(root)
 	gl.UseProgram(arrayProgram)
-	gl.Uniform4fv(1, 1, &proj[0])
+	gl.UniformMatrix4fv(1, 1, false, &proj[0])
 	err := arrayBuffer.OpenArray()
 	if err != nil {
 		panic(err)

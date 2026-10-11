@@ -21,6 +21,10 @@ const (
 	UI_ALIGN_BOTTOM         = 8192
 	UI_FOCUSED              = 16384
 	UI_ACTIVE               = 1 << 15
+	UI_SCROLLABLE           = 1 << 16
+)
+const (
+	UI_GROW = UI_GROW_X | UI_GROW_Y
 )
 
 type UIElement struct {

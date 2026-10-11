@@ -27,7 +27,7 @@ const vec2 positions[6] = vec2[6](
 		vec2(1.0, 0.0));
 
 
-layout (std430, binding = 0) buffer QuadInfo {
+layout (std430, binding = 15) buffer QuadInfo {
     vec4 BasePosWidthHeight[MAX_QUADS];
     vec4 TexCoordsWidthHeight[MAX_QUADS];
     vec4 Color[MAX_QUADS];
@@ -64,11 +64,10 @@ in Frag {
 }fs_in;
 
 void main () {
-    //FragColor = texture2D(tex, fs_in.TexCoords.xy);
-    //if (FragColor == vec4(0.0)) {
-      //  FragColor = fs_in.Color;
-   // }
-   FragColor = vec4(0.0,0.0,1.0,1.0);
+    // FragColor = texture2D(tex, fs_in.TexCoords.xy);
+    // if (FragColor == vec4(0.0)) {
+	// }
+	FragColor = fs_in.Color;
 }
 `
 )

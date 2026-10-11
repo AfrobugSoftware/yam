@@ -142,6 +142,8 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 	},
 		float32(y3d.ToRadians(45)),
 	)
+	rm.Width = int(fbW)
+	rm.Height = int(fbH)
 	err = yui.Setup()
 	if err != nil {
 		panic(err)

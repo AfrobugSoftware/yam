@@ -86,13 +86,14 @@ func (t *TestApplication) Startup(e *Engine) {
 }
 
 func (t TestApplication) TestUI() {
-	root := yui.NewUIElement(y3d.Vec2{X: 800, Y: 800})
-	root.Color = [4]uint8{0, 255, 0, 255}
-	root.ChildGap = 32
+	root := yui.NewUIElement(y3d.Vec2{X: float32(t.engine.RenderManager.Width),
+		Y: float32(t.engine.RenderManager.Height)})
+	root.Color = [4]uint8{100, 185, 0, 255}
+	root.ChildGap = 20
 	root.Padding = y3d.Vec4{X: 10, Y: 10, Z: 10, W: 10}
 
 	leftP := &yui.UIElement{
-		BaseSize: y3d.Vec2{X: 40, Y: 0},
+		BaseSize: y3d.Vec2{X: 150, Y: 0},
 		Color:    [4]uint8{0, 255, 0, 255},
 		Flag:     yui.UI_GROW_Y,
 	}
