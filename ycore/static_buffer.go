@@ -3,6 +3,7 @@ package ycore
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"unsafe"
 	"yam/y3d"
 
@@ -28,6 +29,7 @@ type StaticBuffer struct {
 	NumOfInstnaces   int32
 	Stride           int32
 	SkinId           int
+	Program          uint32
 	Format           []VertexFormat
 	VManager         *VertexCacheManager
 	SkeletalAnimator *SkeletalAnimator
@@ -36,7 +38,7 @@ type StaticBuffer struct {
 func CheckError() error {
 	ierr := gl.GetError()
 	if ierr != gl.NO_ERROR {
-		fmt.Printf("GL error: 0x%x\n", ierr)
+		log.Printf("GL error: 0x%x\n", ierr)
 		return fmt.Errorf("GL error: 0x%x\n", ierr)
 	}
 	return nil
@@ -48,6 +50,7 @@ func NewStaticBuffer(
 	command []DrawCommand,
 	instanceCount int,
 	skinId int,
+	program uint32,
 	stride int32,
 	format []VertexFormat,
 	id int,

@@ -249,6 +249,9 @@ func (v *VertexCache) Render() {
 	if v.IsEmpty() {
 		return
 	}
+	if v.Program != 0 {
+		gl.UseProgram(v.Program)
+	}
 	if v.NumDrawCommands != 0 {
 		//setup skin
 		if v.VManager.ActiveSkin != v.SkinId && v.SkinId != -1 {
@@ -299,14 +302,10 @@ func (v *VertexCache) Render() {
 			v.VManager.ActiveSkin = v.SkinId
 		}
 		//how to handle render states ???
-		if v.VManager.ActiveCache != v.Id {
-			gl.BindVertexArray(v.Vao)
-			gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, WORLD_MATRIX_BINDING, v.WorldMatrixSSBO)
-			gl.BindBufferBase(gl.UNIFORM_BUFFER, MATERIAL_UBO_BINDING, v.MaterialUBO)
-			gl.BindBuffer(gl.DRAW_INDIRECT_BUFFER, v.DrawCommandBo)
-
-			v.VManager.ActiveCache = v.Id
-		}
+		gl.BindVertexArray(v.Vao)
+		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, WORLD_MATRIX_BINDING, v.WorldMatrixSSBO)
+		gl.BindBufferBase(gl.UNIFORM_BUFFER, MATERIAL_UBO_BINDING, v.MaterialUBO)
+		gl.BindBuffer(gl.DRAW_INDIRECT_BUFFER, v.DrawCommandBo)
 		switch v.VManager.RenderManager.DrawMode {
 		case gl.TRIANGLES, gl.LINES, gl.LINE_STRIP:
 			gl.MultiDrawElementsIndirect(v.VManager.RenderManager.DrawMode,
@@ -356,6 +355,14 @@ func (v *VertexCache) SetSkin(skin int) {
 		v.Reset()
 	}
 	v.SkinId = skin
+}
+
+func (v *VertexCache) SetProgram(program uint32) {
+	if !v.IsEmpty() {
+		v.Render()
+		v.Reset()
+	}
+	v.Program = program
 }
 
 func (v *VertexCache) Destroy() {

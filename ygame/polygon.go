@@ -22,7 +22,6 @@ type Polygon struct {
 	IsSelected   bool
 	BoundingBox  y3d.AABB
 	OType        int
-	DrawCommand  *ycore.DrawCommand
 }
 
 func (p2 *Polygon) Copy(p *Polygon) {

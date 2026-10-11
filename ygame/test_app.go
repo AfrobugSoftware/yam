@@ -5,6 +5,7 @@ import (
 	"yam/ycontroller"
 	"yam/ycore"
 	"yam/ygl"
+	"yam/yui"
 
 	"github.com/go-gl/gl/v4.3-core/gl"
 	"github.com/veandco/go-sdl2/sdl"
@@ -80,6 +81,27 @@ func (t *TestApplication) Startup(e *Engine) {
 	t.ObjPlayer = gt
 
 	t.engine.RenderManager.FpCamera = ycore.NewCamera(y3d.ZEROV)
+
+	t.TestUI() // test ui
+}
+
+func (t TestApplication) TestUI() {
+	root := yui.NewUIElement(y3d.Vec2{X: 800, Y: 800})
+	root.Color = [4]uint8{0, 255, 0, 255}
+	root.ChildGap = 32
+	root.Padding = y3d.Vec4{X: 10, Y: 10, Z: 10, W: 10}
+
+	leftP := &yui.UIElement{
+		BaseSize: y3d.Vec2{X: 40, Y: 0},
+		Color:    [4]uint8{0, 255, 0, 255},
+		Flag:     yui.UI_GROW_Y,
+	}
+	rightP := &yui.UIElement{
+		Color: [4]uint8{0, 0, 255, 255},
+		Flag:  yui.UI_GROW_Y | yui.UI_GROW_X,
+	}
+	root.Add(leftP, rightP)
+	t.engine.RenderManager.RootUI = root
 }
 
 func (t *TestApplication) Update(deltaTime float64) {

@@ -14,3 +14,7 @@ func (a Rect) Overlaps(b Rect) bool {
 		b.Height+b.Y < a.Y)
 	return !no
 }
+
+func (a Rect) Contains(p Vec2) bool {
+	return (a.X < int(p.X) && a.Width > int(p.X) && a.Y < int(p.Y) && a.Height > int(p.Y))
+}

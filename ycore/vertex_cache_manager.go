@@ -30,7 +30,7 @@ const (
 type VertexCacheManager struct {
 	ActiveSkin      int
 	ActiveCache     int
-	ACtiveProgram   uint32
+	ActiveProgram   uint32
 	RenderManager   *RenderManager
 	CacheId         int
 	Terrian         *Terrian
@@ -522,6 +522,7 @@ func (vm *VertexCacheManager) CreateStaticBuffer(
 	dataV, dataI *bytes.Buffer,
 	command []DrawCommand,
 	skinId int,
+	program uint32,
 	instanceCount int,
 	idxType uint32,
 ) (int, error) {
@@ -532,6 +533,7 @@ func (vm *VertexCacheManager) CreateStaticBuffer(
 		command,
 		instanceCount,
 		skinId,
+		program,
 		vm.Strides[vertexType],
 		vm.Formats[vertexType],
 		id,

@@ -1,7 +1,6 @@
 package ycore
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -11,6 +10,7 @@ import (
 	"unsafe"
 	"yam/y3d"
 	"yam/ygl"
+	"yam/yui"
 
 	"github.com/go-gl/gl/v4.3-core/gl"
 	"github.com/veandco/go-sdl2/sdl"
@@ -83,6 +83,7 @@ type RenderManager struct {
 	LineDrawCommand DrawCommand
 	FpCamera        *FPCamera
 	FollowCamera    *FollowCamera
+	RootUI          *yui.UIElement
 }
 
 func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
@@ -141,6 +142,11 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 	},
 		float32(y3d.ToRadians(45)),
 	)
+	err = yui.Setup()
+	if err != nil {
+		panic(err)
+	}
+	rm.Prepare2D(float32(fbW), float32(fbH), 0.1, 1000.0)
 	rm.SetStage(MODE_3D_PERSPECTIVE, 0) //SET TO THE 0TH stage
 	rm.LineCache = NewVertexCache(
 		rm.SkinManager,
@@ -229,6 +235,7 @@ func (r *RenderManager) CreateFrameBuffer() error {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT2, gl.TEXTURE_2D, r.gAlbedoSpec, 0)
 
+	//depth texture
 	gl.GenTextures(1, &r.gDepth)
 	gl.BindTexture(gl.TEXTURE_2D, r.gDepth)
 	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.DEPTH24_STENCIL8,
@@ -355,7 +362,7 @@ func (r *RenderManager) SetClippingPlanes(near, far float32) {
 	}
 	r.Near = near
 	r.Far = far
-	r.Prepare2D()
+	//r.Prepare2D()
 
 	Q := 1.0 / (r.Far - r.Near)
 	X := -Q * r.Near
@@ -380,18 +387,18 @@ func (r *RenderManager) SetClippingPlanes(near, far float32) {
 	r.ProjP[3][14] = X
 }
 
-func (r *RenderManager) Prepare2D() {
+func (r *RenderManager) Prepare2D(width, height, near, far float32) {
 	r.View2D = y3d.Identity
-	r.Proj2D[0] = 2.0 / float32(r.Width)
-	r.Proj2D[5] = 2.0 / float32(r.Height)
-	r.Proj2D[10] = 1.0 / (r.Far - r.Near)
-	r.Proj2D[11] = -r.Near * (1.0 / (r.Far - r.Near))
+	r.Proj2D[0] = 2.0 / float32(width)
+	r.Proj2D[5] = 2.0 / float32(height)
+	r.Proj2D[10] = 1.0 / (far - near)
+	r.Proj2D[11] = -near * (1.0 / (far - near))
 	r.Proj2D[15] = 1.0
 	//flip the y axis for 2D rendering``
 	r.View2D[5] = -1.0
-	r.View2D[12] = -float32(r.Width) + float32(r.Width)*0.5
-	r.View2D[13] = float32(r.Height) - float32(r.Height)*0.5
-	r.View2D[14] = r.Near + 0.1
+	r.View2D[12] = -float32(width) + float32(width)*0.5
+	r.View2D[13] = float32(height) - float32(height)*0.5
+	r.View2D[14] = near + 0.1
 }
 
 func (r *RenderManager) CalcViewProj() {
@@ -564,6 +571,11 @@ func (r *RenderManager) Render() {
 	if err != nil {
 		log.Println(err)
 	}
+	if r.RootUI != nil {
+		yui.Layout(r.RootUI)
+		p := r.Proj2D.Mul(r.View2D)
+		yui.Draw(r.RootUI, p)
+	}
 }
 
 func (r *RenderManager) EndRender() {
@@ -586,39 +598,6 @@ func (r *RenderManager) CopyDepthToDefault() {
 	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 }
 
-func (r *RenderManager) CreateLightSphere() {
-	v, i := ygl.CreateSphere(64, 32, 1.0)
-	s, err := r.VertextManager.CreateStaticBuffer(
-		VPNT, v, i,
-		[]DrawCommand{
-			r.VertextManager.CreateDrawCommand(i, MAX_LIGHT),
-		},
-		-1,
-		MAX_LIGHT,
-		gl.UNSIGNED_INT,
-	)
-	if err != nil {
-		panic(err)
-	}
-	r.lightSphere = s
-}
-
-func (r *RenderManager) RenderLine(l y3d.LineSegment, w y3d.Mat4) {
-	vt := []float32{
-		l.Start.X, l.Start.Y, l.Start.Z,
-		l.End.X, l.End.Y, l.End.Z,
-	}
-	ii := []uint32{
-		0, 1,
-	}
-	v := bytes.NewBuffer(unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(vt))), 12))
-	i := bytes.NewBuffer(unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(ii))), 8))
-	err := r.LineCache.Add(&r.LineDrawCommand, v, i)
-	if err != nil {
-		log.Println(err)
-	}
-}
-
 func (r *RenderManager) UpdateFPCamera(dt float32) {
 	if r.FpCamera != nil {
 		//using first person camera
@@ -628,7 +607,6 @@ func (r *RenderManager) UpdateFPCamera(dt float32) {
 			r.FpCamera.Up,
 			r.FpCamera.Dir,
 			r.FpCamera.Position)
-		//r.CalcViewProj()
 	}
 }
 
@@ -640,6 +618,5 @@ func (r *RenderManager) UpdateFollowCamera(dt float32) {
 			r.FollowCamera.Up,
 			r.FollowCamera.Dir,
 			r.FollowCamera.Position)
-		//r.CalcViewProj()
 	}
 }
