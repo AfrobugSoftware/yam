@@ -84,54 +84,32 @@ func DrawText(baseInstance int, ui *UIElement) int {
 	count := baseInstance
 	x := ui.Position.X
 	y := ui.Position.Y
-	if len(ui.Lines) > 0 {
-		for _, cand := range ui.Lines {
-			for _, c := range cand {
-				char, ok := ui.Font.GetCharacter(c)
-				if !ok {
-					//or render missing charater glyph
-					continue
-				}
-				arrayBuffer.SetQuad(count,
-					x+(char.Min.X),
-					y+(char.Min.Y),
-					(char.Max.X),
-					(char.Max.Y),
-					0,
-					0,
-					1, 1,
-					float32(ui.Color[0]/255),
-					float32(ui.Color[1]/255),
-					float32(ui.Color[2]/255),
-					float32(char.Idx), ui.RenderFlag|UI_TEXT)
-				count++
-				x = x + char.Advance //*float32(ui.Font.ppem)
-			}
-			y += ui.Font.VerticalSpacing + float32(ui.Font.height)
-		}
-	} else {
-		//no wrapping render full text block
-		for _, c := range ui.Text {
+	for _, cand := range ui.Lines {
+		for _, c := range cand {
 			char, ok := ui.Font.GetCharacter(c)
+			if c == ' ' {
+				x += char.Advance
+			}
 			if !ok {
 				//or render missing charater glyph
 				continue
 			}
 			arrayBuffer.SetQuad(count,
-				x+(char.Min.X*float32(ui.Font.ppem)),
-				y+(char.Min.Y*float32(ui.Font.ppem)),
-				(char.Max.X * float32(ui.Font.ppem)),
-				(char.Max.Y * float32(ui.Font.ppem)),
+				x+(char.Min.X),
+				y+(char.Min.Y),
+				float32(ui.Font.width)+(char.Max.X),
+				float32(ui.Font.height)+(char.Max.Y),
 				0,
 				0,
 				1, 1,
 				float32(ui.Color[0]/255),
 				float32(ui.Color[1]/255),
 				float32(ui.Color[2]/255),
-				float32(char.Idx), ui.RenderFlag|UI_TEXT)
+				float32(1.0), ui.RenderFlag|UI_TEXT)
 			count++
-			x = x + char.Advance*float32(ui.Font.ppem)
+			x = x + char.Advance //*float32(ui.Font.ppem)
 		}
+		y += ui.Font.VerticalSpacing + float32(ui.Font.height)
 	}
 	return count
 }
@@ -146,7 +124,7 @@ func Draw(root *UIElement, proj y3d.Mat4) {
 	}
 	i := 0
 	for _, ui := range flat {
-		if ui.Text != "" || len(ui.Lines) > 0 {
+		if len(ui.Lines) > 0 {
 			i = DrawText(i, ui)
 		} else {
 			arrayBuffer.SetQuad(i,
@@ -165,6 +143,6 @@ func Draw(root *UIElement, proj y3d.Mat4) {
 		}
 	}
 	arrayBuffer.CloseArray()
-	arrayBuffer.Draw(len(flat))
+	arrayBuffer.Draw(i)
 	gl.UseProgram(0)
 }

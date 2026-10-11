@@ -7,7 +7,6 @@ import (
 	"yam/ygl"
 	"yam/yui"
 
-	"github.com/go-gl/gl/v4.3-core/gl"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -36,24 +35,6 @@ func (t *TestApplication) Startup(e *Engine) {
 	}
 
 	skin := t.engine.RenderManager.SkinManager.AddSkin(ygl.IdentityMaterial)
-	err = t.engine.RenderManager.SkinManager.AddTexture(skin, "assets/img/earth.jpg",
-		gl.LINEAR,
-		gl.LINEAR,
-		gl.CLAMP_TO_EDGE,
-		gl.CLAMP_TO_EDGE,
-		false)
-	if err != nil {
-		panic(err)
-	}
-	err = t.engine.RenderManager.SkinManager.AddTexture(skin, "assets/img/earth.jpg",
-		gl.LINEAR,
-		gl.LINEAR,
-		gl.CLAMP_TO_EDGE,
-		gl.CLAMP_TO_EDGE,
-		false)
-	if err != nil {
-		panic(err)
-	}
 	s, box := t.engine.RenderManager.VertextManager.GetScalingAndBox(v, i, 0.5, ycore.VP)
 	sp := ycore.NewGeometry(
 		t.engine.RenderManager,
@@ -88,18 +69,22 @@ func (t *TestApplication) Startup(e *Engine) {
 func (t TestApplication) TestUI() {
 	root := yui.NewUIElement(y3d.Vec2{X: float32(t.engine.RenderManager.Width),
 		Y: float32(t.engine.RenderManager.Height)})
-	root.Color = [4]uint8{100, 185, 0, 255}
+	root.Color = [4]uint8{39, 245, 0, 255}
 	root.ChildGap = 20
 	root.Padding = y3d.Vec4{X: 10, Y: 10, Z: 10, W: 10}
-
+	root.Name = "root"
 	leftP := &yui.UIElement{
+		Name:     "left",
 		BaseSize: y3d.Vec2{X: 150, Y: 0},
 		Color:    [4]uint8{0, 255, 0, 255},
 		Flag:     yui.UI_GROW_Y,
 	}
 	rightP := &yui.UIElement{
-		Color: [4]uint8{0, 0, 255, 255},
-		Flag:  yui.UI_GROW_Y | yui.UI_GROW_X,
+		Name:     "right",
+		Color:    [4]uint8{0, 0, 255, 255},
+		ChildGap: 40,
+		Flag:     yui.UI_GROW_Y | yui.UI_GROW_X | yui.UI_LAYOUT_LEFT_TO_RIGHT,
+		Padding:  y3d.Vec4{X: 10, Y: 10, Z: 10, W: 10},
 	}
 
 	font := yui.NewFont(8, 16, "assets/fonts/Mina-Regular.ttf")
@@ -107,9 +92,39 @@ func (t TestApplication) TestUI() {
 		Text:  "Hello world",
 		Font:  font,
 		Flag:  yui.UI_ALIGN_CENTER,
-		Color: [4]uint8{255, 0, 0, 255},
+		Color: [4]uint8{255, 255, 0, 255},
 	}
 	rightP.Add(text)
+	ad := &yui.UIElement{
+		Name:     "inner-right",
+		BaseSize: y3d.Vec2{X: 40, Y: 40},
+		Flag:     yui.UI_ALIGN_CENTER,
+		ChildGap: 12,
+		Color:    [4]uint8{255, 255, 0, 255},
+	}
+	ad2 := &yui.UIElement{
+		Name:     "inner-right-container",
+		BaseSize: y3d.Vec2{X: 40, Y: 40},
+		Flag:     yui.UI_LAYOUT_TOP_TO_BOTTOM | yui.UI_GROW,
+		Color:    [4]uint8{255, 255, 0, 255},
+		Padding:  y3d.Vec4{X: 10, Y: 10, Z: 10, W: 10},
+		ChildGap: 12,
+		Children: []*yui.UIElement{
+			{
+				Name:     "inner-right-container-elem",
+				Flag:     yui.UI_GROW,
+				BaseSize: y3d.Vec2{X: 40, Y: 40},
+				Color:    [4]uint8{245, 73, 39, 255},
+			},
+			{
+				Name:     "inner-right-container-elem-2",
+				Flag:     yui.UI_GROW,
+				BaseSize: y3d.Vec2{X: 40, Y: 40},
+				Color:    [4]uint8{242, 39, 245, 255},
+			},
+		},
+	}
+	rightP.Add(ad, ad2)
 	root.Add(leftP, rightP)
 	t.engine.RenderManager.RootUI = root
 }

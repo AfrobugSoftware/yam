@@ -10,7 +10,7 @@ const (
 	UI_FIT                  = 4
 	UI_LAYOUT_LEFT_TO_RIGHT = 8
 	UI_LAYOUT_TOP_TO_BOTTOM = 16
-	UI_ALIGN_CENTER         = 32
+	UI_HIDDEN               = 32
 	UI_GROW_X               = 64
 	UI_GROW_Y               = 128
 	UI_ALIGN_LEFT           = 256
@@ -26,7 +26,8 @@ const (
 	UI_TEXT                 = 1 << 18
 )
 const (
-	UI_GROW = UI_GROW_X | UI_GROW_Y
+	UI_GROW         = UI_GROW_X | UI_GROW_Y
+	UI_ALIGN_CENTER = UI_ALIGN_CENTER_X | UI_ALIGN_CENTER_Y
 )
 
 type UIElement struct {
@@ -48,6 +49,7 @@ type UIElement struct {
 	Lines         []string
 	MouseCallback func(any)
 	Font          *Font
+	Name          string
 }
 
 func NewUIElement(baseSize y3d.Vec2) *UIElement {

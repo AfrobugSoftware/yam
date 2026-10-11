@@ -161,7 +161,7 @@ func (q *QuadArray) SetQuad(idx int, x, y,
 	basePos := ViewAsFloat32(block, int(q.basePosWidthHeightOffset), MAX_QUADS)
 	texCoords := ViewAsFloat32(block, int(q.texCoordsWidthHeightOffset), MAX_QUADS)
 	color := ViewAsFloat32(block, int(q.colorOffset), MAX_QUADS)
-	flagb := ViewAsUint32(block, int(q.colorOffset), MAX_QUADS)
+	flagb := ViewAsUint32(block, int(q.flagOffset), MAX_QUADS)
 
 	basePos[idx][0] = x
 	basePos[idx][1] = y

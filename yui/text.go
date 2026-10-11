@@ -20,6 +20,7 @@ type Font struct {
 	font            *sfnt.Font
 	width           int
 	height          int
+	Kern            float32
 	ppem            fixed.Int26_6
 	gmap            map[rune]Character
 }
@@ -49,6 +50,12 @@ func NewFont(width, height int, filename string) *Font {
 	for _, r := range " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890,./;'#][]" {
 		f.DrawRune(r)
 	}
+	b := &sfnt.Buffer{}
+	k, err := f.font.Kern(b, sfnt.GlyphIndex(f.gmap[0].Idx), sfnt.GlyphIndex(f.gmap[1].Idx), f.ppem, 0)
+	if err != nil {
+		panic(err)
+	}
+	f.Kern = float32(k) / 64
 	return f
 }
 
@@ -168,4 +175,9 @@ func (font *Font) DrawRune(t rune) error {
 func (font *Font) GetCharacter(r rune) (Character, bool) {
 	c, ok := font.gmap[r]
 	return c, ok
+}
+
+func (font *Font) Destory() {
+	gl.DeleteTextures(1, &font.TextureID)
+	font.buffer = font.buffer[:0]
 }
