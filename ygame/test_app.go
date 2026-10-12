@@ -67,7 +67,7 @@ func (t *TestApplication) Startup(e *Engine) {
 }
 
 func (t TestApplication) TestUI() {
-	font := yui.NewFont(48, t.engine.RenderManager.PixelPerInch,
+	font := yui.NewFont(12, t.engine.RenderManager.PixelPerInch,
 		"assets/fonts/Mina-Regular.ttf")
 	root := yui.NewUIElement(y3d.Vec2{X: float32(t.engine.RenderManager.Width),
 		Y: float32(t.engine.RenderManager.Height)})
@@ -105,14 +105,23 @@ func (t TestApplication) TestUI() {
 				Children: []*yui.UIElement{
 					{
 						Name:     "inner-right-container-elem",
-						Flag:     yui.UI_GROW | yui.UI_LAYOUT_TOP_TO_BOTTOM,
+						Flag:     yui.UI_GROW | yui.UI_LAYOUT_TOP_TO_BOTTOM | yui.UI_ALIGN_CENTER,
 						BaseSize: y3d.Vec2{X: 40, Y: 40},
 						Color:    [4]uint8{245, 73, 39, 255},
 						Children: []*yui.UIElement{
 							{
 								Text:  "Hello world",
 								Font:  font,
-								Flag:  yui.UI_ALIGN_CENTER,
+								Color: [4]uint8{255, 255, 0, 255},
+							},
+							{
+								Text:  "This is a slighly longer text",
+								Font:  font,
+								Color: [4]uint8{255, 255, 0, 255},
+							},
+							{
+								Text:  "Yram!!",
+								Font:  font,
 								Color: [4]uint8{255, 255, 0, 255},
 							},
 						},

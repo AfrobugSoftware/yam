@@ -48,7 +48,7 @@ func NewFont(pointSize, ppi float32, filename string) *Font {
 	if err != nil {
 		panic(err)
 	}
-	for _, r := range " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890,./;'#][]" {
+	for _, r := range " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890,!./;'#][]" {
 		f.DrawRune(r)
 	}
 	b := &sfnt.Buffer{}
@@ -173,16 +173,17 @@ func (font *Font) DrawRune(t rune) error {
 	dst := image.NewAlpha(image.Rect(0, 0, w, h))
 	r.Draw(dst, dst.Bounds(), image.Opaque, image.Point{})
 
-	const asciiArt = ".++8"
-	buf := make([]byte, 0, h*(w+1))
-	for y := range h {
-		for x := range w {
-			a := dst.AlphaAt(x, y).A
-			buf = append(buf, asciiArt[a>>6])
-		}
-		buf = append(buf, '\n')
-	}
-	os.Stdout.Write(buf)
+	//used for debugging
+	// const asciiArt = ".++8"
+	// buf := make([]byte, 0, h*(w+1))
+	// for y := range h {
+	// 	for x := range w {
+	// 		a := dst.AlphaAt(x, y).A
+	// 		buf = append(buf, asciiArt[a>>6])
+	// 	}
+	// 	buf = append(buf, '\n')
+	// }
+	// os.Stdout.Write(buf)
 
 	if len(dst.Pix) > 0 {
 		gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)

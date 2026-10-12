@@ -53,7 +53,7 @@ void main() {
     vec2 texWidthHeight = positions[gl_VertexID] * TexCoordsWidthHeight[gl_InstanceID].zw;
     vec2 aTexCoord = baseTexCoords + texWidthHeight;
     
-    vs_out.TexCoords = vec2(aTexCoord.x, 1.0 - aTexCoord.y);
+    vs_out.TexCoords = vec2(aTexCoord.x, aTexCoord.y);
     vs_out.Color = Color[gl_InstanceID];
 
 	vs_out.Flag = Flag[gl_InstanceID];

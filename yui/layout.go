@@ -24,7 +24,7 @@ const (
 const eps = 0.01
 
 var MeasureText = func(s string, font *Font) y3d.Vec2 {
-	if font != nil {
+	if font == nil {
 		return y3d.Vec2{}
 	}
 	return y3d.Vec2{X: float32(utf8.RuneCountInString(s)) * float32(font.width), Y: float32(font.height)}
