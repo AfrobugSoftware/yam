@@ -45,6 +45,7 @@ func NewGame(title string, width, height int32) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
+	window.SetResizable(true)
 	gEngine = &Engine{}
 	gEngine.RenderManager = ycore.NewRenderManager(window, int(width), int(height))
 	gEngine.InputManager = ycore.NewInputManager(int(width), int(height))
@@ -62,6 +63,9 @@ func (g *Engine) SetApplication(app Application) {
 }
 
 func (g *Engine) Update(dt float64) {
+	if g.InputManager.IsResized {
+		g.RenderManager.Resize()
+	}
 	if g.App != nil {
 		g.App.Update(dt)
 	}

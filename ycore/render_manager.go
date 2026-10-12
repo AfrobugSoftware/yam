@@ -45,6 +45,7 @@ type RenderManager struct {
 	Window          *sdl.Window
 	ClearColor      y3d.Vec4
 	PixelDepth      uint8
+	PixelPerInch    float32
 	DoubleBuffer    bool
 	MinorVersion    int
 	MajorVersion    int
@@ -122,6 +123,11 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 	if err = gl.Init(); err != nil {
 		panic(err)
 	}
+	_, h, _, err := sdl.GetDisplayDPI(0)
+	if err != nil {
+		panic(err)
+	}
+	rm.PixelPerInch = h
 	gl.ClearColor(rm.ClearColor.X,
 		rm.ClearColor.Y,
 		rm.ClearColor.Z,
@@ -620,5 +626,23 @@ func (r *RenderManager) UpdateFollowCamera(dt float32) {
 			r.FollowCamera.Up,
 			r.FollowCamera.Dir,
 			r.FollowCamera.Position)
+	}
+}
+
+func (r *RenderManager) Resize() {
+	fbW, fbH := r.Window.GLGetDrawableSize()
+	r.InitStage(0, y3d.Rect{
+		X:      0,
+		Y:      0,
+		Height: int(fbH),
+		Width:  int(fbW),
+	},
+		float32(y3d.ToRadians(45)),
+	)
+	r.Width = int(fbW)
+	r.Height = int(fbH)
+	r.Prepare2D(float32(fbW), float32(fbH), 0.1, 1000.0)
+	if r.RootUI != nil {
+		r.RootUI.BaseSize = y3d.Vec2{X: float32(fbW), Y: float32(fbH)}
 	}
 }

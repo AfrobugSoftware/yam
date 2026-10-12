@@ -67,9 +67,11 @@ func (t *TestApplication) Startup(e *Engine) {
 }
 
 func (t TestApplication) TestUI() {
+	font := yui.NewFont(48, t.engine.RenderManager.PixelPerInch,
+		"assets/fonts/Mina-Regular.ttf")
 	root := yui.NewUIElement(y3d.Vec2{X: float32(t.engine.RenderManager.Width),
 		Y: float32(t.engine.RenderManager.Height)})
-	root.Color = [4]uint8{39, 245, 0, 255}
+	root.Color = [4]uint8{39, 245, 0, 0}
 	root.ChildGap = 20
 	root.Padding = y3d.Vec4{X: 10, Y: 10, Z: 10, W: 10}
 	root.Name = "root"
@@ -85,46 +87,47 @@ func (t TestApplication) TestUI() {
 		ChildGap: 40,
 		Flag:     yui.UI_GROW_Y | yui.UI_GROW_X | yui.UI_LAYOUT_LEFT_TO_RIGHT,
 		Padding:  y3d.Vec4{X: 10, Y: 10, Z: 10, W: 10},
-	}
-
-	font := yui.NewFont(8, 16, "assets/fonts/Mina-Regular.ttf")
-	text := &yui.UIElement{
-		Text:  "Hello world",
-		Font:  font,
-		Flag:  yui.UI_ALIGN_CENTER,
-		Color: [4]uint8{255, 255, 0, 255},
-	}
-	rightP.Add(text)
-	ad := &yui.UIElement{
-		Name:     "inner-right",
-		BaseSize: y3d.Vec2{X: 40, Y: 40},
-		Flag:     yui.UI_ALIGN_CENTER,
-		ChildGap: 12,
-		Color:    [4]uint8{255, 255, 0, 255},
-	}
-	ad2 := &yui.UIElement{
-		Name:     "inner-right-container",
-		BaseSize: y3d.Vec2{X: 40, Y: 40},
-		Flag:     yui.UI_LAYOUT_TOP_TO_BOTTOM | yui.UI_GROW,
-		Color:    [4]uint8{255, 255, 0, 255},
-		Padding:  y3d.Vec4{X: 10, Y: 10, Z: 10, W: 10},
-		ChildGap: 12,
 		Children: []*yui.UIElement{
 			{
-				Name:     "inner-right-container-elem",
-				Flag:     yui.UI_GROW,
+				Name:     "inner-right",
 				BaseSize: y3d.Vec2{X: 40, Y: 40},
-				Color:    [4]uint8{245, 73, 39, 255},
+				Flag:     yui.UI_ALIGN_CENTER,
+				ChildGap: 12,
+				Color:    [4]uint8{255, 255, 0, 0},
 			},
 			{
-				Name:     "inner-right-container-elem-2",
-				Flag:     yui.UI_GROW,
+				Name:     "inner-right-container",
 				BaseSize: y3d.Vec2{X: 40, Y: 40},
-				Color:    [4]uint8{242, 39, 245, 255},
+				Flag:     yui.UI_LAYOUT_TOP_TO_BOTTOM | yui.UI_GROW,
+				Color:    [4]uint8{255, 255, 0, 255},
+				Padding:  y3d.Vec4{X: 10, Y: 10, Z: 10, W: 10},
+				ChildGap: 12,
+				Children: []*yui.UIElement{
+					{
+						Name:     "inner-right-container-elem",
+						Flag:     yui.UI_GROW | yui.UI_LAYOUT_TOP_TO_BOTTOM,
+						BaseSize: y3d.Vec2{X: 40, Y: 40},
+						Color:    [4]uint8{245, 73, 39, 255},
+						Children: []*yui.UIElement{
+							{
+								Text:  "Hello world",
+								Font:  font,
+								Flag:  yui.UI_ALIGN_CENTER,
+								Color: [4]uint8{255, 255, 0, 255},
+							},
+						},
+					},
+					{
+						Name:     "inner-right-container-elem-2",
+						Flag:     yui.UI_GROW,
+						BaseSize: y3d.Vec2{X: 40, Y: 40},
+						Color:    [4]uint8{242, 39, 245, 255},
+					},
+				},
 			},
 		},
 	}
-	rightP.Add(ad, ad2)
+
 	root.Add(leftP, rightP)
 	t.engine.RenderManager.RootUI = root
 }

@@ -45,6 +45,7 @@ type InputManager struct {
 	MousePosition     y3d.Vec2
 	ShowCursor        int
 	IsRelative        bool
+	IsResized         bool
 	ScrollWheelPos    y3d.Vec3
 	ScrollWheelDir    uint32
 	MaxMouseSpeed     float32
@@ -175,7 +176,7 @@ func (im *InputManager) ProcessInput() bool {
 	im.ScrollWheelDir = 0
 	im.ScrollWheelPos = y3d.Vec3{}
 	im.MousePosition = y3d.Vec2{}
-
+	im.IsResized = false
 	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 		switch event.GetType() {
 		case sdl.QUIT:
@@ -193,6 +194,8 @@ func (im *InputManager) ProcessInput() bool {
 				Y: float32(w.Y),
 			}
 			im.ScrollWheelDir = w.Direction
+		case sdl.WINDOWEVENT_RESIZED:
+			im.IsResized = true
 		case sdl.TEXTINPUT:
 			c := event.(*sdl.TextInputEvent)
 			im.TextInput = c.GetText()

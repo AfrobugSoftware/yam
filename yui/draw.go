@@ -95,19 +95,19 @@ func DrawText(baseInstance int, ui *UIElement) int {
 				continue
 			}
 			arrayBuffer.SetQuad(count,
-				x+(char.Min.X),
-				y+(char.Min.Y),
-				float32(ui.Font.width)+(char.Max.X),
-				float32(ui.Font.height)+(char.Max.Y),
+				x,
+				y,
+				char.Size.X,
+				(char.Size.Y),
 				0,
 				0,
 				1, 1,
-				float32(ui.Color[0]/255),
-				float32(ui.Color[1]/255),
-				float32(ui.Color[2]/255),
-				float32(1.0), ui.RenderFlag|UI_TEXT)
+				float32(ui.Color[0])/255.0,
+				float32(ui.Color[1])/255.0,
+				float32(ui.Color[2])/255.0,
+				float32(char.Idx), ui.RenderFlag|UI_TEXT)
 			count++
-			x = x + char.Advance //*float32(ui.Font.ppem)
+			x = x + char.Advance + float32(ui.Font.Kern)
 		}
 		y += ui.Font.VerticalSpacing + float32(ui.Font.height)
 	}
@@ -116,6 +116,7 @@ func DrawText(baseInstance int, ui *UIElement) int {
 
 func Draw(root *UIElement, proj y3d.Mat4) {
 	flatten(root)
+	var font *Font
 	gl.UseProgram(arrayProgram)
 	gl.UniformMatrix4fv(1, 1, false, &proj[0])
 	err := arrayBuffer.OpenArray()
@@ -126,6 +127,7 @@ func Draw(root *UIElement, proj y3d.Mat4) {
 	for _, ui := range flat {
 		if len(ui.Lines) > 0 {
 			i = DrawText(i, ui)
+			font = ui.Font
 		} else {
 			arrayBuffer.SetQuad(i,
 				ui.Position.X,
@@ -135,14 +137,14 @@ func Draw(root *UIElement, proj y3d.Mat4) {
 				ui.TextureBase[0],
 				ui.TextureBase[1],
 				1, 1,
-				float32(ui.Color[0]/255),
-				float32(ui.Color[1]/255),
-				float32(ui.Color[2]/255),
-				float32(ui.Color[3]/255), ui.RenderFlag)
+				float32(ui.Color[0])/255.0,
+				float32(ui.Color[1])/255.0,
+				float32(ui.Color[2])/255.0,
+				float32(ui.Color[3])/255.0, ui.RenderFlag)
 			i++
 		}
 	}
 	arrayBuffer.CloseArray()
-	arrayBuffer.Draw(i)
+	arrayBuffer.Draw(i, font)
 	gl.UseProgram(0)
 }

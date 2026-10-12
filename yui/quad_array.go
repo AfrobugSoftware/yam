@@ -38,6 +38,7 @@ out Frag {
     vec4 Color;
     vec2 TexCoords;
 	flat uint Flag;
+	flat float Idx;
 }vs_out;
 
 layout(location = 1) uniform mat4 proj;
@@ -56,23 +57,30 @@ void main() {
     vs_out.Color = Color[gl_InstanceID];
 
 	vs_out.Flag = Flag[gl_InstanceID];
+	vs_out.Idx = Color[gl_InstanceID].a;
 }`
 	fragShader = `#version 430 core 
 
 layout (location = 0) out vec4 FragColor;
 
 uniform sampler2D tex;
+layout (binding = 1) uniform sampler2DArray fontTex;
 in Frag {
     vec4 Color;
     vec2 TexCoords;
 	flat uint Flag;
+	flat float Idx;
 }fs_in;
 
 void main () {
     // FragColor = texture2D(tex, fs_in.TexCoords.xy);
     // if (FragColor == vec4(0.0)) {
 	// }
-	FragColor = fs_in.Color;
+	if((fs_in.Flag & (1 << 18)) != 0) {
+		FragColor = vec4(fs_in.Color.rgb, texture(fontTex, vec3(fs_in.TexCoords.xy, fs_in.Idx)).r);
+	}else{
+		FragColor = fs_in.Color;
+	}
 }
 `
 )
@@ -105,11 +113,14 @@ func CreateQuadArray(shader uint32) *QuadArray {
 	return q
 }
 
-func (q *QuadArray) Draw(numQuads int) {
+func (q *QuadArray) Draw(numQuads int, font *Font) {
 	if numQuads <= 0 {
 		return
 	} else if numQuads >= MAX_QUADS {
 		numQuads = MAX_QUADS - 1
+	}
+	if font != nil {
+		gl.BindTextureUnit(1, font.TextureID)
 	}
 	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, BUFFER_BINDING, q.ssbo)
 	gl.Disable(gl.DEPTH_TEST)
@@ -137,13 +148,14 @@ func (q *QuadArray) OpenArray() error {
 		int(q.blockSize),
 		gl.MAP_WRITE_BIT|gl.MAP_INVALIDATE_RANGE_BIT)
 	if q.blockPtr == nil {
-		return errors.New("cannot map ubo")
+		return errors.New("cannot map ssbo")
 	}
 	return nil
 }
 
 func (q *QuadArray) CloseArray() {
 	gl.UnmapNamedBuffer(q.ssbo)
+	q.blockPtr = nil
 }
 
 func (q *QuadArray) SetQuad(idx int, x, y,

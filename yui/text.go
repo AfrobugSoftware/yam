@@ -17,6 +17,8 @@ type Font struct {
 	TextureID       uint32
 	VerticalSpacing float32
 	buffer          []byte
+	pointSize       float32
+	ppi             float32
 	font            *sfnt.Font
 	width           int
 	height          int
@@ -27,15 +29,14 @@ type Font struct {
 
 type Character struct {
 	Advance float32
-	Min     y3d.Vec2
-	Max     y3d.Vec2
+	Size    y3d.Vec2
 	Idx     uint16
 }
 
-func NewFont(width, height int, filename string) *Font {
+func NewFont(pointSize, ppi float32, filename string) *Font {
 	f := &Font{
-		width:  width,
-		height: height,
+		pointSize: pointSize,
+		ppi:       ppi,
 	}
 
 	gl.CreateTextures(gl.TEXTURE_2D_ARRAY, 1, &f.TextureID)
@@ -70,17 +71,34 @@ func (font *Font) LoadFont(filename string) error {
 		return err
 	}
 	font.font = f
-	font.ppem = fixed.Int26_6(f.UnitsPerEm())
+	font.ppem = (fixed.Int26_6(font.pointSize * font.ppi / 72 * 64)) //fixed.Int26_6(f.UnitsPerEm())
 	font.gmap = make(map[rune]Character)
 	b := &sfnt.Buffer{}
 	m, err := f.Metrics(b, font.ppem, 0)
 	if err != nil {
 		return err
 	}
+	font.height = m.Descent.Floor() + m.Ascent.Floor()
 	font.VerticalSpacing = float32(m.Height.Ceil())
+	gi, err := f.GlyphIndex(b, 'X')
+	if err != nil {
+		return err
+	}
+	ink, adv, err := f.GlyphBounds(b, gi, font.ppem, 0)
+	if err != nil {
+		return err
+	}
+	minX := min(0, ink.Min.X.Floor())
+	maxX := max(adv.Ceil(), ink.Max.X.Ceil())
+	minY := min(-m.Ascent.Ceil(), ink.Min.Y.Floor())
+	maxY := max(m.Descent.Ceil(), ink.Max.Y.Ceil())
+
+	font.height = maxY - minY
+	font.width = maxX - minX
+	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
 	gl.TextureStorage3D(font.TextureID,
 		1,
-		gl.RED,
+		gl.R8,
 		int32(font.width), int32(font.height),
 		int32(font.font.NumGlyphs()))
 	return nil
@@ -104,8 +122,6 @@ func (font *Font) LoadGlyph(tex rune) (sfnt.Segments, uint16, error) {
 
 // 8-bit gray scale image
 func (font *Font) DrawRune(t rune) error {
-	r := vector.NewRasterizer(font.width, font.height)
-	r.DrawOp = draw.Src
 	segments, gIdx, err := font.LoadGlyph(t)
 	if err != nil {
 		return err
@@ -116,7 +132,14 @@ func (font *Font) DrawRune(t rune) error {
 	if err != nil {
 		return err
 	}
+	minX := bounds.Min.X.Floor()
+	w, h := font.width, font.height
 	var originX, originY float32
+	originX = float32(-minX)
+	originY = float32(-bounds.Min.Y.Floor())
+
+	r := vector.NewRasterizer(w, h)
+	r.DrawOp = draw.Src
 	for _, seg := range segments {
 		switch seg.Op {
 		case sfnt.SegmentOpMoveTo:
@@ -147,26 +170,35 @@ func (font *Font) DrawRune(t rune) error {
 			)
 		}
 	}
-	dst := image.NewAlpha(image.Rect(0, 0, font.width, font.height))
+	dst := image.NewAlpha(image.Rect(0, 0, w, h))
 	r.Draw(dst, dst.Bounds(), image.Opaque, image.Point{})
-	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
-	gl.TextureSubImage3D(font.TextureID, 0, 0, 0,
-		int32(gIdx),
-		int32(font.width),
-		int32(font.height), 1, gl.RED, gl.UNSIGNED_BYTE,
-		gl.Ptr(dst.Pix))
-	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 4)
 
+	const asciiArt = ".++8"
+	buf := make([]byte, 0, h*(w+1))
+	for y := range h {
+		for x := range w {
+			a := dst.AlphaAt(x, y).A
+			buf = append(buf, asciiArt[a>>6])
+		}
+		buf = append(buf, '\n')
+	}
+	os.Stdout.Write(buf)
+
+	if len(dst.Pix) > 0 {
+		gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
+		gl.TextureSubImage3D(font.TextureID, 0, 0, 0,
+			int32(gIdx),
+			int32(w),
+			int32(h), 1, gl.RED, gl.UNSIGNED_BYTE,
+			gl.Ptr(dst.Pix))
+		gl.PixelStorei(gl.UNPACK_ALIGNMENT, 4)
+	}
 	font.gmap[t] = Character{
 		Idx:     gIdx,
-		Advance: float32(advance) / 64,
-		Min: y3d.Vec2{
-			X: (float32(bounds.Min.X) / 64),
-			Y: (float32(bounds.Min.Y) / 64),
-		},
-		Max: y3d.Vec2{
-			X: (float32(bounds.Max.X) / 64),
-			Y: (float32(bounds.Max.Y) / 64),
+		Advance: float32(advance.Round()),
+		Size: y3d.Vec2{
+			X: float32(w),
+			Y: float32(h),
 		},
 	}
 	return nil
