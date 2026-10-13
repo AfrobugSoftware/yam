@@ -35,7 +35,7 @@ func (t *TestApplication) Startup(e *Engine) {
 	}
 
 	skin := t.engine.RenderManager.SkinManager.AddSkin(ygl.IdentityMaterial)
-	s, box := t.engine.RenderManager.VertextManager.GetScalingAndBox(v, i, 0.5, ycore.VP)
+	s, box := t.engine.RenderManager.VertextManager.GetScalingAndBox(v, i, 0.5, ycore.VPNTC)
 	sp := ycore.NewGeometry(
 		t.engine.RenderManager,
 		nil, box,

@@ -18,7 +18,6 @@ const (
 
 const (
 	INVALID_VERTEX_FORMAT = "invalid"
-	VP                    = "pos"
 	VPNT                  = "pos.normal.tex"
 	VPNTC                 = "pos.normal.tex.color"
 	VPNTTB                = "pos.normal.tex.tangent.bitangent"
@@ -61,7 +60,6 @@ func NewVertexCacheManager(
 		MaxDrawCommands: maxDrawCommands,
 		MaxInstances:    maxInstances,
 	}
-	vm.Strides[VP] = 12
 	vm.Strides[VPNT] = 32
 	vm.Strides[VPNTC] = 36
 	vm.Strides[VPNTT] = 40
@@ -69,13 +67,6 @@ func NewVertexCacheManager(
 	vm.Strides[VPNTTB] = 56
 	vm.Strides[VPNTTBWJ] = 80
 
-	vm.Formats[VP] = []VertexFormat{
-		{
-			ComponentSize:  3,
-			Type:           gl.FLOAT,
-			RelativeOffset: 0,
-		},
-	}
 	vm.Formats[VPNT] = []VertexFormat{
 		{
 			ComponentSize:  3,
@@ -228,30 +219,13 @@ func NewVertexCacheManager(
 			RelativeOffset: uint32(unsafe.Sizeof(uint32(0)) * 17),
 		},
 	}
-	vm.Caches[VP] = [MAX_CACHES]*VertexCache{}
 	vm.Caches[VPNT] = [MAX_CACHES]*VertexCache{}
 	vm.Caches[VPNTT] = [MAX_CACHES]*VertexCache{}
 	vm.Caches[VPNTTB] = [MAX_CACHES]*VertexCache{}
 	vm.Caches[VPNTWJ] = [MAX_CACHES]*VertexCache{}
 	vm.Caches[VPNTTBWJ] = [MAX_CACHES]*VertexCache{}
 	for i := range MAX_CACHES {
-		c := vm.Caches[VP]
-		c[i] = NewVertexCache(
-			renderManager.SkinManager,
-			vm,
-			maxVerts,
-			maxIndices,
-			maxDrawCommands,
-			maxInstances,
-			vm.Strides[VP],
-			-1,
-			vm.CacheId,
-			vm.Formats[VP],
-		)
-		vm.Caches[VP] = c
-		vm.CacheId++
-
-		c = vm.Caches[VPNTT]
+		c := vm.Caches[VPNTT]
 		c[i] = NewVertexCache(
 			renderManager.SkinManager,
 			vm,
