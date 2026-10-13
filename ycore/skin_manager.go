@@ -11,6 +11,7 @@ import (
 	"math/bits"
 	"strings"
 	"time"
+	"unsafe"
 	"yam/y3d"
 	"yam/ygl"
 
@@ -40,7 +41,7 @@ type TextureData struct {
 type Skin struct {
 	Program  uint32
 	Material int
-	Texture  [8]int
+	Texture  []int
 }
 
 type SkinManager struct {
@@ -48,14 +49,25 @@ type SkinManager struct {
 	Skins                     map[int]Skin
 	Textures                  map[int]TextureData
 	Materials                 map[int]ygl.Material
+	ubo                       uint32
+	maxTextureUnit            int32
 }
 
 func NewSkinManager() *SkinManager {
-	return &SkinManager{
-		Skins:     make(map[int]Skin),
-		Textures:  make(map[int]TextureData),
-		Materials: make(map[int]ygl.Material),
+	var mubo uint32
+	var imageUnits int32
+	gl.CreateBuffers(1, &mubo)
+	gl.NamedBufferStorage(mubo, int(unsafe.Sizeof([16]float32{})), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
+	gl.GetIntegerv(gl.MAX_TEXTURE_IMAGE_UNITS, &imageUnits)
+	s := &SkinManager{
+		Skins:          make(map[int]Skin),
+		Textures:       make(map[int]TextureData),
+		Materials:      make(map[int]ygl.Material),
+		ubo:            mubo,
+		maxTextureUnit: imageUnits,
 	}
+
+	return s
 }
 
 func mipLevels(minFilter, w, h int32) int32 {
@@ -73,6 +85,7 @@ func generateRandomId() int {
 
 func (s *SkinManager) AddSkin(mat ygl.Material) int {
 	skin := Skin{}
+	skin.Texture = make([]int, s.maxTextureUnit)
 	for i := range skin.Texture {
 		skin.Texture[i] = EmptyTexture
 	}
@@ -110,7 +123,7 @@ func (s *SkinManager) AddTexture(skin int, filename string,
 	if _, exists := s.Skins[skin]; !exists {
 		return errors.New("invalid skin id")
 	}
-	if s.Skins[skin].Texture[7] != EmptyTexture {
+	if s.Skins[skin].Texture[s.maxTextureUnit-1] != EmptyTexture {
 		return errors.New("skin texture slots are full")
 	}
 	id, found := s.FindTextureByFile(filename)
@@ -179,6 +192,55 @@ func (s *SkinManager) AddTexture(skin int, filename string,
 	s.Skins[skin] = sk
 	return nil
 }
+func (s *SkinManager) AddTextureHandle(skin int, texId uint32, size uint32) error {
+	td := TextureData{
+		Handle:       texId,
+		Size:         size,
+		LastAccessed: time.Now(),
+		FileOnDisc:   "",
+	}
+	id := generateRandomId()
+	s.Textures[id] = td
+	sk, ok := s.Skins[skin]
+	if !ok {
+		return errors.New("no skin in manager")
+	}
+	for slot := range sk.Texture {
+		if sk.Texture[slot] == EmptyTexture {
+			sk.Texture[slot] = id
+			break
+		}
+	}
+	s.Skins[skin] = sk
+	return nil
+}
+
+func (s *SkinManager) BindSkin(skin int) error {
+	sk, ok := s.Skins[skin]
+	if !ok {
+		return errors.New("no such skin in manager")
+	}
+	material, ok := s.Materials[sk.Material]
+	if !ok {
+		return errors.New("no material attach to skin, invalid skin")
+	}
+	m := unsafe.Slice((*float32)(unsafe.Pointer(&material)), 16)
+	gl.NamedBufferSubData(s.ubo, 0, 64, gl.Ptr(m))
+	for i, t := range sk.Texture {
+		if t == EmptyTexture {
+			break
+		}
+		tex, ok := s.Textures[t]
+		if ok {
+			gl.BindTextureUnit(uint32(i), tex.Handle)
+		}
+	}
+	gl.BindBufferBase(gl.UNIFORM_BUFFER, MATERIAL_UBO_BINDING, s.ubo)
+	if sk.Program != 0 {
+		gl.UseProgram(sk.Program)
+	}
+	return nil
+}
 
 func (s *SkinManager) AddSpriteSheet(skin int, filename string, spriteHeight, spriteWidth int,
 	minFilter, maxFilter int32,
@@ -189,7 +251,7 @@ func (s *SkinManager) AddSpriteSheet(skin int, filename string, spriteHeight, sp
 	if _, exists := s.Skins[skin]; !exists {
 		return errors.New("invalid skin id")
 	}
-	if s.Skins[skin].Texture[7] != EmptyTexture {
+	if s.Skins[skin].Texture[s.maxTextureUnit-1] != EmptyTexture {
 		return errors.New("skin texture slots are full")
 	}
 	id, found := s.FindTextureByFile(filename)
@@ -313,10 +375,10 @@ func (s *SkinManager) GetSkin(skin int) (Skin, error) {
 }
 
 func (s *SkinManager) RemoveTexture(skin int, slot int) error {
-	if _, exists := s.Skins[skin]; !exists {
-		return errors.New("invalid skin id")
+	sk, ok := s.Skins[skin]
+	if !ok {
+		return errors.New("no such skin in manager")
 	}
-	sk := s.Skins[skin]
 	if sk.Texture[slot] == EmptyTexture {
 		return errors.New("texture slot is empty")
 	}
@@ -324,7 +386,24 @@ func (s *SkinManager) RemoveTexture(skin int, slot int) error {
 	gl.DeleteTextures(1, &handle)
 	s.TotalTextureSizeInMemeory -= uint(s.Textures[sk.Texture[slot]].Size)
 	delete(s.Textures, sk.Texture[slot])
-	sk.Texture[slot] = EmptyTexture
+
+	//find first empty
+	empty := -1
+	for i := range sk.Texture {
+		if sk.Texture[i] == EmptyTexture {
+			empty = i
+			break
+		}
+	}
+	//found empty slot
+	if empty != -1 {
+		sk.Texture[slot] = sk.Texture[empty-1]
+		sk.Texture[empty-1] = EmptyTexture
+	} else {
+		//no empty slots
+		sk.Texture[slot] = sk.Texture[s.maxTextureUnit-1]
+		sk.Texture[s.maxTextureUnit-1] = EmptyTexture
+	}
 	s.Skins[skin] = sk
 	return nil
 }
@@ -407,6 +486,7 @@ func (s *SkinManager) Destroy() {
 	for _, sk := range s.Skins {
 		gl.DeleteProgram(sk.Program)
 	}
+	gl.DeleteBuffers(1, &s.ubo)
 	clear(s.Textures)
 	clear(s.Skins)
 }

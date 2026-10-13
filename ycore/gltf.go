@@ -269,7 +269,7 @@ func ProcessNode(p *Node, node *gltf.Node, doc *gltf.Document, r *RenderManager,
 		}
 		tempVertexType := GetVertexFormat(format, r)
 		if tempVertexType == INVALID_VERTEX_FORMAT {
-			r.VertextManager.CreateVertexCache(vertexType, NO_SKINID, vertexSize, 0, format)
+			r.VertextManager.CreateVertexCache(vertexType, NO_SKINID, vertexSize, format)
 		} else {
 			vertexType = tempVertexType
 		}

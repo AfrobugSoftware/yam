@@ -4,18 +4,16 @@ import "yam/y3d"
 
 var (
 	IdentityMaterial = Material{
-		Diffuse:   y3d.Vec3{X: 1, Y: 1, Z: 1},
-		Ambient:   y3d.Vec3{X: 1, Y: 1, Z: 1},
-		Specular:  y3d.Vec3{X: 1, Y: 1, Z: 1},
-		Emissive:  y3d.Vec3{X: 1, Y: 1, Z: 1},
-		Shininess: 1.0,
+		Diffuse:  y3d.Vec4{X: 1, Y: 1, Z: 1, W: 0},
+		Ambient:  y3d.Vec4{X: 1, Y: 1, Z: 1, W: 0},
+		Specular: y3d.Vec4{X: 1, Y: 1, Z: 1, W: 0},
+		Emissive: y3d.Vec4{X: 1, Y: 1, Z: 1, W: 1},
 	}
 )
 
 type Material struct {
-	Diffuse   y3d.Vec3
-	Ambient   y3d.Vec3
-	Specular  y3d.Vec3
-	Emissive  y3d.Vec3
-	Shininess float32
+	Diffuse  y3d.Vec4
+	Ambient  y3d.Vec4
+	Specular y3d.Vec4
+	Emissive y3d.Vec4
 }

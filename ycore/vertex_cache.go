@@ -34,7 +34,6 @@ type VertexCache struct {
 	DrawCommandBo   uint32
 	DrawIndexVbo    uint32
 	WorldMatrixSSBO uint32
-	MaterialUBO     uint32
 	MaxVertices     int32
 	MaxIndices      int32
 	MaxDrawCommands int32
@@ -45,7 +44,6 @@ type VertexCache struct {
 	NumOfInstances  int32
 	Stride          int32
 	SkinId          int
-	Program         uint32
 	Id              int
 	Format          []VertexFormat
 	SkinManager     *SkinManager
@@ -58,11 +56,10 @@ func NewVertexCache(
 	maxVertex, maxIndex, maxDraws, maxInstances int32,
 	stride int32,
 	skinId int,
-	program uint32,
 	id int,
 	format []VertexFormat,
 ) *VertexCache {
-	var vao, vvbo, ivbo, dcbo, divbo, mssbo, mubo uint32
+	var vao, vvbo, ivbo, dcbo, divbo, mssbo uint32
 	gl.CreateVertexArrays(1, &vao)
 	gl.BindVertexArray(vao)
 
@@ -99,9 +96,6 @@ func NewVertexCache(
 	gl.CreateBuffers(1, &mssbo)
 	gl.NamedBufferStorage(mssbo, int(unsafe.Sizeof(y3d.Mat4{})*uintptr(maxInstances)), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
 
-	gl.CreateBuffers(1, &mubo)
-	gl.NamedBufferStorage(mubo, int(unsafe.Sizeof([16]float32{})), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
-
 	return &VertexCache{
 		Vao:             vao,
 		VertexVbo:       vvbo,
@@ -109,7 +103,6 @@ func NewVertexCache(
 		DrawCommandBo:   dcbo,
 		DrawIndexVbo:    divbo,
 		WorldMatrixSSBO: mssbo,
-		MaterialUBO:     mubo,
 		MaxVertices:     maxVertex,
 		MaxIndices:      maxIndex,
 		MaxDrawCommands: maxDraws,
@@ -117,7 +110,6 @@ func NewVertexCache(
 		Stride:          stride,
 		Id:              id,
 		SkinId:          skinId,
-		Program:         program,
 		SkinManager:     skinmanager,
 		VManager:        vertexManger,
 		Format:          format,
@@ -249,62 +241,15 @@ func (v *VertexCache) Render() {
 	if v.IsEmpty() {
 		return
 	}
-	if v.Program != 0 {
-		gl.UseProgram(v.Program)
-	}
 	if v.NumDrawCommands != 0 {
 		//setup skin
 		if v.VManager.ActiveSkin != v.SkinId && v.SkinId != -1 {
-			skin, err := v.VManager.RenderManager.SkinManager.GetSkin(v.SkinId)
-			if err != nil {
-				return
-			}
-			material, err := v.VManager.RenderManager.SkinManager.GetMaterial(skin.Material)
-			if err != nil {
-				return
-			}
-			mPtr := gl.MapNamedBufferRange(
-				v.MaterialUBO,
-				0,
-				4*16,
-				gl.MAP_WRITE_BIT|gl.MAP_INVALIDATE_BUFFER_BIT)
-			if mPtr == nil {
-				panic("cannot set material for vertex cache")
-			}
-			m := unsafe.Slice((*float32)(mPtr), 16)
-			m[0] = material.Diffuse.X
-			m[1] = material.Diffuse.Y
-			m[2] = material.Diffuse.Z
-			m[3] = 0.0
-			m[4] = material.Ambient.X
-			m[5] = material.Ambient.Y
-			m[6] = material.Ambient.Z
-			m[7] = 0.0
-			m[8] = material.Specular.X
-			m[9] = material.Specular.Y
-			m[10] = material.Specular.Z
-			m[11] = 0.0
-			m[12] = material.Emissive.X
-			m[13] = material.Emissive.Y
-			m[14] = material.Emissive.Z
-			m[15] = material.Shininess
-			gl.UnmapNamedBuffer(v.MaterialUBO)
-
-			for i, t := range skin.Texture {
-				if t == EmptyTexture {
-					break
-				}
-				tex, ok := v.VManager.RenderManager.SkinManager.Textures[t]
-				if ok {
-					gl.BindTextureUnit(uint32(i), tex.Handle)
-				}
-			}
+			v.VManager.RenderManager.SkinManager.BindSkin(v.SkinId)
 			v.VManager.ActiveSkin = v.SkinId
 		}
 		//how to handle render states ???
 		gl.BindVertexArray(v.Vao)
 		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, WORLD_MATRIX_BINDING, v.WorldMatrixSSBO)
-		gl.BindBufferBase(gl.UNIFORM_BUFFER, MATERIAL_UBO_BINDING, v.MaterialUBO)
 		gl.BindBuffer(gl.DRAW_INDIRECT_BUFFER, v.DrawCommandBo)
 		switch v.VManager.RenderManager.DrawMode {
 		case gl.TRIANGLES, gl.LINES, gl.LINE_STRIP:
@@ -357,21 +302,12 @@ func (v *VertexCache) SetSkin(skin int) {
 	v.SkinId = skin
 }
 
-func (v *VertexCache) SetProgram(program uint32) {
-	if !v.IsEmpty() {
-		v.Render()
-		v.Reset()
-	}
-	v.Program = program
-}
-
 func (v *VertexCache) Destroy() {
 	gl.DeleteBuffers(1, &v.IndexVbo)
 	gl.DeleteBuffers(1, &v.VertexVbo)
 	gl.DeleteBuffers(1, &v.DrawCommandBo)
 	gl.DeleteBuffers(1, &v.DrawIndexVbo)
 	gl.DeleteBuffers(1, &v.WorldMatrixSSBO)
-	gl.DeleteBuffers(1, &v.MaterialUBO)
 	gl.DeleteVertexArrays(1, &v.Vao)
 }
 
@@ -383,7 +319,6 @@ func (v *VertexCache) String() string {
 	fmt.Fprintf(&b, "Index buffer : %d\n", v.IndexVbo)
 	fmt.Fprintf(&b, "Draw command buffer: %d\n", v.DrawCommandBo)
 	fmt.Fprintf(&b, "World matrix ssbo: %d\n", v.WorldMatrixSSBO)
-	fmt.Fprintf(&b, "Material UBO: %d\n", v.MaterialUBO)
 	fmt.Fprintf(&b, "Max vertices: %d\n", v.MaxVertices)
 	fmt.Fprintf(&b, "Max Indices: %d\n", v.MaxIndices)
 	fmt.Fprintf(&b, "Max Draw commands: %d\n", v.MaxDrawCommands)

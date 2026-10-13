@@ -245,7 +245,6 @@ func NewVertexCacheManager(
 			maxInstances,
 			vm.Strides[VP],
 			-1,
-			0,
 			vm.CacheId,
 			vm.Formats[VP],
 		)
@@ -262,7 +261,6 @@ func NewVertexCacheManager(
 			maxInstances,
 			vm.Strides[VPNTT],
 			-1,
-			0,
 			vm.CacheId,
 			vm.Formats[VPNTT],
 		)
@@ -279,7 +277,6 @@ func NewVertexCacheManager(
 			maxInstances,
 			vm.Strides[VPNT],
 			-1,
-			0,
 			vm.CacheId,
 			vm.Formats[VPNT],
 		)
@@ -296,7 +293,6 @@ func NewVertexCacheManager(
 			maxInstances,
 			vm.Strides[VPNTC],
 			-1,
-			0,
 			vm.CacheId,
 			vm.Formats[VPNTC],
 		)
@@ -313,7 +309,6 @@ func NewVertexCacheManager(
 			maxInstances,
 			vm.Strides[VPNTWJ],
 			-1,
-			0,
 			vm.CacheId,
 			vm.Formats[VPNTWJ],
 		)
@@ -330,7 +325,6 @@ func NewVertexCacheManager(
 			maxInstances,
 			vm.Strides[VPNTTBWJ],
 			-1,
-			0,
 			vm.CacheId,
 			vm.Formats[VPNTTBWJ],
 		)
@@ -347,7 +341,6 @@ func NewVertexCacheManager(
 			maxInstances,
 			vm.Strides[VPNTTB],
 			-1,
-			0,
 			vm.CacheId,
 			vm.Formats[VPNTTB],
 		)
@@ -360,7 +353,7 @@ func (vm *VertexCacheManager) AddVertexFormat(vt string, stride int, format []Ve
 
 }
 
-func (vm *VertexCacheManager) CreateVertexCache(name string, skinId, stride int, program uint32,
+func (vm *VertexCacheManager) CreateVertexCache(name string, skinId, stride int,
 	format []VertexFormat) {
 	c := [MAX_CACHES]*VertexCache{}
 	for i := range MAX_CACHES {
@@ -373,7 +366,6 @@ func (vm *VertexCacheManager) CreateVertexCache(name string, skinId, stride int,
 			vm.MaxInstances,
 			int32(stride),
 			skinId,
-			program,
 			vm.CacheId,
 			format,
 		)

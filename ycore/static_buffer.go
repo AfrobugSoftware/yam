@@ -125,51 +125,7 @@ func NewStaticBuffer(
 
 func (s *StaticBuffer) Render(world []y3d.Mat4) {
 	if s.VManager.ActiveSkin != s.SkinId && s.SkinId != -1 {
-		skin, err := s.VManager.RenderManager.SkinManager.GetSkin(s.SkinId)
-		if err != nil {
-			return
-		}
-		material, err := s.VManager.RenderManager.SkinManager.GetMaterial(skin.Material)
-		if err != nil {
-			return
-		}
-		mPtr := gl.MapNamedBufferRange(
-			s.MaterialUBO,
-			0,
-			int(unsafe.Sizeof([16]float32{})),
-			gl.MAP_WRITE_BIT|gl.MAP_INVALIDATE_BUFFER_BIT)
-		if mPtr == nil {
-			CheckError()
-			panic("cannot set material for static buffer")
-		}
-		m := unsafe.Slice((*float32)(mPtr), 16)
-		m[0] = material.Diffuse.X
-		m[1] = material.Diffuse.Y
-		m[2] = material.Diffuse.Z
-		m[3] = 0.0
-		m[4] = material.Ambient.X
-		m[5] = material.Ambient.Y
-		m[6] = material.Ambient.Z
-		m[7] = 0.0
-		m[8] = material.Specular.X
-		m[9] = material.Specular.Y
-		m[10] = material.Specular.Z
-		m[11] = 0.0
-		m[12] = material.Emissive.X
-		m[13] = material.Emissive.Y
-		m[14] = material.Emissive.Z
-		m[15] = material.Shininess
-		gl.UnmapNamedBuffer(s.MaterialUBO)
-
-		for i, t := range skin.Texture {
-			if t == EmptyTexture {
-				break
-			}
-			tex, ok := s.VManager.RenderManager.SkinManager.Textures[t]
-			if ok {
-				gl.BindTextureUnit(uint32(i), tex.Handle)
-			}
-		}
+		s.VManager.RenderManager.SkinManager.BindSkin(s.SkinId)
 		s.VManager.ActiveSkin = s.SkinId
 	}
 	ptr := gl.MapNamedBufferRange(
