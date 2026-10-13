@@ -56,7 +56,7 @@ func NewFont(pointSize, ppi float32, filename string) *Font {
 	if err != nil {
 		panic(err)
 	}
-	f.Kern = float32(k) / 64
+	f.Kern = float32(k.Ceil())
 	return f
 }
 
@@ -132,11 +132,11 @@ func (font *Font) DrawRune(t rune) error {
 	if err != nil {
 		return err
 	}
-	minX := bounds.Min.X.Floor()
+	minX, minY := bounds.Min.X.Floor(), bounds.Min.Y.Floor()
 	w, h := font.width, font.height
 	var originX, originY float32
 	originX = float32(-minX)
-	originY = float32(-bounds.Min.Y.Floor())
+	originY = float32(-minY)
 
 	r := vector.NewRasterizer(w, h)
 	r.DrawOp = draw.Src

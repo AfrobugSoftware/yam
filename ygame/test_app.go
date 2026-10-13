@@ -108,6 +108,7 @@ func (t TestApplication) TestUI() {
 						Flag:     yui.UI_GROW | yui.UI_LAYOUT_TOP_TO_BOTTOM | yui.UI_ALIGN_CENTER,
 						BaseSize: y3d.Vec2{X: 40, Y: 40},
 						Color:    [4]uint8{245, 73, 39, 255},
+						Radius:   25.0,
 						Children: []*yui.UIElement{
 							{
 								Text:  "Hello world",

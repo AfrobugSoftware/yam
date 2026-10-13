@@ -28,17 +28,21 @@ const vec2 positions[6] = vec2[6](
 
 
 layout (std430, binding = 15) buffer QuadInfo {
-    vec4 BasePosWidthHeight[MAX_QUADS];
-    vec4 TexCoordsWidthHeight[MAX_QUADS];
-    vec4 Color[MAX_QUADS];
-	uint Flag[MAX_QUADS];
+    vec4  BasePosWidthHeight[MAX_QUADS];
+    vec4  TexCoordsWidthHeight[MAX_QUADS];
+    vec4  Color[MAX_QUADS];
+	float Radius[MAX_QUADS];
+	uint  Flag[MAX_QUADS];
 };
 
 out Frag {
     vec4 Color;
+	vec2 Pos;
     vec2 TexCoords;
+    flat vec2 Extents;
 	flat uint Flag;
 	flat float Idx;
+	flat float Radius;
 }vs_out;
 
 layout(location = 1) uniform mat4 proj;
@@ -55,9 +59,12 @@ void main() {
     
     vs_out.TexCoords = vec2(aTexCoord.x, aTexCoord.y);
     vs_out.Color = Color[gl_InstanceID];
-
 	vs_out.Flag = Flag[gl_InstanceID];
 	vs_out.Idx = Color[gl_InstanceID].a;
+	vs_out.Radius = Radius[gl_InstanceID];
+	vs_out.Pos = positions[gl_VertexID];
+	vs_out.Extents = BasePosWidthHeight[gl_InstanceID].zw;
+
 }`
 	fragShader = `#version 430 core 
 
@@ -67,19 +74,51 @@ uniform sampler2D tex;
 layout (binding = 1) uniform sampler2DArray fontTex;
 in Frag {
     vec4 Color;
+	vec2 Pos;
     vec2 TexCoords;
+	flat vec2 Extents;
 	flat uint Flag;
 	flat float Idx;
+	flat float Radius;
 }fs_in;
 
+
+bool InConner(vec2 point, float radius, vec2 dim, out vec2 cen) {
+	radius = min(min(radius, dim.x/2),dim.y);
+	if(point.x < radius) {
+		cen.x = radius;
+	}else if (point.x > dim.x-radius) {
+		cen.x = dim.x-radius;
+	}else{
+		return false;
+	}
+	if(point.y < radius){
+		cen.y = radius;
+	}else if (point.y > dim.y - radius){
+		cen.y = dim.y - radius;
+	}else{
+		return false;
+	}
+	return true;
+}
+
 void main () {
-    // FragColor = texture2D(tex, fs_in.TexCoords.xy);
-    // if (FragColor == vec4(0.0)) {
-	// }
 	if((fs_in.Flag & (1 << 18)) != 0) {
 		FragColor = vec4(fs_in.Color.rgb, texture(fontTex, vec3(fs_in.TexCoords.xy, fs_in.Idx)).r);
 	}else{
-		FragColor = fs_in.Color;
+		float u_radius = fs_in.Radius;
+		vec2 u_dimensions = fs_in.Extents;
+		vec2 coords = fs_in.Pos * (fs_in.Extents);
+		vec2 cen;
+		if (InConner(coords, u_radius, u_dimensions, cen)) {
+			if(length(coords - cen) <= u_radius) {
+				FragColor = fs_in.Color;	
+			}else {
+				discard;
+			}
+		}else{
+			FragColor = fs_in.Color;	
+		}
 	}
 }
 `
@@ -93,6 +132,7 @@ type QuadArray struct {
 	texCoordsWidthHeightOffset int32
 	colorOffset                int32
 	flagOffset                 int32
+	radiusOffset               int32
 	blockPtr                   unsafe.Pointer
 }
 
@@ -106,8 +146,9 @@ func CreateQuadArray(shader uint32) *QuadArray {
 	q.basePosWidthHeightOffset = 0
 	q.texCoordsWidthHeightOffset = int32(unsafe.Sizeof(y3d.Vec4{})) * MAX_QUADS
 	q.colorOffset = (int32(unsafe.Sizeof(y3d.Vec4{})) * MAX_QUADS) * 2
-	q.flagOffset = (int32(unsafe.Sizeof(y3d.Vec4{})) * MAX_QUADS) * 3
-	q.blockSize = (int32(unsafe.Sizeof(y3d.Vec4{})*MAX_QUADS))*3 + (int32(unsafe.Sizeof(uint32(0))) * MAX_QUADS)
+	q.radiusOffset = (int32(unsafe.Sizeof(y3d.Vec4{})) * MAX_QUADS) * 3
+	q.flagOffset = (int32(unsafe.Sizeof(y3d.Vec4{})*MAX_QUADS))*3 + (int32(unsafe.Sizeof(float32(0))) * MAX_QUADS)
+	q.blockSize = (int32(unsafe.Sizeof(y3d.Vec4{})*MAX_QUADS))*3 + (int32(unsafe.Sizeof(uint32(0))*2) * MAX_QUADS)
 	gl.CreateBuffers(1, &q.ssbo)
 	gl.NamedBufferStorage(q.ssbo, int(q.blockSize), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
 	return q
@@ -161,7 +202,7 @@ func (q *QuadArray) CloseArray() {
 func (q *QuadArray) SetQuad(idx int, x, y,
 	width, height,
 	UBase, VBase,
-	texUSize, texVSize, r, g, b, a float32, flag uint32) {
+	texUSize, texVSize, r, g, b, a, radius float32, flag uint32) {
 	if idx >= MAX_QUADS {
 		return
 	}
@@ -170,9 +211,10 @@ func (q *QuadArray) SetQuad(idx int, x, y,
 	}
 
 	block := unsafe.Slice((*byte)(q.blockPtr), q.blockSize)
-	basePos := ViewAsFloat32(block, int(q.basePosWidthHeightOffset), MAX_QUADS)
-	texCoords := ViewAsFloat32(block, int(q.texCoordsWidthHeightOffset), MAX_QUADS)
-	color := ViewAsFloat32(block, int(q.colorOffset), MAX_QUADS)
+	basePos := ViewAsVec4(block, int(q.basePosWidthHeightOffset), MAX_QUADS)
+	texCoords := ViewAsVec4(block, int(q.texCoordsWidthHeightOffset), MAX_QUADS)
+	color := ViewAsVec4(block, int(q.colorOffset), MAX_QUADS)
+	rad := ViewAsFloat32(block, int(q.radiusOffset), MAX_QUADS)
 	flagb := ViewAsUint32(block, int(q.flagOffset), MAX_QUADS)
 
 	basePos[idx][0] = x
@@ -187,10 +229,11 @@ func (q *QuadArray) SetQuad(idx int, x, y,
 	color[idx][1] = g
 	color[idx][2] = b
 	color[idx][3] = a
+	rad[idx] = radius
 	flagb[idx] = flag
 }
 
-func ViewAsFloat32(buf []byte, byteOffset, count int) [][4]float32 {
+func ViewAsVec4(buf []byte, byteOffset, count int) [][4]float32 {
 	const pairSize = int(unsafe.Sizeof([4]float32{}))
 	required := byteOffset + count*pairSize
 	if required > len(buf) {
@@ -207,4 +250,14 @@ func ViewAsUint32(buf []byte, byteOffset, count int) []uint32 {
 	}
 	ptr := unsafe.Pointer(&buf[byteOffset])
 	return unsafe.Slice((*uint32)(ptr), count)
+}
+
+func ViewAsFloat32(buf []byte, byteOffset, count int) []float32 {
+	const pairSize = int(unsafe.Sizeof(float32(0)))
+	required := byteOffset + count*pairSize
+	if required > len(buf) {
+		panic(fmt.Errorf("ViewAsFloat32Pairs: slice out of bounds, req: %d, len : %d\n", required, len(buf)))
+	}
+	ptr := unsafe.Pointer(&buf[byteOffset])
+	return unsafe.Slice((*float32)(ptr), count)
 }

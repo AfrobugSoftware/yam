@@ -105,7 +105,7 @@ func DrawText(baseInstance int, ui *UIElement) int {
 				float32(ui.Color[0])/255.0,
 				float32(ui.Color[1])/255.0,
 				float32(ui.Color[2])/255.0,
-				float32(char.Idx), ui.RenderFlag|UI_TEXT)
+				float32(char.Idx), ui.Radius, ui.RenderFlag|UI_TEXT)
 			count++
 			x = x + char.Advance + float32(ui.Font.Kern)
 		}
@@ -140,7 +140,7 @@ func Draw(root *UIElement, proj y3d.Mat4) {
 				float32(ui.Color[0])/255.0,
 				float32(ui.Color[1])/255.0,
 				float32(ui.Color[2])/255.0,
-				float32(ui.Color[3])/255.0, ui.RenderFlag)
+				float32(ui.Color[3])/255.0, ui.Radius, ui.RenderFlag)
 			i++
 		}
 	}
