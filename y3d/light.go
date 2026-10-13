@@ -1,8 +1,7 @@
-package ygl
+package y3d
 
 import (
 	"math"
-	"yam/y3d"
 )
 
 const (
@@ -21,8 +20,8 @@ const (
 
 type Light struct {
 	Radius float32
-	Pos    y3d.Vec4
-	Color  y3d.Vec4
+	Pos    Vec4
+	Color  Vec4
 }
 
 func (l *Light) CalculateRadius(constant, linear, quadratic, darkIntensity float32) {

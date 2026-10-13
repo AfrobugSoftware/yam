@@ -13,7 +13,7 @@ import (
 
 const (
 	INVALID_CACHE = -1
-	MAX_CACHES    = 10
+	MAX_CACHES    = 5
 )
 
 const (
@@ -349,12 +349,11 @@ func NewVertexCacheManager(
 	return vm
 }
 
-func (vm *VertexCacheManager) AddVertexFormat(vt string, stride int, format []VertexFormat) {
-
-}
-
 func (vm *VertexCacheManager) CreateVertexCache(name string, skinId, stride int,
 	format []VertexFormat) {
+	if _, exists := vm.Caches[name]; exists {
+		return // already have a cache with this tag
+	}
 	c := [MAX_CACHES]*VertexCache{}
 	for i := range MAX_CACHES {
 		c[i] = NewVertexCache(
@@ -371,6 +370,7 @@ func (vm *VertexCacheManager) CreateVertexCache(name string, skinId, stride int,
 		)
 		vm.CacheId++
 	}
+	vm.Caches[name] = c
 }
 
 func (vm *VertexCacheManager) Destory() {

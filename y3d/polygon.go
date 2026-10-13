@@ -18,9 +18,6 @@ type Polygon struct {
 }
 
 func (p Polygon) CalculateBoundingBox() {
-	// if p.VertexBuffer != nil {
-	// 	p.LoadPos()
-	// }
 	min := p.Points[0]
 	max := min
 	for i := range len(p.Points) {

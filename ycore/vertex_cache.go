@@ -128,6 +128,9 @@ func (v *VertexCache) AddPolygon(indices []uint32,
 	if v.Stride != 36 {
 		return errors.New("cannot write to this cache, stride size not 36")
 	}
+	for i, x := range indices {
+		indices[i] = x + uint32(v.NumVertics)
+	}
 	asBytes := func(v reflect.Value, count int) []byte {
 		addr := unsafe.Pointer(v.Index(0).UnsafeAddr())
 		return unsafe.Slice((*byte)(addr), count)

@@ -3,13 +3,10 @@ package ycore
 import (
 	"errors"
 	"fmt"
-	"io"
 	"log"
-	"reflect"
 	"strings"
 	"unsafe"
 	"yam/y3d"
-	"yam/ygl"
 	"yam/yui"
 
 	"github.com/go-gl/gl/v4.3-core/gl"
@@ -32,6 +29,7 @@ const (
 const (
 	MATERIAL_UBO_BINDING = 2
 	LIGHT_BINDING        = 3
+	VIEW_PROJ_BINDING    = 4
 )
 
 // SSBO
@@ -41,50 +39,48 @@ const (
 )
 
 type RenderManager struct {
-	Context         sdl.GLContext
-	Window          *sdl.Window
-	ClearColor      y3d.Vec4
-	PixelDepth      uint8
-	PixelPerInch    float32
-	DoubleBuffer    bool
-	MinorVersion    int
-	MajorVersion    int
-	ViewPort        [4]y3d.Rect
-	View2D          y3d.Mat4
-	View3D          y3d.Mat4
-	Proj2D          y3d.Mat4
-	ProjP           [4]y3d.Mat4
-	ProjO           [4]y3d.Mat4
-	ViewProj        y3d.Mat4
-	Near            float32
-	Far             float32
-	Width           int
-	Height          int
-	Fov             [4]float32
-	AspectRatio     [4]float32
-	Stage           int
-	Mode            int
-	SkinManager     *SkinManager
-	VertextManager  *VertexCacheManager
-	ShaderManager   *ShaderManager
-	RenderStates    []RenderState
-	DrawMode        uint32
-	ActiveProgram   uint32
-	LightUBO        uint32
-	screenVao       uint32
-	screenVbo       uint32
-	screenEbo       uint32
-	gBuffer         uint32
-	gNormal         uint32
-	gPosition       uint32
-	gAlbedoSpec     uint32
-	gDepth          uint32
-	lightSphere     int
-	LineCache       *VertexCache
-	LineDrawCommand DrawCommand
-	FpCamera        *FPCamera
-	FollowCamera    *FollowCamera
-	RootUI          *yui.UIElement
+	Context        sdl.GLContext
+	Window         *sdl.Window
+	ClearColor     y3d.Vec4
+	PixelDepth     uint8
+	PixelPerInch   float32
+	DoubleBuffer   bool
+	MinorVersion   int
+	MajorVersion   int
+	ViewPort       [4]y3d.Rect
+	View2D         y3d.Mat4
+	View3D         y3d.Mat4
+	Proj2D         y3d.Mat4
+	ProjP          [4]y3d.Mat4
+	ProjO          [4]y3d.Mat4
+	ViewProj       y3d.Mat4
+	Near           float32
+	Far            float32
+	Width          int
+	Height         int
+	Fov            [4]float32
+	AspectRatio    [4]float32
+	Stage          int
+	Mode           int
+	SkinManager    *SkinManager
+	VertextManager *VertexCacheManager
+	ShaderManager  *ShaderManager
+	RenderStates   []RenderState
+	DrawMode       uint32
+	ActiveProgram  uint32
+	screenVao      uint32
+	screenVbo      uint32
+	screenEbo      uint32
+	gBuffer        uint32
+	gNormal        uint32
+	gPosition      uint32
+	gAlbedoSpec    uint32
+	gDepth         uint32
+	lightSphere    int
+	viewubo        uint32
+	FpCamera       *FPCamera
+	FollowCamera   *FollowCamera
+	RootUI         *yui.UIElement
 }
 
 func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
@@ -154,50 +150,17 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 	if err != nil {
 		panic(err)
 	}
+	gl.CreateBuffers(1, &rm.viewubo)
+	gl.NamedBufferStorage(rm.viewubo, int(unsafe.Sizeof(y3d.Mat4{})),
+		nil, gl.DYNAMIC_STORAGE_BIT)
 	rm.Prepare2D(float32(fbW), float32(fbH), 0.1, 1000.0)
 	rm.SetStage(MODE_3D_PERSPECTIVE, 0) //SET TO THE 0TH stage
-	rm.LineCache = NewVertexCache(
-		rm.SkinManager,
-		rm.VertextManager,
-		1000, 100, 100, 100, 12, -1, 0,
-		[]VertexFormat{
-			{
-				ComponentSize:  3,
-				Type:           gl.FLOAT,
-				RelativeOffset: 0,
-			},
-		},
-	)
-	rm.LineDrawCommand = DrawCommand{
-		VertexCount:   2,
-		InstanceCount: 1,
-		FirstIndex:    0,
-		BaseVertex:    0,
-		BaseInstance:  0,
-	}
-	gl.CreateBuffers(1, &rm.LightUBO)
-	gl.NamedBufferStorage(rm.LightUBO, int(112*MAX_LIGHT), nil, gl.DYNAMIC_STORAGE_BIT)
-	rm.CreateScreenQuad()
 	err = rm.CreateFrameBuffer()
 	if err != nil {
 		panic(err)
 	}
 
 	return rm
-}
-func (r *RenderManager) Write(w io.Writer) error {
-	c := ChunkHeader{
-		ClassId:  RENDER_MANAGER_CHUNK_IDENTIFIER,
-		ObjectId: uint64(reflect.ValueOf(r).Elem().UnsafeAddr()),
-	}
-	c.Write(w)
-
-	return nil
-}
-
-func (r *RenderManager) Read(d io.Reader) error {
-	//chuck is already read
-	return nil
 }
 
 func (r *RenderManager) CreateFrameBuffer() error {
@@ -276,21 +239,6 @@ func (r *RenderManager) DestroyFrameBuffer() {
 	gl.DeleteTextures(1, &r.gPosition)
 	gl.DeleteTextures(1, &r.gAlbedoSpec)
 	gl.DeleteTextures(1, &r.gDepth)
-}
-
-func (r *RenderManager) CreateScreenQuad() {
-	v, i := ygl.CreateQuad()
-	gl.CreateVertexArrays(1, &r.screenVao)
-	gl.CreateBuffers(1, &r.screenVbo)
-	gl.CreateBuffers(1, &r.screenEbo)
-
-	gl.NamedBufferStorage(r.screenVbo, v.Len(), gl.Ptr(v.Bytes()), 0)
-	gl.NamedBufferStorage(r.screenEbo, i.Len(), gl.Ptr(i.Bytes()), 0)
-	gl.VertexArrayAttribBinding(r.screenVao, 0, 0)
-	gl.VertexArrayAttribFormat(r.screenVao, 0, 3, gl.FLOAT, false, 0)
-	gl.EnableVertexArrayAttrib(r.screenVao, 0)
-	gl.VertexArrayVertexBuffer(r.screenVao, 0, r.screenVbo, 0, int32(unsafe.Sizeof(float32(0)*3)))
-	gl.VertexArrayElementBuffer(r.screenVao, r.screenEbo)
 }
 
 func (r *RenderManager) GetFrustum() [6]y3d.Plane {
@@ -426,6 +374,9 @@ func (r *RenderManager) CalcViewProj() {
 		b = &y3d.Identity
 	}
 	r.ViewProj = (*a).Mul(*b)
+	m := r.ViewProj
+	gl.NamedBufferSubData(r.viewubo, 0, int(unsafe.Sizeof(y3d.Mat4{})),
+		gl.Ptr(&m[0]))
 }
 func (r *RenderManager) SetStage(mode int, stage int) {
 	if stage < 0 || stage >= 4 {
@@ -517,6 +468,7 @@ func (r *RenderManager) Destroy() {
 	gl.DeleteTextures(1, &r.gPosition)
 	gl.DeleteTextures(1, &r.gAlbedoSpec)
 	gl.DeleteTextures(1, &r.gDepth)
+	gl.DeleteBuffers(1, &r.viewubo)
 	sdl.GLDeleteContext(r.Context)
 }
 
@@ -567,10 +519,10 @@ func (r *RenderManager) BeginRender() {
 		int32(r.ViewPort[r.Stage].Width),
 		int32(r.ViewPort[r.Stage].Height))
 	r.CalcViewProj()
+	gl.BindBufferBase(gl.UNIFORM_BUFFER, VIEW_PROJ_BINDING, r.viewubo)
 
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
 	gl.UseProgram(r.ActiveProgram)
-	gl.UniformMatrix4fv(0, 1, false, &r.ViewProj[0])
 }
 
 // hmmm

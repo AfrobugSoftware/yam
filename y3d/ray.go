@@ -88,7 +88,7 @@ func (r Ray) IntersectsAABB(aabb AABB, fl float32) (i bool, hit Vec3) {
 	if maxT.Z > maxTArray[plane] {
 		plane = 2
 	}
-	if maxTArray[plane] < 0.0 || maxTArray[plane] > fl {
+	if maxTArray[plane] < 0.0 || (fl != 0 && maxTArray[plane] > fl) {
 		i = false
 		return
 	}

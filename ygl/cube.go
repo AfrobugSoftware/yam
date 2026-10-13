@@ -3,22 +3,60 @@ package ygl
 import (
 	"bytes"
 	"encoding/binary"
+	"reflect"
+	"unsafe"
+	"yam/y3d"
 )
 
 func CreateCube() (dataV, dataI *bytes.Buffer) {
 	dataV = &bytes.Buffer{}
 	dataI = &bytes.Buffer{}
-	buf := []float32{
-		-0.25, -0.25, -0.25,
-		-0.25, 0.25, -0.25,
-		0.25, -0.25, -0.25,
-		0.25, 0.25, -0.25,
-		0.25, -0.25, 0.25,
-		0.25, 0.25, 0.25,
-		-0.25, -0.25, 0.25,
-		-0.25, 0.25, 0.25,
-	}
-	binary.Write(dataV, binary.NativeEndian, buf)
+	verties := make([]y3d.PVertex, 0, 8)
+	verties = append(verties,
+		y3d.PVertex{
+			Pos: y3d.Vec3{
+				X: -0.25, Y: -0.25, Z: -0.25,
+			},
+		},
+		y3d.PVertex{
+			Pos: y3d.Vec3{
+				X: -0.25, Y: 0.25, Z: -0.25,
+			},
+		},
+		y3d.PVertex{
+			Pos: y3d.Vec3{
+				X: 0.25, Y: -0.25, Z: -0.25,
+			},
+		},
+		y3d.PVertex{
+			Pos: y3d.Vec3{
+				X: 0.25, Y: 0.25, Z: -0.25,
+			},
+		},
+		y3d.PVertex{
+			Pos: y3d.Vec3{
+				X: 0.25, Y: -0.25, Z: 0.25,
+			},
+		},
+		y3d.PVertex{
+			Pos: y3d.Vec3{
+				X: 0.25, Y: 0.25, Z: 0.25,
+			},
+		},
+		y3d.PVertex{
+			Pos: y3d.Vec3{
+				X: -0.25, Y: -0.25, Z: 0.25,
+			},
+		},
+		y3d.PVertex{
+			Pos: y3d.Vec3{
+				X: -0.25, Y: 0.25, Z: 0.25,
+			},
+		},
+	)
+	addr := unsafe.Pointer(reflect.ValueOf(verties).Index(0).UnsafeAddr())
+	b := unsafe.Slice((*byte)(addr), 36*len(verties))
+	dataV.Write(b)
 	indices := []uint32{
 		0, 1, 2,
 		2, 1, 3,
@@ -40,17 +78,37 @@ func CreateCube() (dataV, dataI *bytes.Buffer) {
 func CreateQuad() (dataV, dataI *bytes.Buffer) {
 	dataV = &bytes.Buffer{}
 	dataI = &bytes.Buffer{}
-	buf := []float32{
-		-1.00, -1.00, 0,
-		-1.00, 1.00, 0,
-		1.00, -1.00, 0,
-		1.00, 1.00, 0,
-	}
-	binary.Write(dataV, binary.NativeEndian, buf)
+	verties := make([]y3d.PVertex, 0, 4)
 	indices := []uint32{
 		0, 1, 2,
 		2, 1, 3,
 	}
+	verties = append(verties,
+		y3d.PVertex{
+			Pos: y3d.Vec3{
+				X: -1.00, Y: -1.00, Z: 0,
+			},
+		},
+		y3d.PVertex{
+			Pos: y3d.Vec3{
+				X: -1.00, Y: 1.00, Z: 0,
+			},
+		},
+		y3d.PVertex{
+			Pos: y3d.Vec3{
+				X: 1.00, Y: -1.00, Z: 0,
+			},
+		},
+		y3d.PVertex{
+			Pos: y3d.Vec3{
+				X: 1.00, Y: 1.00, Z: 0,
+			},
+		},
+	)
+	addr := unsafe.Pointer(reflect.ValueOf(verties).Index(0).UnsafeAddr())
+	b := unsafe.Slice((*byte)(addr), 36*len(verties))
+	dataV.Write(b)
+
 	binary.Write(dataI, binary.NativeEndian, indices)
 	return
 }

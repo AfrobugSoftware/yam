@@ -351,27 +351,28 @@ func (s *SkinManager) AddSpriteSheet(skin int, filename string, spriteHeight, sp
 }
 
 func (s *SkinManager) GetTexture(skin int, slot int) (uint32, error) {
-	if _, exists := s.Skins[skin]; !exists {
+	sk, ok := s.Skins[skin]
+	if !ok {
 		return 0, errors.New("invalid skin id")
 	}
-	sk := s.Skins[skin]
 	tex := s.Textures[sk.Texture[slot]]
 	return tex.Handle, nil
 }
 
 func (s *SkinManager) GetMaterial(skin int) (ygl.Material, error) {
-	if _, exists := s.Skins[skin]; !exists {
+	sk, ok := s.Skins[skin]
+	if !ok {
 		return ygl.Material{}, errors.New("invalid skin id")
 	}
-	sk := s.Skins[skin]
 	return s.Materials[sk.Material], nil
 }
 
 func (s *SkinManager) GetSkin(skin int) (Skin, error) {
-	if _, exists := s.Skins[skin]; !exists {
+	sk, ok := s.Skins[skin]
+	if !ok {
 		return Skin{}, errors.New("invalid skin id")
 	}
-	return s.Skins[skin], nil
+	return sk, nil
 }
 
 func (s *SkinManager) RemoveTexture(skin int, slot int) error {
@@ -386,8 +387,6 @@ func (s *SkinManager) RemoveTexture(skin int, slot int) error {
 	gl.DeleteTextures(1, &handle)
 	s.TotalTextureSizeInMemeory -= uint(s.Textures[sk.Texture[slot]].Size)
 	delete(s.Textures, sk.Texture[slot])
-
-	//find first empty
 	empty := -1
 	for i := range sk.Texture {
 		if sk.Texture[i] == EmptyTexture {
@@ -395,12 +394,10 @@ func (s *SkinManager) RemoveTexture(skin int, slot int) error {
 			break
 		}
 	}
-	//found empty slot
 	if empty != -1 {
 		sk.Texture[slot] = sk.Texture[empty-1]
 		sk.Texture[empty-1] = EmptyTexture
 	} else {
-		//no empty slots
 		sk.Texture[slot] = sk.Texture[s.maxTextureUnit-1]
 		sk.Texture[s.maxTextureUnit-1] = EmptyTexture
 	}
@@ -409,10 +406,11 @@ func (s *SkinManager) RemoveTexture(skin int, slot int) error {
 }
 
 func (s *SkinManager) RemoveSkin(skin int) {
-	if _, exists := s.Skins[skin]; !exists {
+	sk, ok := s.Skins[skin]
+	if !ok {
 		return
 	}
-	for _, texId := range s.Skins[skin].Texture {
+	for _, texId := range sk.Texture {
 		if texId != EmptyTexture {
 			handle := s.Textures[texId].Handle
 			gl.DeleteTextures(1, &handle)

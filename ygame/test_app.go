@@ -40,7 +40,7 @@ func (t *TestApplication) Startup(e *Engine) {
 		t.engine.RenderManager,
 		nil, box,
 		ycore.NewTransform(),
-		ycore.VP,
+		ycore.VPNTC,
 		v,
 		i,
 		skin,
@@ -63,7 +63,7 @@ func (t *TestApplication) Startup(e *Engine) {
 
 	t.engine.RenderManager.FpCamera = ycore.NewCamera(y3d.ZEROV)
 
-	t.TestUI() // test ui
+	//t.TestUI() // test ui
 }
 
 func (t TestApplication) TestUI() {

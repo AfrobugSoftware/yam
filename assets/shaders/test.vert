@@ -7,7 +7,9 @@ layout(std430, binding = 0) buffer MatrixSSBO {
     mat4 world[];
 };
 
-layout(location = 0) uniform mat4 viewProj;
+layout(std140, binding = 4) uniform vp { 
+    mat4 viewProj;
+};
 
 void main() {
     gl_Position = viewProj * world[dInx] * vec4(pos, 1.0);

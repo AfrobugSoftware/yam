@@ -182,3 +182,35 @@ func (p *Polygon) CalculateTextureCoordinates(axis AXIS, box *y3d.AABB) {
 func (p *Polygon) WriteCache(v *ycore.VertexCache) error {
 	return v.AddPolygon(p.Indices, p.Vertices)
 }
+
+func (p *Polygon) InsectingVertices(box y3d.AABB, axis AXIS) []y3d.PVertex {
+	pv := make([]y3d.PVertex, 0, len(p.Vertices))
+	for _, p := range p.Vertices {
+		v := p.Pos
+		switch axis {
+		case X_AXIS:
+			if v.Y > box.Min.Y &&
+				v.Y < box.Max.Y &&
+				v.Z > box.Min.Z &&
+				v.Z < box.Max.Z {
+				pv = append(pv, p)
+			}
+		case Y_AXIS:
+			if v.X > box.Min.X &&
+				v.X < box.Max.X &&
+				v.Z > box.Min.Z &&
+				v.Z < box.Max.Z {
+				pv = append(pv, p)
+			}
+		case Z_AXIS:
+			if v.Y > box.Min.Y &&
+				v.Y < box.Max.Y &&
+				v.X > box.Min.X &&
+				v.X < box.Max.X {
+				pv = append(pv, p)
+			}
+		default:
+		}
+	}
+	return pv
+}
