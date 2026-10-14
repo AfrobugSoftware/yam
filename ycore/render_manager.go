@@ -66,7 +66,6 @@ type RenderManager struct {
 	SkinManager    *SkinManager
 	VertextManager *VertexCacheManager
 	ShaderManager  *ShaderManager
-	RenderStates   []RenderState
 	DrawMode       uint32
 	ActiveProgram  uint32
 	screenVao      uint32
