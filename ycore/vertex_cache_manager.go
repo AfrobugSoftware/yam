@@ -32,7 +32,6 @@ type VertexCacheManager struct {
 	ActiveProgram   uint32
 	RenderManager   *RenderManager
 	CacheId         int
-	Terrian         *Terrian
 	Strides         map[string]int32
 	Formats         map[string][]VertexFormat
 	Caches          map[string][MAX_CACHES]*VertexCache
