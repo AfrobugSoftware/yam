@@ -21,7 +21,6 @@ type Polygon struct {
 	IsHidden     bool
 	IsSelected   bool
 	BoundingBox  y3d.AABB
-	OType        int
 }
 
 func (p2 *Polygon) Copy(p *Polygon) {
@@ -29,7 +28,6 @@ func (p2 *Polygon) Copy(p *Polygon) {
 	p2.TexRep = p.TexRep
 	p2.TexOff = p.TexOff
 	p2.SkinId = p.SkinId
-	p2.OType = LOB_POLYGON
 }
 
 func (p *Polygon) Translate(pos y3d.Vec3) {

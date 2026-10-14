@@ -76,7 +76,7 @@ func (g *Geometry) Draw() {
 		if g.LocalEffect != nil {
 			g.LocalEffect.Bind(g.RenderManager.ShaderManager)
 		}
-		g.RenderManager.VertextManager.RenderSB(g.StaticBuf, []y3d.Mat4{g.Transform.World})
+		g.RenderManager.VertextManager.RenderSB(g.StaticBuf, g.Transform.World)
 		if g.LocalEffect != nil {
 			g.LocalEffect.Unbind()
 		}
@@ -88,7 +88,7 @@ func (g *Geometry) Draw() {
 			g.VertexType,
 			int(g.DrawCommand.BaseInstance),
 			g.SkinId,
-			[]y3d.Mat4{g.Transform.World},
+			g.Transform.World,
 		)
 	}
 }

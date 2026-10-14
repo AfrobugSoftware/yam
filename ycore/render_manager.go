@@ -30,6 +30,7 @@ const (
 	MATERIAL_UBO_BINDING = 2
 	LIGHT_BINDING        = 3
 	VIEW_PROJ_BINDING    = 4
+	LEVEL_PARAMETERS_UBO = 5
 )
 
 // SSBO
@@ -168,56 +169,32 @@ func (r *RenderManager) CreateFrameBuffer() error {
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.gBuffer)
 
 	//position
-	gl.GenTextures(1, &r.gPosition)
-	gl.BindTexture(gl.TEXTURE_2D, r.gPosition)
-	gl.TexImage2D(gl.TEXTURE_2D,
-		0,
-		gl.RGBA16F,
-		int32(r.ViewPort[r.Stage].Width),
-		int32(r.ViewPort[r.Stage].Height),
-		0, gl.RGBA, gl.FLOAT, nil)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.CreateTextures(gl.TEXTURE_2D, 1, &r.gPosition)
+	gl.TextureStorage2D(r.gPosition, 1, gl.RGBA16F, int32(r.ViewPort[r.Stage].Width), int32(r.ViewPort[r.Stage].Height))
+	gl.TextureParameteri(r.gPosition, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TextureParameteri(r.gPosition, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, r.gPosition, 0)
 
 	//normals
-	gl.GenTextures(1, &r.gNormal)
-	gl.BindTexture(gl.TEXTURE_2D, r.gNormal)
-	gl.TexImage2D(gl.TEXTURE_2D,
-		0,
-		gl.RGBA16F,
-		int32(r.ViewPort[r.Stage].Width),
-		int32(r.ViewPort[r.Stage].Height),
-		0, gl.RGBA, gl.FLOAT, nil)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.CreateTextures(gl.TEXTURE_2D, 1, &r.gNormal)
+	gl.TextureStorage2D(r.gNormal, 1, gl.RGBA16F, int32(r.ViewPort[r.Stage].Width), int32(r.ViewPort[r.Stage].Height))
+	gl.TextureParameteri(r.gNormal, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TextureParameteri(r.gNormal, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, r.gNormal, 0)
 
 	//alebo spec
-	gl.GenTextures(1, &r.gAlbedoSpec)
-	gl.BindTexture(gl.TEXTURE_2D, r.gAlbedoSpec)
-	gl.TexImage2D(gl.TEXTURE_2D,
-		0,
-		gl.RGBA,
-		int32(r.ViewPort[r.Stage].Width),
-		int32(r.ViewPort[r.Stage].Height),
-		0, gl.RGBA, gl.UNSIGNED_BYTE, nil)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.CreateTextures(gl.TEXTURE_2D, 1, &r.gAlbedoSpec)
+	gl.TextureStorage2D(r.gAlbedoSpec, 1, gl.RGBA16F, int32(r.ViewPort[r.Stage].Width), int32(r.ViewPort[r.Stage].Height))
+	gl.TextureParameteri(r.gAlbedoSpec, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TextureParameteri(r.gAlbedoSpec, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT2, gl.TEXTURE_2D, r.gAlbedoSpec, 0)
 
 	//depth texture
-	gl.GenTextures(1, &r.gDepth)
-	gl.BindTexture(gl.TEXTURE_2D, r.gDepth)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.DEPTH24_STENCIL8,
-		int32(r.ViewPort[r.Stage].Width),
-		int32(r.ViewPort[r.Stage].Height),
-		0,
-		gl.DEPTH_COMPONENT, gl.FLOAT, nil)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.CreateTextures(gl.TEXTURE_2D, 1, &r.gDepth)
+	gl.TextureStorage2D(r.gDepth, 1, gl.DEPTH24_STENCIL8, int32(r.ViewPort[r.Stage].Width), int32(r.ViewPort[r.Stage].Height))
+	gl.TextureParameteri(r.gDepth, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TextureParameteri(r.gDepth, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.TEXTURE_2D, r.gDepth, 0)
-	gl.BindTexture(gl.TEXTURE_2D, 0)
 
 	attachments := [3]uint32{
 		gl.COLOR_ATTACHMENT0,
@@ -231,6 +208,12 @@ func (r *RenderManager) CreateFrameBuffer() error {
 	}
 	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 	return nil
+}
+
+func (r *RenderManager) BindFramebufferTextures() {
+	gl.BindTextureUnit(0, r.gPosition)
+	gl.BindTextureUnit(1, r.gNormal)
+	gl.BindTextureUnit(2, r.gAlbedoSpec)
 }
 
 func (r *RenderManager) DestroyFrameBuffer() {

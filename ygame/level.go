@@ -6,6 +6,7 @@ import (
 	"os"
 	"unsafe"
 	"yam/y3d"
+	"yam/ycontroller"
 	"yam/ycore"
 
 	"github.com/go-gl/gl/v4.3-core/gl"
@@ -34,6 +35,16 @@ const (
 	X_AXIS AXIS = iota
 	Y_AXIS
 	Z_AXIS
+)
+
+var (
+	MoveControllerComponent = ycore.RegisterComponent[ycontroller.MovementController]()
+	DrawCommandComponent    = ycore.RegisterComponent[ycore.DrawCommand]()
+	TransformComponent      = ycore.RegisterComponent[ycore.Transform]()
+	SkinComponent           = ycore.RegisterComponent[int]()
+	VertexTypeComponent     = ycore.RegisterComponent[string]()
+	BoundingBoxComponent    = ycore.RegisterComponent[y3d.AABB]()
+	EntityTypeComponent     = ycore.RegisterComponent[uint32]()
 )
 
 type LevelParameters struct {

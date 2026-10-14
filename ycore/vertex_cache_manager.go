@@ -362,7 +362,7 @@ func (vm *VertexCacheManager) Destory() {
 
 func (vm *VertexCacheManager) LoadMatrix(vertexType string,
 	baseInstance int,
-	skinId int, world []y3d.Mat4) error {
+	skinId int, world ...y3d.Mat4) error {
 	vc, ok := vm.Caches[vertexType]
 	if !ok {
 		return errors.New("invalid vertex type")
@@ -370,7 +370,7 @@ func (vm *VertexCacheManager) LoadMatrix(vertexType string,
 	for i := range MAX_CACHES {
 		if vc[i].SkinId == skinId {
 			vc[i].LoadMatrix(
-				baseInstance, world)
+				baseInstance, world...)
 			return nil
 		}
 	}
@@ -511,17 +511,17 @@ func (vm *VertexCacheManager) CreateStaticBuffer(
 	return id, nil
 }
 
-func (vm *VertexCacheManager) RenderSB(id int, world []y3d.Mat4) {
+func (vm *VertexCacheManager) RenderSB(id int, world ...y3d.Mat4) {
 	if id >= len(vm.StaticBuffers) {
 		panic("invalid static buffer id")
 	}
-	vm.StaticBuffers[id].Render(world)
+	vm.StaticBuffers[id].Render(world...)
 }
 
 func (vm *VertexCacheManager) CreateDrawCommand(dataI *bytes.Buffer,
 	instanceCount int) DrawCommand {
 	return DrawCommand{
-		VertexCount:   uint32(dataI.Len() / 4),
+		Count:         uint32(dataI.Len() / 4),
 		InstanceCount: uint32(instanceCount),
 		FirstIndex:    0,
 		BaseVertex:    0,

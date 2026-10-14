@@ -20,7 +20,7 @@ type VertexFormat struct {
 }
 
 type DrawCommand struct {
-	VertexCount   uint32
+	Count         uint32
 	InstanceCount uint32
 	FirstIndex    uint32
 	BaseVertex    uint32
@@ -172,7 +172,7 @@ func (v *VertexCache) Add(command *DrawCommand,
 		dataI.Len(),
 		gl.Ptr(dataI.Bytes()))
 	v.NumIndices += int32(dataI.Len() / 4)
-	command.VertexCount = uint32(dataI.Len() / 4)
+	command.Count = uint32(dataI.Len() / 4)
 	return CheckError()
 }
 func (v *VertexCache) IsEmpty() bool {
@@ -192,16 +192,14 @@ func (v *VertexCache) AddInstances(command *DrawCommand, instanceCount int) erro
 		gl.MAP_WRITE_BIT|gl.MAP_INVALIDATE_RANGE_BIT,
 	)
 	if ptr == nil {
-		CheckError()
-		panic("cannot map instance indices")
+		return CheckError()
 	}
 	id := unsafe.Slice((*uint32)(ptr), instanceCount)
 	for i := range instanceCount {
 		id[i] = uint32(i + int(command.BaseInstance))
 	}
 	if !gl.UnmapNamedBuffer(v.DrawIndexVbo) {
-		CheckError()
-		panic("cannot release instance indices")
+		return CheckError()
 	}
 	v.NumOfInstances += int32(instanceCount)
 	return CheckError()
@@ -217,7 +215,7 @@ func (v *VertexCache) AddDrawCommand(command DrawCommand) error {
 	return CheckError()
 }
 
-func (v *VertexCache) LoadMatrix(baseInstance int, world []y3d.Mat4) error {
+func (v *VertexCache) LoadMatrix(baseInstance int, world ...y3d.Mat4) error {
 	if baseInstance+len(world) >= int(v.MaxInstances) {
 		return errors.New("invalid matrix instance range")
 	}
@@ -229,13 +227,13 @@ func (v *VertexCache) LoadMatrix(baseInstance int, world []y3d.Mat4) error {
 	)
 	if ptr == nil {
 		CheckError()
-		panic("cannot load world matrix")
+		return errors.New("cannot load world matrix")
 	}
 	slice := unsafe.Slice((*y3d.Mat4)(ptr), len(world))
 	copy(slice, world)
 	if !gl.UnmapNamedBuffer(v.WorldMatrixSSBO) {
 		CheckError()
-		panic("cannot release world matrix buffer")
+		return errors.New("cannot release world matrix buffer")
 	}
 	return CheckError()
 }

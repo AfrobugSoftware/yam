@@ -15,13 +15,11 @@ var (
 )
 
 type Polymesh struct {
-	OType       int
 	Polys       []Polygon
 	DrawCommand ycore.DrawCommand
 	Transform   ycore.Transform
 	BoundingBox y3d.AABB
 	SkinId      int
-	IsDeleted   bool
 	IsHidden    bool
 	IsSelected  bool
 	NumVerts    int
@@ -103,7 +101,6 @@ func (pm *Polymesh) Instersects(box y3d.AABB) bool {
 	return false
 }
 
-// if these things are pointers are they going to be stable references
 func (pm *Polymesh) GetIntersectingPolys(box y3d.AABB, axis AXIS) ([]*Polygon, bool) {
 	if pm.IsHidden {
 		return nil, false
@@ -175,16 +172,59 @@ func (pm *Polymesh) Picked(ray y3d.Ray) (float32, bool) {
 	return h, b
 }
 
-func (pm *Polymesh) Render(v *ycore.VertexCache) {
+func (pm *Polymesh) Render(vm *ycore.VertexCacheManager) {
+	v, err := vm.GetCache(ycore.VPNTC, pm.SkinId)
+	if err != nil {
+		return
+	}
 	pm.DrawCommand.BaseVertex = uint32(v.NumVertics)
 	pm.DrawCommand.BaseInstance = uint32(v.NumOfInstances)
+	pm.DrawCommand.InstanceCount = 1
 	for _, p := range pm.Polys {
 		if p.IsHidden || p.IsDeleted {
 			continue
 		}
 		p.WriteCache(v)
+		pm.DrawCommand.Count += uint32(len(p.Indices))
 	}
+	v.LoadMatrix(int(pm.DrawCommand.BaseInstance),
+		pm.Transform.World)
 	v.AddDrawCommand(pm.DrawCommand)
+}
+
+func (pm *Polymesh) CalcTextureCoordinate(axis AXIS, box *y3d.AABB) {
+	if box == nil {
+		box = &pm.BoundingBox
+	}
+	for _, p := range pm.Polys {
+		p.CalculateTextureCoordinates(axis, box)
+	}
+}
+
+func (pm *Polymesh) SelectAll() {
+	if pm.IsHidden {
+		return
+	}
+	for i := range pm.Polys {
+		if pm.Polys[i].IsHidden || pm.Polys[i].IsDeleted {
+			continue
+		}
+		pm.Polys[i].IsSelected = true
+	}
+}
+
+func (pm *Polymesh) SelectInvert() []*Polygon {
+	pp := make([]*Polygon, 0)
+	for i := range pm.Polys {
+		if pm.Polys[i].IsHidden || pm.Polys[i].IsDeleted {
+			continue
+		}
+		if !pm.Polys[i].IsSelected {
+			pm.Polys[i].IsSelected = true
+			pp = append(pp, &pm.Polys[i])
+		}
+	}
+	return pp
 }
 
 //how to handle prefabs

@@ -234,13 +234,9 @@ type entityRecord struct {
 }
 
 type World struct {
-	mu sync.RWMutex
-
-	nextEntity    EntityId
-	nextArchetype ArchetypeId
-
+	mu         sync.RWMutex
 	entities   map[EntityId]*entityRecord
-	archetypes map[string]*Archetype // keyed by archetypeKey.String()
+	archetypes map[string]*Archetype
 }
 
 func NewWorld() *World {
@@ -255,8 +251,7 @@ func (w *World) NewEntity() EntityId {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	w.nextEntity++
-	id := w.nextEntity
+	id := EntityId(generateRandomId())
 	w.entities[id] = nil
 	return id
 }
@@ -287,8 +282,7 @@ func (w *World) getOrCreateArchetype(key archetypeKey) *Archetype {
 	if arch, ok := w.archetypes[k]; ok {
 		return arch
 	}
-	w.nextArchetype++
-	arch := newArchetype(w.nextArchetype, key)
+	arch := newArchetype(ArchetypeId(generateRandomId()), key)
 	w.archetypes[k] = arch
 	return arch
 }
@@ -422,9 +416,6 @@ func (w *World) Query(cids []ComponentId) []EntityId {
 func (w *World) Save(e *gob.Encoder) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-
-	e.Encode(w.nextEntity)
-	e.Encode(w.nextArchetype)
 	e.Encode(uint32(len(w.entities)))
 	for ent, record := range w.entities {
 		if record != nil {
@@ -444,10 +435,6 @@ func (w *World) Save(e *gob.Encoder) {
 func (w *World) Load(d *gob.Decoder) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-
-	d.Decode(&w.nextEntity)
-	d.Decode(&w.nextArchetype)
-
 	w.entities = make(map[EntityId]*entityRecord)
 	var i uint32
 	d.Decode(&i)

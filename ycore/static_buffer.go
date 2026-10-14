@@ -123,7 +123,7 @@ func NewStaticBuffer(
 	}
 }
 
-func (s *StaticBuffer) Render(world []y3d.Mat4) {
+func (s *StaticBuffer) Render(world ...y3d.Mat4) {
 	if s.VManager.ActiveSkin != s.SkinId && s.SkinId != -1 {
 		s.VManager.RenderManager.SkinManager.BindSkin(s.SkinId)
 		s.VManager.ActiveSkin = s.SkinId

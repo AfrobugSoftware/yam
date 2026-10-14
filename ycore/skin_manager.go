@@ -118,8 +118,7 @@ func (s *SkinManager) AddProgramToSkin(skin int, program uint32) error {
 
 func (s *SkinManager) AddTexture(skin int, filename string,
 	minFilter, maxFilter int32,
-	wraps, wrapt int32,
-	useMipmap bool) error {
+	wraps, wrapt int32) error {
 	if _, exists := s.Skins[skin]; !exists {
 		return errors.New("invalid skin id")
 	}
@@ -156,6 +155,9 @@ func (s *SkinManager) AddTexture(skin int, filename string,
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrapt)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, minFilter)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, maxFilter)
+	levels := mipLevels(minFilter, w, h)
+	gl.TextureStorage2D(texId, levels, gl.RGBA8, w, h)
+	gl.TextureSubImage2D(texId, 0, 0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(converted.Pixels()))
 	gl.TexImage2D(
 		gl.TEXTURE_2D,
 		0,
@@ -167,7 +169,7 @@ func (s *SkinManager) AddTexture(skin int, filename string,
 		gl.UNSIGNED_BYTE,
 		gl.Ptr(converted.Pixels()),
 	)
-	if useMipmap {
+	if levels > 1 {
 		var v float32
 		gl.GetFloatv(gl.MAX_TEXTURE_MAX_ANISOTROPY, &v)
 		gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAX_ANISOTROPY, v)
