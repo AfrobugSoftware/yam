@@ -37,6 +37,7 @@ const (
 const (
 	WORLD_MATRIX_BINDING = iota
 	JOINTS_SSBO_BINDING
+	RENDER_FLAG_BINDING
 )
 
 type RenderManager struct {
@@ -130,7 +131,7 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 		rm.ClearColor.W)
 	rm.SkinManager = NewSkinManager()
 	rm.VertextManager = NewVertexCacheManager(rm,
-		1000000, 1000000*3, 10000, 10000)
+		500000, 500000*3, 1000, 1000)
 	rm.ShaderManager = NewShaderManager()
 	rm.CreateDefaultShader()
 	rm.SetClippingPlanes(0.1, 1000.0)

@@ -19,9 +19,11 @@ const (
 )
 
 type Light struct {
-	Radius float32
-	Pos    Vec4
-	Color  Vec4
+	Pos         Vec4
+	Color       Vec4
+	Radius      float32
+	InnerRadius float32
+	Flag        uint32
 }
 
 func (l *Light) CalculateRadius(constant, linear, quadratic, darkIntensity float32) {
@@ -30,4 +32,8 @@ func (l *Light) CalculateRadius(constant, linear, quadratic, darkIntensity float
 		linear-
 		4*quadratic*(constant-darkIntensity*lmax))))) /
 		(2 * quadratic)
+}
+
+func (l *Light) GetTransform() Mat4 {
+	return Mat4{}
 }

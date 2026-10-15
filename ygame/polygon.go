@@ -1,6 +1,7 @@
 package ygame
 
 import (
+	"errors"
 	"slices"
 	"yam/y3d"
 	"yam/ycore"
@@ -21,6 +22,7 @@ type Polygon struct {
 	IsHidden     bool
 	IsSelected   bool
 	BoundingBox  y3d.AABB
+	Color        [4]uint8
 }
 
 func (p2 *Polygon) Copy(p *Polygon) {
@@ -50,6 +52,17 @@ func (p *Polygon) Mirror(origin, axis y3d.Vec3) {
 		p.Vertices[i].Pos = y3d.Mul(p.Vertices[i].Pos, y3d.NegateVec3(axis))
 		p.Vertices[i].Pos = y3d.Add(p.Vertices[i].Pos, origin)
 	}
+}
+
+func (p *Polygon) SetColor(color [4]uint8) {
+	p.Color = color
+	for i := 0; i < len(p.Indices); i += 3 {
+
+		p.Vertices[p.Indices[i]].Color = p.Color
+		p.Vertices[p.Indices[i+1]].Color = p.Color
+		p.Vertices[p.Indices[i+2]].Color = p.Color
+	}
+
 }
 
 func (p *Polygon) SetVertices(verts []y3d.PVertex, indics []uint32) {
@@ -86,7 +99,17 @@ func (p *Polygon) SetVertices(verts []y3d.PVertex, indics []uint32) {
 		p.Vertices[p.Indices[i]].Norm = n
 		p.Vertices[p.Indices[i+1]].Norm = n
 		p.Vertices[p.Indices[i+2]].Norm = n
+
+		p.Vertices[p.Indices[i]].Color = p.Color
+		p.Vertices[p.Indices[i+1]].Color = p.Color
+		p.Vertices[p.Indices[i+2]].Color = p.Color
 	}
+}
+func (p *Polygon) CreatePortal() (Portal, error) {
+	if len(p.Vertices) != 4 && len(p.Indices) != 6 {
+		return Portal{}, errors.New("cannot create portal from polygon")
+	}
+	return NewPortal(p.Vertices, p.Indices), nil
 }
 
 func (p *Polygon) InsideOut() {
@@ -211,4 +234,12 @@ func (p *Polygon) InsectingVertices(box y3d.AABB, axis AXIS) []y3d.PVertex {
 		}
 	}
 	return pv
+}
+
+func (p *Polygon) CalcNormals() {
+	a, b, c := p.Vertices[p.Indices[0]].Pos, p.Vertices[p.Indices[1]].Pos, p.Vertices[p.Indices[2]].Pos
+	n := y3d.Normalize(y3d.Cross(y3d.Sub(b, a), y3d.Sub(c, a)))
+	for i := range p.Vertices {
+		p.Vertices[i].Norm = n
+	}
 }

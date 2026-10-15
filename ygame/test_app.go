@@ -24,10 +24,10 @@ func (t *TestApplication) Startup(e *Engine) {
 		panic("failed to create cube")
 	}
 
-	gt, err := ycore.LoadGLTF("assets/gltf/testgltf.gltf", t.engine.RenderManager)
-	if err != nil {
-		panic(err)
-	}
+	// gt, err := ycore.LoadGLTF("assets/gltf/testgltf.gltf", t.engine.RenderManager)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	helmet, err := ycore.LoadGLTF("assets/gltf/DamagedHelmet.glb", t.engine.RenderManager)
 	if err != nil {
@@ -49,17 +49,17 @@ func (t *TestApplication) Startup(e *Engine) {
 		))
 
 	sp.Transform.SetScale(s)
-	gt.Transform.SetScale(0.025)
+	//gt.Transform.SetScale(0.025)
 	nt := ycore.NewNode(t.engine.RenderManager, nil, y3d.UnitAABB, ycore.NewTransform())
 	nt.Add(sp)
-	nt.Add(gt)
+	//nt.Add(gt)
 	nt.Add(helmet)
 
 	t.Root = nt
 	t.Root.UpdateWorldTransform()
 
 	t.Obj = sp
-	t.ObjPlayer = gt
+	//t.ObjPlayer = gt
 
 	t.engine.RenderManager.FpCamera = ycore.NewCamera(y3d.ZEROV)
 
@@ -143,6 +143,9 @@ func (t TestApplication) TestUI() {
 }
 
 func (t *TestApplication) Update(deltaTime float64) {
+	if gEngine.InputManager.GetKeyState(sdl.SCANCODE_P) == ycore.BUTTON_PRESSED {
+		ycore.PrintMemoryUsage()
+	}
 	g := t.Obj.(*ycore.Geometry)
 	if g.MoveController != nil {
 		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_PRESSED {

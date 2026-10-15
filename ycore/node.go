@@ -1,7 +1,6 @@
 package ycore
 
 import (
-	"encoding/gob"
 	"yam/y3d"
 )
 
@@ -24,14 +23,6 @@ func NewNode(
 			Transform:        tranform,
 		},
 	}
-}
-
-func (n *Node) Write(e *gob.Encoder) error {
-	return e.Encode(*n)
-}
-
-func (n *Node) Read(d *gob.Decoder) error {
-	return d.Decode(n)
 }
 
 func (n *Node) Add(s SpatialInterface) {

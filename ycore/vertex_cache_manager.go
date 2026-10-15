@@ -21,9 +21,7 @@ const (
 	VPNT                  = "pos.normal.tex"
 	VPNTC                 = "pos.normal.tex.color"
 	VPNTTB                = "pos.normal.tex.tangent.bitangent"
-	VPNTT                 = "pos.normal.tex.tex2"
 	VPNTWJ                = "pos.normal.tex.weight.joint"
-	VPNTTBWJ              = "pos.normal.tex.tangent.bitangent.weight.joint"
 )
 
 type VertexCacheManager struct {
@@ -61,10 +59,8 @@ func NewVertexCacheManager(
 	}
 	vm.Strides[VPNT] = 32
 	vm.Strides[VPNTC] = 36
-	vm.Strides[VPNTT] = 40
 	vm.Strides[VPNTWJ] = 56
 	vm.Strides[VPNTTB] = 56
-	vm.Strides[VPNTTBWJ] = 80
 
 	vm.Formats[VPNT] = []VertexFormat{
 		{
@@ -103,28 +99,6 @@ func NewVertexCacheManager(
 			ComponentSize:  4,
 			Type:           gl.UNSIGNED_BYTE,
 			RelativeOffset: uint32(32),
-		},
-	}
-	vm.Formats[VPNTT] = []VertexFormat{
-		{
-			ComponentSize:  3,
-			Type:           gl.FLOAT,
-			RelativeOffset: 0,
-		},
-		{
-			ComponentSize:  3,
-			Type:           gl.FLOAT,
-			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 3),
-		},
-		{
-			ComponentSize:  2,
-			Type:           gl.FLOAT,
-			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 6),
-		},
-		{
-			ComponentSize:  2,
-			Type:           gl.FLOAT,
-			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 8),
 		},
 	}
 	vm.Formats[VPNTWJ] = []VertexFormat{
@@ -181,66 +155,12 @@ func NewVertexCacheManager(
 			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 11),
 		},
 	}
-	vm.Formats[VPNTTBWJ] = []VertexFormat{
-		{
-			ComponentSize:  3,
-			Type:           gl.FLOAT,
-			RelativeOffset: 0,
-		},
-		{
-			ComponentSize:  3,
-			Type:           gl.FLOAT,
-			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 3),
-		},
-		{
-			ComponentSize:  2,
-			Type:           gl.FLOAT,
-			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 6),
-		},
-		{
-			ComponentSize:  3,
-			Type:           gl.FLOAT,
-			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 8),
-		},
-		{
-			ComponentSize:  3,
-			Type:           gl.FLOAT,
-			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 11),
-		},
-		{
-			ComponentSize:  3,
-			Type:           gl.FLOAT,
-			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 14),
-		},
-		{
-			ComponentSize:  3,
-			Type:           gl.UNSIGNED_INT,
-			RelativeOffset: uint32(unsafe.Sizeof(uint32(0)) * 17),
-		},
-	}
+
 	vm.Caches[VPNT] = [MAX_CACHES]*VertexCache{}
-	vm.Caches[VPNTT] = [MAX_CACHES]*VertexCache{}
 	vm.Caches[VPNTTB] = [MAX_CACHES]*VertexCache{}
 	vm.Caches[VPNTWJ] = [MAX_CACHES]*VertexCache{}
-	vm.Caches[VPNTTBWJ] = [MAX_CACHES]*VertexCache{}
 	for i := range MAX_CACHES {
-		c := vm.Caches[VPNTT]
-		c[i] = NewVertexCache(
-			renderManager.SkinManager,
-			vm,
-			maxVerts,
-			maxIndices,
-			maxDrawCommands,
-			maxInstances,
-			vm.Strides[VPNTT],
-			-1,
-			vm.CacheId,
-			vm.Formats[VPNTT],
-		)
-		vm.Caches[VPNTT] = c
-		vm.CacheId++
-
-		c = vm.Caches[VPNT]
+		c := vm.Caches[VPNT]
 		c[i] = NewVertexCache(
 			renderManager.SkinManager,
 			vm,
@@ -287,23 +207,6 @@ func NewVertexCacheManager(
 		)
 		vm.Caches[VPNTWJ] = c
 		vm.CacheId++
-
-		c = vm.Caches[VPNTTBWJ]
-		c[i] = NewVertexCache(
-			renderManager.SkinManager,
-			vm,
-			maxVerts,
-			maxIndices,
-			maxDrawCommands,
-			maxInstances,
-			vm.Strides[VPNTTBWJ],
-			-1,
-			vm.CacheId,
-			vm.Formats[VPNTTBWJ],
-		)
-		vm.Caches[VPNTTBWJ] = c
-		vm.CacheId++
-
 		c = vm.Caches[VPNTTB]
 		c[i] = NewVertexCache(
 			renderManager.SkinManager,
@@ -379,7 +282,7 @@ func (vm *VertexCacheManager) LoadMatrix(vertexType string,
 func (vm *VertexCacheManager) GetCache(vertexType string, skinId int) (*VertexCache, error) {
 	vc, ok := vm.Caches[vertexType]
 	if !ok {
-		return nil, errors.New("invalid vertex type")
+		return nil, errors.New("no cache for this vertex type")
 	}
 	for i := range MAX_CACHES {
 		if vc[i].SkinId == skinId {
@@ -532,7 +435,7 @@ func (vm *VertexCacheManager) CreateDrawCommand(dataI *bytes.Buffer,
 // have to render the data into an agency list or a new data structure, then build the tangent
 // then re-render it into a vertex list with the indices into that list
 func (vm *VertexCacheManager) CalculateTangentSpace(dataV, dataI *bytes.Buffer, vertexType string) (*bytes.Buffer, error) {
-	if vertexType != VPNTTB && vertexType != VPNTTBWJ {
+	if vertexType != VPNTTB {
 		return nil, fmt.Errorf("cannot create tangent space for this format: %s", vertexType)
 	}
 	format := vm.Formats[vertexType]

@@ -19,6 +19,7 @@ type Polymesh struct {
 	DrawCommand ycore.DrawCommand
 	Transform   ycore.Transform
 	BoundingBox y3d.AABB
+	RenderFlag  uint32
 	SkinId      int
 	IsHidden    bool
 	IsSelected  bool
@@ -178,8 +179,6 @@ func (pm *Polymesh) Render(vm *ycore.VertexCacheManager) {
 		return
 	}
 	pm.DrawCommand.BaseVertex = uint32(v.NumVertics)
-	pm.DrawCommand.BaseInstance = uint32(v.NumOfInstances)
-	pm.DrawCommand.InstanceCount = 1
 	for _, p := range pm.Polys {
 		if p.IsHidden || p.IsDeleted {
 			continue
@@ -187,6 +186,8 @@ func (pm *Polymesh) Render(vm *ycore.VertexCacheManager) {
 		p.WriteCache(v)
 		pm.DrawCommand.Count += uint32(len(p.Indices))
 	}
+	v.AddInstances(&pm.DrawCommand, 1)
+	v.AddRenderFlag(int(pm.DrawCommand.BaseInstance), pm.RenderFlag)
 	v.LoadMatrix(int(pm.DrawCommand.BaseInstance),
 		pm.Transform.World)
 	v.AddDrawCommand(pm.DrawCommand)
@@ -225,6 +226,40 @@ func (pm *Polymesh) SelectInvert() []*Polygon {
 		}
 	}
 	return pp
+}
+
+func (pm *Polymesh) HideNoPolys() {
+	for i := range pm.Polys {
+		pm.Polys[i].IsHidden = false
+	}
+}
+
+func (pm *Polymesh) HideSelectedPolys() {
+	for i := range pm.Polys {
+		if pm.Polys[i].IsSelected {
+			pm.Polys[i].IsHidden = true
+		}
+	}
+}
+
+func (pm *Polymesh) HideUnselectedPolys() {
+	for i := range pm.Polys {
+		if !pm.Polys[i].IsSelected {
+			pm.Polys[i].IsHidden = true
+		}
+	}
+}
+
+func (pm *Polymesh) HideInvertPolys() {
+	for i := range pm.Polys {
+		pm.Polys[i].IsHidden = !pm.Polys[i].IsHidden
+	}
+}
+
+func (pm *Polymesh) CalcNormals() {
+	for i := range pm.Polys {
+		pm.Polys[i].CalcNormals()
+	}
 }
 
 //how to handle prefabs

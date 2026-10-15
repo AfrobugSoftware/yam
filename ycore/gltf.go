@@ -133,6 +133,7 @@ func makeVBuffer(v *bytes.Buffer, format []VertexFormat, attribs []vertexAttrib)
 		}
 	}
 	v.Write(out)
+	out = nil
 	return count, vertexSize, nil
 }
 
@@ -208,10 +209,6 @@ func accessorAttrib(doc *gltf.Document, acc *gltf.Accessor, data map[int][]byte)
 	return a, nil
 }
 
-func addNodeSkin(p *Node, skin *gltf.Skin, node *gltf.Node, doc *gltf.Document, r *RenderManager) error {
-	return nil
-}
-
 func ProcessNode(p *Node, node *gltf.Node, doc *gltf.Document, r *RenderManager, data map[int][]byte) error {
 	ynode := NewNode(r, p, y3d.UnitAABB, NewTransform())
 	if node.Mesh != nil {
@@ -239,7 +236,9 @@ func ProcessNode(p *Node, node *gltf.Node, doc *gltf.Document, r *RenderManager,
 				attribs = append(attribs, a)
 			}
 			vertexType = strings.Join(names, ".")
+			PrintMemoryUsage()
 			count, vs, err := makeVBuffer(v, pf, attribs)
+			PrintMemoryUsage()
 			vertexSize = vs
 			if err != nil {
 				return err
@@ -310,6 +309,7 @@ func ProcessNode(p *Node, node *gltf.Node, doc *gltf.Document, r *RenderManager,
 		//set camera stage
 		//how
 	}
+
 	p.Add(ynode)
 
 	for _, n := range node.Children {

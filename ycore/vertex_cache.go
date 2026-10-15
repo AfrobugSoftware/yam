@@ -34,6 +34,7 @@ type VertexCache struct {
 	DrawCommandBo   uint32
 	DrawIndexVbo    uint32
 	WorldMatrixSSBO uint32
+	RenderFlagsSSBO uint32
 	MaxVertices     int32
 	MaxIndices      int32
 	MaxDrawCommands int32
@@ -59,12 +60,13 @@ func NewVertexCache(
 	id int,
 	format []VertexFormat,
 ) *VertexCache {
-	var vao, vvbo, ivbo, dcbo, divbo, mssbo uint32
+	var vao, vvbo, ivbo, dcbo, divbo, mssbo, rfssobo uint32
 	gl.CreateVertexArrays(1, &vao)
 	gl.BindVertexArray(vao)
 
 	gl.CreateBuffers(1, &vvbo)
 	gl.NamedBufferStorage(vvbo, int(maxVertex*stride), nil, gl.DYNAMIC_STORAGE_BIT)
+	UpdateGPUMem(uint64(maxVertex * stride))
 	for i, f := range format {
 		gl.VertexArrayAttribBinding(vao, uint32(i), VERTEX_ATTRIBUTE_BINDING)
 		switch f.Type {
@@ -79,10 +81,12 @@ func NewVertexCache(
 
 	gl.CreateBuffers(1, &ivbo)
 	gl.NamedBufferStorage(ivbo, int(maxIndex*4), nil, gl.DYNAMIC_STORAGE_BIT)
+	UpdateGPUMem(uint64(maxIndex * 4))
 	gl.VertexArrayElementBuffer(vao, ivbo)
 
 	gl.CreateBuffers(1, &divbo)
 	gl.NamedBufferStorage(divbo, int(maxInstances*int32(unsafe.Sizeof(uint32(0)))), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
+	UpdateGPUMem(uint64(maxInstances * int32(unsafe.Sizeof(uint32(0)))))
 	gl.VertexArrayAttribBinding(vao, 10, DRAW_INDEX_BINDING)
 	gl.VertexArrayVertexBuffer(vao, DRAW_INDEX_BINDING, divbo, 0, int32(unsafe.Sizeof(uint32(0))))
 	gl.VertexArrayAttribIFormat(vao, 10, 1, gl.UNSIGNED_INT, 0)
@@ -91,11 +95,14 @@ func NewVertexCache(
 
 	gl.CreateBuffers(1, &dcbo)
 	gl.NamedBufferStorage(dcbo, int(unsafe.Sizeof(DrawCommand{})*uintptr(maxDraws)), nil, gl.DYNAMIC_STORAGE_BIT)
-
+	UpdateGPUMem(uint64(unsafe.Sizeof(DrawCommand{}) * uintptr(maxDraws)))
 	//create the world matrix ssbo
 	gl.CreateBuffers(1, &mssbo)
 	gl.NamedBufferStorage(mssbo, int(unsafe.Sizeof(y3d.Mat4{})*uintptr(maxInstances)), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
-
+	UpdateGPUMem(uint64(unsafe.Sizeof(y3d.Mat4{}) * uintptr(maxInstances)))
+	gl.CreateBuffers(1, &rfssobo)
+	gl.NamedBufferStorage(rfssobo, int(unsafe.Sizeof(uint32(0))*uintptr(maxInstances)), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
+	UpdateGPUMem(uint64(unsafe.Sizeof(uint32(0)) * uintptr(maxInstances)))
 	return &VertexCache{
 		Vao:             vao,
 		VertexVbo:       vvbo,
@@ -103,6 +110,7 @@ func NewVertexCache(
 		DrawCommandBo:   dcbo,
 		DrawIndexVbo:    divbo,
 		WorldMatrixSSBO: mssbo,
+		RenderFlagsSSBO: rfssobo,
 		MaxVertices:     maxVertex,
 		MaxIndices:      maxIndex,
 		MaxDrawCommands: maxDraws,
@@ -215,6 +223,29 @@ func (v *VertexCache) AddDrawCommand(command DrawCommand) error {
 	return CheckError()
 }
 
+func (v *VertexCache) AddRenderFlag(baseInstance int, flag ...uint32) error {
+	if baseInstance+len(flag) >= int(v.MaxInstances) {
+		return errors.New("invalid matrix instance range")
+	}
+	ptr := gl.MapNamedBufferRange(
+		v.RenderFlagsSSBO,
+		int(unsafe.Sizeof(uint32(0)))*int(baseInstance),
+		int(len(flag)*int(unsafe.Sizeof(uint32(0)))),
+		gl.MAP_WRITE_BIT|gl.MAP_INVALIDATE_RANGE_BIT,
+	)
+	if ptr == nil {
+		CheckError()
+		return errors.New("cannot load world matrix")
+	}
+	slice := unsafe.Slice((*uint32)(ptr), len(flag))
+	copy(slice, flag)
+	if !gl.UnmapNamedBuffer(v.RenderFlagsSSBO) {
+		CheckError()
+		return errors.New("cannot release world matrix buffer")
+	}
+	return CheckError()
+}
+
 func (v *VertexCache) LoadMatrix(baseInstance int, world ...y3d.Mat4) error {
 	if baseInstance+len(world) >= int(v.MaxInstances) {
 		return errors.New("invalid matrix instance range")
@@ -251,7 +282,9 @@ func (v *VertexCache) Render() {
 		//how to handle render states ???
 		gl.BindVertexArray(v.Vao)
 		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, WORLD_MATRIX_BINDING, v.WorldMatrixSSBO)
+		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, RENDER_FLAG_BINDING, v.RenderFlagsSSBO)
 		gl.BindBuffer(gl.DRAW_INDIRECT_BUFFER, v.DrawCommandBo)
+		//who should have draw mode???
 		switch v.VManager.RenderManager.DrawMode {
 		case gl.TRIANGLES, gl.LINES, gl.LINE_STRIP:
 			gl.MultiDrawElementsIndirect(v.VManager.RenderManager.DrawMode,
@@ -273,28 +306,6 @@ func (v *VertexCache) Reset() {
 	v.NumOfInstances = 0
 }
 
-func (v *VertexCache) Clear() {
-	c := uint8(0x00)
-	gl.BindBuffer(gl.ARRAY_BUFFER, v.VertexVbo)
-	gl.ClearBufferData(gl.ARRAY_BUFFER, gl.R8, gl.R8, gl.UNSIGNED_BYTE, gl.Ptr(&c))
-
-	gl.BindBuffer(gl.ARRAY_BUFFER, v.DrawIndexVbo)
-	gl.ClearBufferData(gl.ARRAY_BUFFER, gl.R8, gl.R8, gl.UNSIGNED_BYTE, gl.Ptr(&c))
-
-	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, v.IndexVbo)
-	gl.ClearBufferData(gl.ELEMENT_ARRAY_BUFFER, gl.R8, gl.R8, gl.UNSIGNED_BYTE, gl.Ptr(&c))
-
-	gl.BindBuffer(gl.DRAW_INDIRECT_BUFFER, v.DrawCommandBo)
-	gl.ClearBufferData(gl.DRAW_INDIRECT_BUFFER, gl.R8, gl.R8, gl.UNSIGNED_BYTE, gl.Ptr(&c))
-
-	gl.BindBuffer(gl.SHADER_STORAGE_BUFFER, v.WorldMatrixSSBO)
-	gl.ClearBufferData(gl.SHADER_STORAGE_BUFFER, gl.R8, gl.R8, gl.UNSIGNED_BYTE, gl.Ptr(&c))
-
-	v.NumIndices = 0
-	v.NumVertics = 0
-	v.NumDrawCommands = 0
-	v.NumOfInstances = 0
-}
 func (v *VertexCache) SetSkin(skin int) {
 	if !v.IsEmpty() {
 		v.Render()
@@ -309,6 +320,7 @@ func (v *VertexCache) Destroy() {
 	gl.DeleteBuffers(1, &v.DrawCommandBo)
 	gl.DeleteBuffers(1, &v.DrawIndexVbo)
 	gl.DeleteBuffers(1, &v.WorldMatrixSSBO)
+	gl.DeleteBuffers(1, &v.RenderFlagsSSBO)
 	gl.DeleteVertexArrays(1, &v.Vao)
 }
 

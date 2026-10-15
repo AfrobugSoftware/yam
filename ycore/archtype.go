@@ -399,7 +399,7 @@ func (w *World) UpdateComponent(entity EntityId, component ComponentId,
 }
 
 // returns all entities that has at least the given component ids
-func (w *World) Query(cids []ComponentId) []EntityId {
+func (w *World) Query(cids ...ComponentId) []EntityId {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 

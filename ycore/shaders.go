@@ -2,28 +2,28 @@ package ycore
 
 const (
 	shadowVertexShader = `
-	#version 430
-	layout(location = 0) in vec3 pos;
-	layout(location = 10) in uint dInx;
-	layout(std430, binding = 0) buffer MatrixSSBO {
-    	mat4 world[];
-	};
-	layout(std140, binding = 4) uniform vp {
-		mat4 viewproj;
-	}
-	void main() {
-		gl_Position = viewproj * world[dInx] * pos;
-	};
+#version 430
+layout(location = 0) in vec3 pos;
+layout(location = 10) in uint dInx;
+layout(std430, binding = 0) buffer MatrixSSBO {
+    mat4 world[];
+};
+layout(std140, binding = 4) uniform vp {
+	mat4 viewproj;
+}
+void main() {
+	gl_Position = viewproj * world[dInx] * pos;
+};
 	`
 	shadowFragmentShader = `
-	#version 430
+#version 430
 
-	void main() {
-		//
-	}
+void main() {
+	//
+}
 	`
 	gbufferVertex = `
-	#version 430 core
+#version 430 core
 
 layout(location = 0) in vec3 pos;
 layout(location = 1) in vec3 normal;
@@ -35,14 +35,13 @@ out data {
 	vec3 fragNormal;
 	vec4 fragColor;
 	vec2 fragUv;
-
 }vs_out;
-layout(std430, binding = 0) buffer MatrixSSBO {
+layout(std430, binding = 0) buffer matrix {
     	mat4 world[];
-	};
-	layout(std140, binding = 4) uniform vp {
+};
+layout(std140, binding = 4) uniform vp {
 		mat4 viewproj;
-	}
+}
 
 void main() {
     vs_in.fragUv = uv;
@@ -54,7 +53,7 @@ void main() {
 	`
 
 	gbufferFragment = `
-	#version 430 core
+#version 430 core
 
 layout (location = 0) out vec4 outWolrdPos;
 layout (location = 1) out vec4 outWorldNormal;

@@ -64,7 +64,6 @@ type Joint struct {
 	Parent     int
 	Name       string
 	Children   []int
-	kTime      []float32
 	KPos       []PFrame
 	KRot       []RFrame
 	BindPose   y3d.Mat4

@@ -11,7 +11,6 @@ import (
 type Geometry struct {
 	Spatial
 	VertexType       string
-	DataV, DataI     *bytes.Buffer
 	DrawCommand      DrawCommand
 	InstanceCount    int
 	SkinId           int
@@ -47,19 +46,17 @@ func NewGeometry(
 			MoveController:   movec,
 		},
 		VertexType:    vertexType,
-		DataV:         dataV,
-		DataI:         dataI,
 		InstanceCount: 1,
 		SkinId:        skinId,
 		StaticBuf:     staticBuf,
 	}
-	g.Setup()
+	g.Setup(dataV, dataI)
 	return g
 }
-func (g *Geometry) Setup() {
-	if g.DataI != nil && g.DataV != nil && g.StaticBuf == NO_STATICBUF {
+func (g *Geometry) Setup(dataV, dataI *bytes.Buffer) {
+	if dataI != nil && dataV != nil && g.StaticBuf == NO_STATICBUF {
 		err := g.RenderManager.VertextManager.LoadCache(g.VertexType,
-			g.DataV, g.DataI, g.SkinId,
+			dataV, dataI, g.SkinId,
 			&g.DrawCommand)
 		if err != nil {
 			log.Println(err)

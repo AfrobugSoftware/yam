@@ -158,17 +158,6 @@ func (s *SkinManager) AddTexture(skin int, filename string,
 	levels := mipLevels(minFilter, w, h)
 	gl.TextureStorage2D(texId, levels, gl.RGBA8, w, h)
 	gl.TextureSubImage2D(texId, 0, 0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(converted.Pixels()))
-	gl.TexImage2D(
-		gl.TEXTURE_2D,
-		0,
-		gl.RGBA,
-		w,
-		h,
-		0,
-		gl.RGBA,
-		gl.UNSIGNED_BYTE,
-		gl.Ptr(converted.Pixels()),
-	)
 	if levels > 1 {
 		var v float32
 		gl.GetFloatv(gl.MAX_TEXTURE_MAX_ANISOTROPY, &v)
