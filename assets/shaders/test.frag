@@ -9,15 +9,7 @@ layout(std140, binding= 2) uniform Material {
     vec4 emissiveShinines;
 } material;
 
-struct Light {
-    float radius;
-    vec4 pos;
-    vec4 color;
-};
-
-layout(std140, binding=3) uniform Lights {
-    Light lights[10];
-} l;
+uniform sampler2D shadawMap; 
 
 void main() {
     outColor = vec4(1.0,0.0,0.0,1.0);

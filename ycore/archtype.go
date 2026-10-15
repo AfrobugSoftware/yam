@@ -136,7 +136,38 @@ func appendToStorage[T any](data T, comp ComponentId, a *Archetype) {
 	slc.Set(reflect.Append(slc, reflect.ValueOf(data)))
 }
 
-func removeFromStorage(row int, a *Archetype) (swappedEntity EntityId, wasSwapped bool) {
+func DumpStorage(a *Archetype) {
+	for _, s := range a.storageBuffer {
+		fmt.Println(s)
+	}
+}
+
+func getStorageLen(comp ComponentId, a *Archetype) int {
+	store := reflect.ValueOf(a.storageBuffer[comp]).Elem()
+	slc := store.Field(0)
+	return slc.Len()
+}
+
+func gatherComponentsFromStorage(a *Archetype, row int) map[ComponentId]Component {
+	comps := make(map[ComponentId]Component)
+	for cid := range a.storageBuffer {
+		store := reflect.ValueOf(a.storageBuffer[cid]).Elem()
+		slc := store.Field(0)
+		comps[cid] = slc.Index(row).Interface()
+	}
+	return comps
+}
+
+func (a *Archetype) addEntity(entity EntityId, comps map[ComponentId]Component) int {
+	row := len(a.entities)
+	a.entities = append(a.entities, entity)
+	for cid, comp := range comps {
+		appendToStorage(comp, cid, a)
+	}
+	return row
+}
+
+func (a *Archetype) removeEntity(row int) (swappedEntity EntityId, wasSwapped bool) {
 	last := len(a.entities) - 1
 	if row != last {
 		a.entities[row] = a.entities[last]
@@ -165,20 +196,8 @@ func removeFromStorage(row int, a *Archetype) (swappedEntity EntityId, wasSwappe
 	return
 }
 
-func DumpStorage(a *Archetype) {
-	for _, s := range a.storageBuffer {
-		fmt.Println(s)
-	}
-}
-
-func getStorageLen(comp ComponentId, a *Archetype) int {
-	store := reflect.ValueOf(a.storageBuffer[comp]).Elem()
-	slc := store.Field(0)
-	return slc.Len()
-}
-
-func getFromStorage(row int, comp ComponentId, a *Archetype) Component {
-	store := reflect.ValueOf(a.storageBuffer[comp]).Elem()
+func (a *Archetype) getComponent(row int, cid ComponentId) Component {
+	store := reflect.ValueOf(a.storageBuffer[cid]).Elem()
 	slc := store.Field(0)
 	if row >= slc.Len() {
 		panic("trying to access beyond index for storage")
@@ -186,46 +205,15 @@ func getFromStorage(row int, comp ComponentId, a *Archetype) Component {
 	return slc.Index(row).Interface()
 }
 
-func setToStorage(row int, data any, comp ComponentId, a *Archetype) {
-	str, ok := a.storageBuffer[comp]
+func (a *Archetype) setComponent(row int, cid ComponentId, comp Component) {
+	str, ok := a.storageBuffer[cid]
 	if !ok {
-		log.Printf("no component: %d", comp)
+		log.Printf("no component: %d", cid)
 		return
 	}
 	store := reflect.ValueOf(str).Elem()
 	slc := store.Field(0)
-	slc.Index(row).Set(reflect.ValueOf(data))
-}
-
-func gatherComponentsFromStorage(a *Archetype, row int) map[ComponentId]Component {
-	comps := make(map[ComponentId]Component)
-	for cid := range a.storageBuffer {
-		store := reflect.ValueOf(a.storageBuffer[cid]).Elem()
-		slc := store.Field(0)
-		comps[cid] = slc.Index(row).Interface()
-	}
-	return comps
-}
-
-func (a *Archetype) addEntity(entity EntityId, comps map[ComponentId]Component) int {
-	row := len(a.entities)
-	a.entities = append(a.entities, entity)
-	for cid, comp := range comps {
-		appendToStorage(comp, cid, a)
-	}
-	return row
-}
-
-func (a *Archetype) removeEntity(row int) (EntityId, bool) {
-	return removeFromStorage(row, a)
-}
-
-func (a *Archetype) getComponent(row int, cid ComponentId) Component {
-	return getFromStorage(row, cid, a)
-}
-
-func (a *Archetype) setComponent(row int, cid ComponentId, comp Component) {
-	setToStorage(row, comp, cid, a)
+	slc.Index(row).Set(reflect.ValueOf(comp))
 }
 
 type entityRecord struct {
@@ -291,7 +279,10 @@ func (w *World) AddComponent(entity EntityId, cid ComponentId, comp Component) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	record := w.entities[entity]
+	record, ok := w.entities[entity]
+	if !ok {
+		return //no entity
+	}
 	var currentComps map[ComponentId]Component
 	var newKey archetypeKey
 

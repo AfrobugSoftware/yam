@@ -25,6 +25,7 @@ type Polymesh struct {
 	IsSelected  bool
 	NumVerts    int
 	NumIndices  int
+	Ent         ycore.EntityId
 }
 
 func (pm *Polymesh) AddPolygon(p *Polygon) {
@@ -173,7 +174,7 @@ func (pm *Polymesh) Picked(ray y3d.Ray) (float32, bool) {
 	return h, b
 }
 
-func (pm *Polymesh) Render(vm *ycore.VertexCacheManager) {
+func (pm *Polymesh) WriteCache(vm *ycore.VertexCacheManager) {
 	v, err := vm.GetCache(ycore.VPNTC, pm.SkinId)
 	if err != nil {
 		return
@@ -186,11 +187,13 @@ func (pm *Polymesh) Render(vm *ycore.VertexCacheManager) {
 		p.WriteCache(v)
 		pm.DrawCommand.Count += uint32(len(p.Indices))
 	}
-	v.AddInstances(&pm.DrawCommand, 1)
-	v.AddRenderFlag(int(pm.DrawCommand.BaseInstance), pm.RenderFlag)
-	v.LoadMatrix(int(pm.DrawCommand.BaseInstance),
-		pm.Transform.World)
-	v.AddDrawCommand(pm.DrawCommand)
+}
+
+func (pm *Polymesh) LoadEntity(world *ycore.World) {
+	world.SetComponent(pm.Ent, TransformComponent, pm.Transform)
+	world.SetComponent(pm.Ent, RenderFlagComponent, pm.RenderFlag)
+	world.SetComponent(pm.Ent, DrawCommandComponent, pm.DrawCommand)
+	world.SetComponent(pm.Ent, InstanceComponent, 1)
 }
 
 func (pm *Polymesh) CalcTextureCoordinate(axis AXIS, box *y3d.AABB) {

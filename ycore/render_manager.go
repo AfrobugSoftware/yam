@@ -20,6 +20,11 @@ const (
 )
 
 const (
+	DEFAULT_STAGE = 0
+	SHADOW_STAGE  = 1
+)
+
+const (
 	MAX_LIGHT                = 100
 	VERTEX_ATTRIBUTE_BINDING = 0
 	DRAW_INDEX_BINDING       = 10
@@ -40,6 +45,12 @@ const (
 	RENDER_FLAG_BINDING
 )
 
+// SHADOW RESOLUTION
+const (
+	SHADOW_WIDTH  = 1024
+	SHADOW_HEIGHT = 1024
+)
+
 type RenderManager struct {
 	Context        sdl.GLContext
 	Window         *sdl.Window
@@ -51,8 +62,8 @@ type RenderManager struct {
 	MajorVersion   int
 	ViewPort       [4]y3d.Rect
 	View2D         y3d.Mat4
-	View3D         y3d.Mat4
 	Proj2D         y3d.Mat4
+	View3D         [4]y3d.Mat4
 	ProjP          [4]y3d.Mat4
 	ProjO          [4]y3d.Mat4
 	ViewProj       y3d.Mat4
@@ -77,6 +88,9 @@ type RenderManager struct {
 	gPosition      uint32
 	gAlbedoSpec    uint32
 	gDepth         uint32
+	shadowMap      uint32
+	shadowbuffer   uint32
+	shadowProgram  uint32
 	lightSphere    int
 	viewubo        uint32
 	FpCamera       *FPCamera
@@ -94,7 +108,12 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 			W: 1,
 		},
 		View2D: y3d.Identity,
-		View3D: y3d.Identity,
+		View3D: [4]y3d.Mat4{
+			y3d.Identity,
+			y3d.Identity,
+			y3d.Identity,
+			y3d.Identity,
+		},
 		Proj2D: y3d.Identity,
 		ProjO: [4]y3d.Mat4{
 			y3d.Identity,
@@ -137,7 +156,7 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 	rm.SetClippingPlanes(0.1, 1000.0)
 
 	fbW, fbH := window.GLGetDrawableSize()
-	rm.InitStage(0, y3d.Rect{
+	rm.InitStage(DEFAULT_STAGE, y3d.Rect{
 		X:      0,
 		Y:      0,
 		Height: int(fbH),
@@ -147,6 +166,14 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 	)
 	rm.Width = int(fbW)
 	rm.Height = int(fbH)
+
+	rm.InitStage(SHADOW_STAGE, y3d.Rect{
+		X:      0,
+		Y:      0,
+		Height: int(SHADOW_HEIGHT),
+		Width:  int(SHADOW_WIDTH),
+	},
+		float32(y3d.ToRadians(45)))
 	err = yui.Setup()
 	if err != nil {
 		panic(err)
@@ -160,7 +187,10 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 	if err != nil {
 		panic(err)
 	}
-
+	err = rm.CreateShadowBuffer()
+	if err != nil {
+		panic(err)
+	}
 	return rm
 }
 
@@ -210,6 +240,27 @@ func (r *RenderManager) CreateFrameBuffer() error {
 	return nil
 }
 
+func (r *RenderManager) CreateShadowBuffer() error {
+	gl.GenFramebuffers(1, &r.shadowbuffer)
+	gl.BindFramebuffer(gl.FRAMEBUFFER, r.shadowbuffer)
+
+	gl.CreateTextures(gl.TEXTURE_2D, 1, &r.shadowMap)
+	gl.TextureStorage2D(r.shadowMap, 1, gl.DEPTH_COMPONENT16,
+		SHADOW_WIDTH, SHADOW_HEIGHT)
+	gl.TextureParameteri(r.shadowMap, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TextureParameteri(r.shadowMap, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT,
+		gl.TEXTURE_2D, r.shadowMap, 0)
+	gl.DrawBuffer(gl.NONE)
+	gl.ReadBuffer(gl.NONE)
+	status := gl.CheckFramebufferStatus(gl.FRAMEBUFFER)
+	if status != gl.FRAMEBUFFER_COMPLETE {
+		return errors.New("failed to create shadow buffer")
+	}
+	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+	return nil
+}
+
 func (r *RenderManager) BindFramebufferTextures() {
 	gl.BindTextureUnit(0, r.gPosition)
 	gl.BindTextureUnit(1, r.gNormal)
@@ -218,10 +269,12 @@ func (r *RenderManager) BindFramebufferTextures() {
 
 func (r *RenderManager) DestroyFrameBuffer() {
 	gl.DeleteFramebuffers(1, &r.gBuffer)
+	gl.DeleteFramebuffers(1, &r.shadowbuffer)
 	gl.DeleteTextures(1, &r.gNormal)
 	gl.DeleteTextures(1, &r.gPosition)
 	gl.DeleteTextures(1, &r.gAlbedoSpec)
 	gl.DeleteTextures(1, &r.gDepth)
+	gl.DeleteTextures(1, &r.shadowMap)
 }
 
 func (r *RenderManager) GetFrustum() [6]y3d.Plane {
@@ -348,10 +401,10 @@ func (r *RenderManager) CalcViewProj() {
 		b = &r.View2D
 	case MODE_3D_ORTHO:
 		a = &r.ProjO[r.Stage]
-		b = &r.View3D
+		b = &r.View3D[r.Stage]
 	case MODE_3D_PERSPECTIVE:
 		a = &r.ProjP[r.Stage]
-		b = &r.View3D
+		b = &r.View3D[r.Stage]
 	default:
 		a = &y3d.Identity
 		b = &y3d.Identity
@@ -423,7 +476,7 @@ func (r *RenderManager) GetPickRay(pos y3d.Vec2) (y3d.Vec3, y3d.Vec3) {
 		Z: 1.0,
 	}
 	vcS.Y = -vcS.Y
-	InvView := r.View3D
+	InvView := r.View3D[r.Stage]
 	(&InvView).Invert()
 	var dir, origin y3d.Vec3
 	dir = InvView.MulVec3(vcS)
@@ -490,22 +543,42 @@ func (r *RenderManager) CreateDefaultShader() {
 	if err != nil {
 		panic(err)
 	}
-	p, ok := r.ShaderManager.Shaders["default"]
-	if ok {
-		r.ActiveProgram = p
+	r.ActiveProgram = r.ShaderManager.Shaders["default"]
+	p, err := r.ShaderManager.Add("shadow", []string{shadowVertexShader, shadowFragmentShader},
+		[]uint32{gl.VERTEX_SHADER, gl.FRAGMENT_SHADER})
+	if err != nil {
+		panic(err)
 	}
+	r.shadowProgram = p
+}
+
+func (r *RenderManager) BeginShadowMap() {
+	r.SkinManager.OverrideLocalPrograms = true
+	r.View3D[SHADOW_STAGE] = y3d.LookAt(y3d.Vec3{
+		X: -2.0,
+		Y: 4.0,
+		Z: -1.0,
+	}, y3d.Vec3{}, y3d.UNIT_Y)
+
+	r.SetStage(MODE_3D_ORTHO, SHADOW_STAGE)
+	gl.BindFramebuffer(gl.FRAMEBUFFER, r.shadowbuffer)
+	gl.Clear(gl.DEPTH_BUFFER_BIT)
+	gl.BindBufferBase(gl.UNIFORM_BUFFER, VIEW_PROJ_BINDING, r.viewubo)
+	gl.UseProgram(r.shadowProgram)
+}
+
+func (r *RenderManager) EndShadowMap() {
+	r.SkinManager.OverrideLocalPrograms = false
+	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 }
 
 func (r *RenderManager) BeginRender() {
-	gl.Viewport(int32(r.ViewPort[r.Stage].X),
-		int32(r.ViewPort[r.Stage].Y),
-		int32(r.ViewPort[r.Stage].Width),
-		int32(r.ViewPort[r.Stage].Height))
-	r.CalcViewProj()
+	r.SetStage(MODE_3D_PERSPECTIVE, DEFAULT_STAGE)
 	gl.BindBufferBase(gl.UNIFORM_BUFFER, VIEW_PROJ_BINDING, r.viewubo)
 
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
 	gl.UseProgram(r.ActiveProgram)
+	gl.BindTextureUnit(0, r.shadowMap)
 }
 
 // hmmm
@@ -545,7 +618,7 @@ func (r *RenderManager) UpdateFPCamera(dt float32) {
 	if r.FpCamera != nil {
 		//using first person camera
 		r.FpCamera.Update(dt)
-		r.View3D = y3d.ViewFromAxis(
+		r.View3D[r.Stage] = y3d.ViewFromAxis(
 			r.FpCamera.Right,
 			r.FpCamera.Up,
 			r.FpCamera.Dir,
@@ -556,7 +629,7 @@ func (r *RenderManager) UpdateFPCamera(dt float32) {
 func (r *RenderManager) UpdateFollowCamera(dt float32) {
 	if r.FollowCamera != nil {
 		r.FollowCamera.Update(dt)
-		r.View3D = y3d.ViewFromAxis(
+		r.View3D[r.Stage] = y3d.ViewFromAxis(
 			r.FollowCamera.Right,
 			r.FollowCamera.Up,
 			r.FollowCamera.Dir,

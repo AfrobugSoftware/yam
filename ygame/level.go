@@ -57,6 +57,7 @@ type LevelParameters struct {
 type Level struct {
 	World   *ycore.World
 	OctTree *y3d.Octree
+	Meshes  []*Polymesh
 
 	lightSSBO          uint32
 	levelParametersUBO uint32
@@ -73,7 +74,7 @@ func NewLevel() *Level {
 	}
 }
 
-func (l *Level) Render(vm *ycore.VertexCacheManager, frustum []y3d.Plane) {
+func (l *Level) RenderEntities(vm *ycore.VertexCacheManager, frustum []y3d.Plane, cull bool) {
 	entities := l.World.Query(
 		DrawCommandComponent,
 		RenderFlagComponent,
@@ -85,7 +86,7 @@ func (l *Level) Render(vm *ycore.VertexCacheManager, frustum []y3d.Plane) {
 	for _, e := range entities {
 		box := l.World.GetComponent(e, BoundingBoxComponent).(y3d.AABB)
 		c := box.Cull(frustum)
-		if c == y3d.CULLED {
+		if cull && c == y3d.CULLED {
 			continue
 		}
 		vertexType := l.World.GetComponent(e, VertexTypeComponent).(string)

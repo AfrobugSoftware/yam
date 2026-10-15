@@ -49,6 +49,7 @@ type SkinManager struct {
 	Skins                     map[int]Skin
 	Textures                  map[int]TextureData
 	Materials                 map[int]ygl.Material
+	OverrideLocalPrograms     bool
 	ubo                       uint32
 	maxTextureUnit            int32
 }
@@ -227,7 +228,7 @@ func (s *SkinManager) BindSkin(skin int) error {
 		}
 	}
 	gl.BindBufferBase(gl.UNIFORM_BUFFER, MATERIAL_UBO_BINDING, s.ubo)
-	if sk.Program != 0 {
+	if sk.Program != 0 && !s.OverrideLocalPrograms {
 		gl.UseProgram(sk.Program)
 	}
 	return nil

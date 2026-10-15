@@ -10,9 +10,9 @@ layout(std430, binding = 0) buffer MatrixSSBO {
 };
 layout(std140, binding = 4) uniform vp {
 	mat4 viewproj;
-}
+};
 void main() {
-	gl_Position = viewproj * world[dInx] * pos;
+	gl_Position = viewproj * world[dInx] * vec4(pos, 1.0);
 };
 	`
 	shadowFragmentShader = `

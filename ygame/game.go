@@ -72,12 +72,17 @@ func (g *Engine) Update(dt float64) {
 }
 
 func (g *Engine) Draw() {
-	g.RenderManager.BeginRender()
+
 	if g.App != nil {
+		g.RenderManager.BeginShadowMap()
 		g.App.Draw()
+		g.RenderManager.EndShadowMap()
+
+		g.RenderManager.BeginRender()
+		g.App.Draw()
+		g.RenderManager.Render()
+		g.RenderManager.EndRender()
 	}
-	g.RenderManager.Render() //how to I allow the frontend render
-	g.RenderManager.EndRender()
 }
 
 func (g *Engine) Run() {

@@ -93,22 +93,22 @@ func (s *ShaderManager) AddFromFile(name string, filename []string, shaderType [
 	return nil
 }
 
-func (s *ShaderManager) Add(name string, r []string, shaderType []uint32) error {
+func (s *ShaderManager) Add(name string, r []string, shaderType []uint32) (uint32, error) {
 	if len(r) != len(shaderType) {
-		return errors.New("shader type must match shader file names")
+		return 0, errors.New("shader type must match shader file names")
 	}
 	shaders := make([]uint32, len(r))
 	for i, f := range r {
 		sh, err := createShader(f, shaderType[i])
 		if err != nil {
-			return err
+			return 0, err
 		}
 		shaders = append(shaders, sh)
 	}
 	p, err := createProgram(shaders)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	s.Shaders[name] = p
-	return nil
+	return p, nil
 }
