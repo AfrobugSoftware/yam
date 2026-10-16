@@ -1,6 +1,7 @@
 package ygame
 
 import (
+	"bytes"
 	"encoding/gob"
 	"errors"
 	"os"
@@ -106,6 +107,21 @@ func (l *Level) RenderEntities(vm *ycore.VertexCacheManager, frustum []y3d.Plane
 		v.AddRenderFlag(int(drawcommand.BaseInstance), rflag)
 	}
 }
+
+func (l *Level) AddEntityData(
+	ent ycore.EntityId,
+	vertexType string,
+	skinId int,
+	v, i *bytes.Buffer, vm *ycore.VertexCacheManager) error {
+	cmd := ycore.DrawCommand{}
+	err := vm.LoadCache(vertexType, v, i, skinId, &cmd)
+	if err != nil {
+		return err
+	}
+	l.World.SetComponent(ent, DrawCommandComponent, cmd)
+	return nil
+}
+
 func (l *Level) AddLight(light y3d.Light) {
 	if l.numLight >= MAX_LIGHTS {
 		return
