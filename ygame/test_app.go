@@ -146,21 +146,22 @@ func (t *TestApplication) Update(deltaTime float64) {
 	if gEngine.InputManager.GetKeyState(sdl.SCANCODE_P) == ycore.BUTTON_PRESSED {
 		ycore.PrintMemoryUsage()
 	}
+	speed := 25.0
 	g := t.Obj.(*ycore.Geometry)
 	if g.MoveController != nil {
 		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_PRESSED {
-			g.MoveController.Thrust = -15
+			g.MoveController.Thrust = -float32(speed)
 		}
 		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_DOWN) == ycore.BUTTON_PRESSED {
-			g.MoveController.Thrust = 15
+			g.MoveController.Thrust = float32(speed)
 		}
 
 		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_LEFT) == ycore.BUTTON_PRESSED {
-			g.MoveController.RotSpeedRoll = -15
+			g.MoveController.RotSpeedRoll = float32(speed)
 		}
 
 		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_RIGHT) == ycore.BUTTON_PRESSED {
-			g.MoveController.RotSpeedRoll = 15
+			g.MoveController.RotSpeedRoll = float32(speed)
 		}
 
 		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_RELEASED {

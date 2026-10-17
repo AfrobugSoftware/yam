@@ -45,6 +45,10 @@ const (
 	RENDER_FLAG_BINDING
 )
 
+const (
+	MAX_LIGHTS = 127
+)
+
 // SHADOW RESOLUTION
 const (
 	SHADOW_WIDTH  = 1024
@@ -91,7 +95,9 @@ type RenderManager struct {
 	shadowMap      uint32
 	shadowbuffer   uint32
 	shadowProgram  uint32
+	lightSSBO      uint32
 	lightSphere    int
+	numLight       int
 	viewubo        uint32
 	FpCamera       *FPCamera
 	FollowCamera   *FollowCamera
@@ -181,6 +187,11 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 	gl.CreateBuffers(1, &rm.viewubo)
 	gl.NamedBufferStorage(rm.viewubo, int(unsafe.Sizeof(y3d.Mat4{})),
 		nil, gl.DYNAMIC_STORAGE_BIT)
+
+	var ssbo uint32
+	gl.CreateBuffers(1, &ssbo)
+	gl.NamedBufferStorage(ssbo, int(unsafe.Sizeof(y3d.Light{})*MAX_LIGHTS), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
+	rm.lightSSBO = ssbo
 	rm.Prepare2D(float32(fbW), float32(fbH), 0.1, 1000.0)
 	rm.SetStage(MODE_3D_PERSPECTIVE, 0) //SET TO THE 0TH stage
 	err = rm.CreateFrameBuffer()
@@ -259,6 +270,17 @@ func (r *RenderManager) CreateShadowBuffer() error {
 	}
 	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 	return nil
+}
+
+func (l *RenderManager) AddLight(light y3d.Light) {
+	if l.numLight >= MAX_LIGHTS {
+		return
+	}
+	ptr := unsafe.Pointer(&light)
+	size := unsafe.Sizeof(light)
+	s := unsafe.Slice((*byte)(ptr), int(size))
+	gl.NamedBufferSubData(l.lightSSBO, (int(size) * l.numLight), int(size), gl.Ptr(s))
+	l.numLight++
 }
 
 func (r *RenderManager) BindFramebufferTextures() {
@@ -505,6 +527,7 @@ func (r *RenderManager) Destroy() {
 	gl.DeleteTextures(1, &r.gAlbedoSpec)
 	gl.DeleteTextures(1, &r.gDepth)
 	gl.DeleteBuffers(1, &r.viewubo)
+	gl.DeleteBuffers(1, &r.lightSSBO)
 	sdl.GLDeleteContext(r.Context)
 }
 
@@ -554,16 +577,24 @@ func (r *RenderManager) CreateDefaultShader() {
 
 func (r *RenderManager) BeginShadowMap() {
 	r.SkinManager.OverrideLocalPrograms = true
+	l := y3d.Light{
+		Pos: y3d.Vec4{
+			X: -2.0,
+			Y: 4.0,
+			Z: -1.0,
+			W: 1.0},
+		Color: y3d.Vec4{},
+	}
 	r.View3D[SHADOW_STAGE] = y3d.LookAt(y3d.Vec3{
 		X: -2.0,
 		Y: 4.0,
-		Z: -1.0,
-	}, y3d.Vec3{}, y3d.UNIT_Y)
-
+		Z: -1.0}, y3d.Vec3{}, y3d.UNIT_Y)
+	r.AddLight(l)
 	r.SetStage(MODE_3D_ORTHO, SHADOW_STAGE)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.shadowbuffer)
 	gl.Clear(gl.DEPTH_BUFFER_BIT)
 	gl.BindBufferBase(gl.UNIFORM_BUFFER, VIEW_PROJ_BINDING, r.viewubo)
+	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, LIGHT_BINDING, r.lightSSBO)
 	gl.UseProgram(r.shadowProgram)
 }
 

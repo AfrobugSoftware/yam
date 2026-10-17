@@ -4,12 +4,9 @@ import (
 	"encoding/gob"
 	"errors"
 	"os"
-	"unsafe"
 	"yam/y3d"
 	"yam/ycontroller"
 	"yam/ycore"
-
-	"github.com/go-gl/gl/v4.3-core/gl"
 )
 
 const (
@@ -23,10 +20,6 @@ const (
 	LOB_LIGH          = 128
 	LOB_SPAWNPOINT    = 256
 	LOB_TRIGGER_POINT = 512
-)
-
-const (
-	MAX_LIGHTS = 10
 )
 
 type AXIS int
@@ -59,18 +52,12 @@ type Level struct {
 	OctTree *y3d.Octree
 	Meshes  []*Polymesh
 
-	lightSSBO          uint32
 	levelParametersUBO uint32
-	numLight           int
 }
 
 func NewLevel() *Level {
-	var ssbo uint32
-	gl.CreateBuffers(1, &ssbo)
-	gl.NamedBufferStorage(ssbo, int(unsafe.Sizeof(y3d.Light{})*MAX_LIGHTS), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
 	return &Level{
-		World:     ycore.NewWorld(),
-		lightSSBO: ssbo,
+		World: ycore.NewWorld(),
 	}
 }
 
@@ -106,21 +93,7 @@ func (l *Level) RenderEntities(vm *ycore.VertexCacheManager, frustum []y3d.Plane
 		v.AddRenderFlag(int(drawcommand.BaseInstance), rflag)
 	}
 }
-func (l *Level) AddLight(light y3d.Light) {
-	if l.numLight >= MAX_LIGHTS {
-		return
-	}
-	ptr := unsafe.Pointer(&light)
-	size := unsafe.Sizeof(light)
-	s := unsafe.Slice((*byte)(ptr), int(size))
-	gl.NamedBufferSubData(l.lightSSBO, (int(size) * l.numLight), int(size), gl.Ptr(s))
-}
-func (l *Level) UseLight() {
-	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, ycore.LIGHT_BINDING, l.lightSSBO)
-}
-func (l *Level) ClearLight() {
-	l.numLight = 0
-}
+
 func (l *Level) Save(filename string) error {
 	file, err := os.Create(filename)
 	if err != nil {
@@ -145,8 +118,4 @@ func (l *Level) Load(filename string) error {
 	}
 	l.World.Load(decoder)
 	return nil
-}
-
-func (l *Level) Destory() {
-	gl.DeleteBuffers(1, &l.lightSSBO)
 }
