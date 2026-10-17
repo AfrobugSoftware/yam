@@ -13,7 +13,7 @@ import (
 
 const (
 	INVALID_CACHE = -1
-	MAX_CACHES    = 5
+	MAX_CACHES    = 10
 )
 
 const (

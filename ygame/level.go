@@ -5,12 +5,9 @@ import (
 	"encoding/gob"
 	"errors"
 	"os"
-	"unsafe"
 	"yam/y3d"
 	"yam/ycontroller"
 	"yam/ycore"
-
-	"github.com/go-gl/gl/v4.3-core/gl"
 )
 
 const (
@@ -34,6 +31,8 @@ const (
 	Z_AXIS
 )
 
+type InputFunc func(*ycore.InputManager, ycontroller.Controller)
+
 var (
 	MoveControllerComponent = ycore.RegisterComponent[ycontroller.MovementController]()
 	DrawCommandComponent    = ycore.RegisterComponent[ycore.DrawCommand]()
@@ -42,8 +41,9 @@ var (
 	VertexTypeComponent     = ycore.RegisterComponent[string]()
 	RenderFlagComponent     = ycore.RegisterComponent[uint32]()
 	BoundingBoxComponent    = ycore.RegisterComponent[y3d.AABB]()
-	EntityTypeComponent     = ycore.RegisterComponent[uint32]()
+	EntityTagComponent      = ycore.RegisterComponent[uint32]()
 	InstanceComponent       = ycore.RegisterComponent[int]()
+	InputComponent          = ycore.RegisterComponent[InputFunc]()
 )
 
 type LevelParameters struct {
@@ -98,8 +98,32 @@ func (l *Level) RenderEntities(vm *ycore.VertexCacheManager, frustum []y3d.Plane
 	}
 }
 
+func (l *Level) UpdateEntitesMovement(deltaTime float32) {
+	entites := l.World.Query(TransformComponent, MoveControllerComponent)
+	for _, e := range entites {
+		movement := l.World.GetComponent(e, MoveControllerComponent).(*ycontroller.MovementController)
+		transform := l.World.GetComponent(e, TransformComponent).(ycore.Transform)
+
+		movement.Update(deltaTime)
+		transform.SetPositionOrientation(movement.Position, movement.Orientation)
+
+		l.World.SetComponent(e, TransformComponent, transform)
+	}
+}
+
+func (l *Level) ProcessEntityInput(input *ycore.InputManager) {
+	entites := l.World.Query(InputComponent, MoveControllerComponent)
+	for _, e := range entites {
+		movement := l.World.GetComponent(e, MoveControllerComponent).(*ycontroller.MovementController)
+		inputfunc := l.World.GetComponent(e, InputComponent).(InputFunc)
+
+		inputfunc(input, movement)
+	}
+}
+
 func (l *Level) AddEntityDrawData(
 	ent ycore.EntityId,
+	entityTag uint32,
 	vertexType string,
 	skinId int,
 	v, i *bytes.Buffer, vm *ycore.VertexCacheManager) error {
@@ -108,25 +132,13 @@ func (l *Level) AddEntityDrawData(
 	if err != nil {
 		return err
 	}
-	l.World.SetComponent(ent, DrawCommandComponent, cmd)
+	l.World.AddComponent(ent, EntityTagComponent, entityTag)
+	l.World.AddComponent(ent, DrawCommandComponent, cmd)
+	l.World.AddComponent(ent, SkinComponent, skinId)
+	l.World.AddComponent(ent, VertexTypeComponent, vertexType)
 	return nil
 }
 
-func (l *Level) AddLight(light y3d.Light) {
-	if l.numLight >= MAX_LIGHTS {
-		return
-	}
-	ptr := unsafe.Pointer(&light)
-	size := unsafe.Sizeof(light)
-	s := unsafe.Slice((*byte)(ptr), int(size))
-	gl.NamedBufferSubData(l.lightSSBO, (int(size) * l.numLight), int(size), gl.Ptr(s))
-}
-func (l *Level) UseLight() {
-	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, ycore.LIGHT_BINDING, l.lightSSBO)
-}
-func (l *Level) ClearLight() {
-	l.numLight = 0
-}
 func (l *Level) Save(filename string) error {
 	file, err := os.Create(filename)
 	if err != nil {

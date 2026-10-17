@@ -10,9 +10,9 @@ type FollowCamera struct {
 	HDistance      float32
 	VDistance      float32
 	TargetDistance float32
-	TargetPoint    y3d.Vec3
 	TargetDir      y3d.Vec3
 	OwnersPosition y3d.Vec3
+	targetPoint    y3d.Vec3
 }
 
 func NewFollowCamera(pos y3d.Vec3, hdist, vdist, targetdist float32) *FollowCamera {
@@ -28,9 +28,9 @@ func (ff *FollowCamera) RecalAxis() {
 	v := y3d.Smul(ff.Dir, -ff.HDistance)
 	u := y3d.Smul(y3d.UNIT_Y, ff.VDistance)
 	ff.Position = y3d.Add(ff.Position, v, u)
-	ff.TargetPoint = y3d.Add(ff.OwnersPosition, y3d.Smul(ff.TargetDir, ff.TargetDistance))
+	ff.targetPoint = y3d.Add(ff.OwnersPosition, y3d.Smul(ff.TargetDir, ff.TargetDistance))
 
-	dir := y3d.Normalize(y3d.Sub(ff.TargetPoint, ff.Position))
+	dir := y3d.Normalize(y3d.Sub(ff.targetPoint, ff.Position))
 	up := y3d.UNIT_Y
 
 	dot := y3d.Dot(dir, up)

@@ -2,8 +2,7 @@ package ycore
 
 import (
 	"bytes"
-	"fmt"
-	"log"
+	"errors"
 	"unsafe"
 	"yam/y3d"
 
@@ -37,11 +36,24 @@ type StaticBuffer struct {
 
 func CheckError() error {
 	ierr := gl.GetError()
-	if ierr != gl.NO_ERROR {
-		log.Printf("GL error: 0x%x\n", ierr)
-		return fmt.Errorf("GL error: 0x%x\n", ierr)
+	switch ierr {
+	case gl.INVALID_ENUM:
+		return errors.New("invalid enum")
+	case gl.INVALID_VALUE:
+		return errors.New("invalid value")
+	case gl.INVALID_OPERATION:
+		return errors.New("invalid operation")
+	case gl.STACK_OVERFLOW:
+		return errors.New("stack overflow")
+	case gl.STACK_UNDERFLOW:
+		return errors.New("stack underflow")
+	case gl.OUT_OF_MEMORY:
+		return errors.New("out of memory")
+	case gl.INVALID_FRAMEBUFFER_OPERATION:
+		return errors.New("invalid frame buffer operation")
+	default:
+		return nil
 	}
-	return nil
 }
 
 func NewStaticBuffer(

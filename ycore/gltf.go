@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 	"yam/y3d"
+	"yam/ygl"
 
 	"github.com/qmuntal/gltf"
 )
@@ -289,11 +290,12 @@ func ProcessNode(p *Node, node *gltf.Node, doc *gltf.Document, r *RenderManager,
 			Y: float32(node.Scale[1]),
 			Z: float32(node.Scale[2]),
 		}
+		skin := r.SkinManager.AddSkin(ygl.IdentityMaterial)
 		geo := NewGeometry(r, ynode, y3d.UnitAABB,
 			trans,
 			vertexType,
 			v, i,
-			NO_SKINID,
+			skin,
 			NO_STATICBUF,
 			nil)
 		ynode.Add(geo)

@@ -98,7 +98,7 @@ func NewVertexCache(
 	UpdateGPUMem(uint64(unsafe.Sizeof(DrawCommand{}) * uintptr(maxDraws)))
 	//create the world matrix ssbo
 	gl.CreateBuffers(1, &mssbo)
-	gl.NamedBufferStorage(mssbo, int(unsafe.Sizeof(y3d.Mat4{})*uintptr(maxInstances)), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
+	gl.NamedBufferStorage(mssbo, int((unsafe.Sizeof(y3d.Mat4{})*2)*uintptr(maxInstances)), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
 	UpdateGPUMem(uint64(unsafe.Sizeof(y3d.Mat4{}) * uintptr(maxInstances)))
 	gl.CreateBuffers(1, &rfssobo)
 	gl.NamedBufferStorage(rfssobo, int(unsafe.Sizeof(uint32(0))*uintptr(maxInstances)), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
@@ -252,7 +252,7 @@ func (v *VertexCache) LoadMatrix(baseInstance int, world ...y3d.Mat4) error {
 	}
 	ptr := gl.MapNamedBufferRange(
 		v.WorldMatrixSSBO,
-		int(unsafe.Sizeof(y3d.Mat4{}))*int(baseInstance),
+		(int(unsafe.Sizeof(y3d.Mat4{}))*2)*int(baseInstance),
 		int(len(world)*int(unsafe.Sizeof(y3d.Mat4{}))),
 		gl.MAP_WRITE_BIT|gl.MAP_INVALIDATE_RANGE_BIT,
 	)
@@ -260,8 +260,22 @@ func (v *VertexCache) LoadMatrix(baseInstance int, world ...y3d.Mat4) error {
 		CheckError()
 		return errors.New("cannot load world matrix")
 	}
-	slice := unsafe.Slice((*y3d.Mat4)(ptr), len(world))
-	copy(slice, world)
+	type outObject struct {
+		world  y3d.Mat4
+		normal y3d.Mat4
+	}
+	out := make([]outObject, len(world))
+	for i := range world {
+		out[i].world = world[i]
+		world[i][12] = 0
+		world[i][13] = 0
+		world[i][14] = 0
+		out[i].normal = world[i]
+		(&out[i].normal).Invert()
+		(&out[i].normal).Transpose()
+	}
+	slice := unsafe.Slice((*outObject)(ptr), len(world))
+	copy(slice, out)
 	if !gl.UnmapNamedBuffer(v.WorldMatrixSSBO) {
 		CheckError()
 		return errors.New("cannot release world matrix buffer")

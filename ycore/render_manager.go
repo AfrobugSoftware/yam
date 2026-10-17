@@ -32,10 +32,10 @@ const (
 
 // UBO
 const (
-	MATERIAL_UBO_BINDING = 2
-	LIGHT_BINDING        = 3
-	VIEW_PROJ_BINDING    = 4
-	LEVEL_PARAMETERS_UBO = 5
+	MATERIAL_UBO_BINDING  = 2
+	RENDER_PARAMS_BINDING = 3
+	VIEW_PROJ_BINDING     = 4
+	LEVEL_PARAMETERS_UBO  = 5
 )
 
 // SSBO
@@ -46,7 +46,10 @@ const (
 )
 
 const (
-	MAX_LIGHTS = 127
+	MAX_LIGHTS       = 127
+	MAX_VERTICES     = 100000
+	MAX_INSTANCES    = 100000
+	MAX_DRAW_COMMAND = 10000
 )
 
 // SHADOW RESOLUTION
@@ -55,53 +58,60 @@ const (
 	SHADOW_HEIGHT = 1024
 )
 
+type RenderParameters struct {
+	ViewPos  y3d.Vec3
+	GameTime float32
+	Lights   [128]y3d.Light
+}
+
 type RenderManager struct {
-	Context        sdl.GLContext
-	Window         *sdl.Window
-	ClearColor     y3d.Vec4
-	PixelDepth     uint8
-	PixelPerInch   float32
-	DoubleBuffer   bool
-	MinorVersion   int
-	MajorVersion   int
-	ViewPort       [4]y3d.Rect
-	View2D         y3d.Mat4
-	Proj2D         y3d.Mat4
-	View3D         [4]y3d.Mat4
-	ProjP          [4]y3d.Mat4
-	ProjO          [4]y3d.Mat4
-	ViewProj       y3d.Mat4
-	Near           float32
-	Far            float32
-	Width          int
-	Height         int
-	Fov            [4]float32
-	AspectRatio    [4]float32
-	Stage          int
-	Mode           int
-	SkinManager    *SkinManager
-	VertextManager *VertexCacheManager
-	ShaderManager  *ShaderManager
-	DrawMode       uint32
-	ActiveProgram  uint32
-	screenVao      uint32
-	screenVbo      uint32
-	screenEbo      uint32
-	gBuffer        uint32
-	gNormal        uint32
-	gPosition      uint32
-	gAlbedoSpec    uint32
-	gDepth         uint32
-	shadowMap      uint32
-	shadowbuffer   uint32
-	shadowProgram  uint32
-	lightSSBO      uint32
-	lightSphere    int
-	numLight       int
-	viewubo        uint32
-	FpCamera       *FPCamera
-	FollowCamera   *FollowCamera
-	RootUI         *yui.UIElement
+	Context          sdl.GLContext
+	Window           *sdl.Window
+	ClearColor       y3d.Vec4
+	PixelDepth       uint8
+	PixelPerInch     float32
+	DoubleBuffer     bool
+	MinorVersion     int
+	MajorVersion     int
+	ViewPort         [4]y3d.Rect
+	View2D           y3d.Mat4
+	Proj2D           y3d.Mat4
+	View3D           [4]y3d.Mat4
+	ProjP            [4]y3d.Mat4
+	ProjO            [4]y3d.Mat4
+	ViewProj         y3d.Mat4
+	Near             float32
+	Far              float32
+	Width            int
+	Height           int
+	Fov              [4]float32
+	AspectRatio      [4]float32
+	Stage            int
+	Mode             int
+	SkinManager      *SkinManager
+	VertextManager   *VertexCacheManager
+	ShaderManager    *ShaderManager
+	DrawMode         uint32
+	ActiveProgram    uint32
+	screenVao        uint32
+	screenVbo        uint32
+	screenEbo        uint32
+	gBuffer          uint32
+	gNormal          uint32
+	gPosition        uint32
+	gAlbedoSpec      uint32
+	gDepth           uint32
+	shadowMap        uint32
+	shadowbuffer     uint32
+	shadowProgram    uint32
+	renderParamsSSBO uint32
+	RenderParams     RenderParameters
+	lightSphere      int
+	numLight         int
+	viewubo          uint32
+	FpCamera         *FPCamera
+	FollowCamera     *FollowCamera
+	RootUI           *yui.UIElement
 }
 
 func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
@@ -156,7 +166,7 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 		rm.ClearColor.W)
 	rm.SkinManager = NewSkinManager()
 	rm.VertextManager = NewVertexCacheManager(rm,
-		500000, 500000*3, 1000, 1000)
+		MAX_VERTICES, MAX_VERTICES*3, MAX_DRAW_COMMAND, MAX_INSTANCES)
 	rm.ShaderManager = NewShaderManager()
 	rm.CreateDefaultShader()
 	rm.SetClippingPlanes(0.1, 1000.0)
@@ -190,8 +200,8 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 
 	var ssbo uint32
 	gl.CreateBuffers(1, &ssbo)
-	gl.NamedBufferStorage(ssbo, int(unsafe.Sizeof(y3d.Light{})*MAX_LIGHTS), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
-	rm.lightSSBO = ssbo
+	gl.NamedBufferStorage(ssbo, int(unsafe.Sizeof(RenderParameters{})), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
+	rm.renderParamsSSBO = ssbo
 	rm.Prepare2D(float32(fbW), float32(fbH), 0.1, 1000.0)
 	rm.SetStage(MODE_3D_PERSPECTIVE, 0) //SET TO THE 0TH stage
 	err = rm.CreateFrameBuffer()
@@ -202,6 +212,24 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 	if err != nil {
 		panic(err)
 	}
+	l := y3d.Light{
+		Pos: y3d.Vec4{
+			X: -2.0,
+			Y: 4.0,
+			Z: -1.0,
+			W: 1.0},
+		Color: y3d.Vec4{
+			X: 1.0,
+			Y: 0.0,
+			Z: 1.0,
+			W: 1.0,
+		},
+	}
+	rm.View3D[SHADOW_STAGE] = y3d.LookAt(y3d.Vec3{
+		X: -2.0,
+		Y: 4.0,
+		Z: -1.0}, y3d.Vec3{}, y3d.UNIT_Y)
+	rm.AddLight(l)
 	return rm
 }
 
@@ -276,11 +304,26 @@ func (l *RenderManager) AddLight(light y3d.Light) {
 	if l.numLight >= MAX_LIGHTS {
 		return
 	}
-	ptr := unsafe.Pointer(&light)
-	size := unsafe.Sizeof(light)
-	s := unsafe.Slice((*byte)(ptr), int(size))
-	gl.NamedBufferSubData(l.lightSSBO, (int(size) * l.numLight), int(size), gl.Ptr(s))
+	l.RenderParams.Lights[l.numLight] = light
 	l.numLight++
+}
+
+func (r *RenderManager) LoadRenderParameters() {
+	view3d := r.View3D[r.Stage]
+	tx, ty, tz := view3d[12], view3d[13], view3d[14]
+	camX := -(view3d[0]*tx + view3d[1]*ty + view3d[2]*tz)
+	camY := -(view3d[4]*tx + view3d[5]*ty + view3d[6]*tz)
+	camZ := -(view3d[8]*tx + view3d[8]*ty + view3d[10]*tz)
+	r.RenderParams.ViewPos = y3d.Vec3{
+		X: camX,
+		Y: camY,
+		Z: camZ,
+	}
+	rp := r.RenderParams
+	ptr := unsafe.Pointer(&rp)
+	size := unsafe.Sizeof(RenderParameters{})
+	s := unsafe.Slice((*byte)(ptr), int(size))
+	gl.NamedBufferSubData(r.renderParamsSSBO, 0, int(size), gl.Ptr(s))
 }
 
 func (r *RenderManager) BindFramebufferTextures() {
@@ -527,7 +570,7 @@ func (r *RenderManager) Destroy() {
 	gl.DeleteTextures(1, &r.gAlbedoSpec)
 	gl.DeleteTextures(1, &r.gDepth)
 	gl.DeleteBuffers(1, &r.viewubo)
-	gl.DeleteBuffers(1, &r.lightSSBO)
+	gl.DeleteBuffers(1, &r.renderParamsSSBO)
 	sdl.GLDeleteContext(r.Context)
 }
 
@@ -560,14 +603,15 @@ func (r *RenderManager) String() string {
 }
 
 func (r *RenderManager) CreateDefaultShader() {
-	err := r.ShaderManager.AddFromFile("default",
-		[]string{"assets/shaders/test.vert", "assets/shaders/test.frag"},
+	s, err := r.ShaderManager.Add("default",
+		[]string{blingPhongVertex, blingPhongFragment},
 		[]uint32{gl.VERTEX_SHADER, gl.FRAGMENT_SHADER})
 	if err != nil {
 		panic(err)
 	}
-	r.ActiveProgram = r.ShaderManager.Shaders["default"]
-	p, err := r.ShaderManager.Add("shadow", []string{shadowVertexShader, shadowFragmentShader},
+	r.ActiveProgram = s
+	p, err := r.ShaderManager.Add("shadow",
+		[]string{shadowVertexShader, shadowFragmentShader},
 		[]uint32{gl.VERTEX_SHADER, gl.FRAGMENT_SHADER})
 	if err != nil {
 		panic(err)
@@ -577,24 +621,10 @@ func (r *RenderManager) CreateDefaultShader() {
 
 func (r *RenderManager) BeginShadowMap() {
 	r.SkinManager.OverrideLocalPrograms = true
-	l := y3d.Light{
-		Pos: y3d.Vec4{
-			X: -2.0,
-			Y: 4.0,
-			Z: -1.0,
-			W: 1.0},
-		Color: y3d.Vec4{},
-	}
-	r.View3D[SHADOW_STAGE] = y3d.LookAt(y3d.Vec3{
-		X: -2.0,
-		Y: 4.0,
-		Z: -1.0}, y3d.Vec3{}, y3d.UNIT_Y)
-	r.AddLight(l)
 	r.SetStage(MODE_3D_ORTHO, SHADOW_STAGE)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.shadowbuffer)
 	gl.Clear(gl.DEPTH_BUFFER_BIT)
 	gl.BindBufferBase(gl.UNIFORM_BUFFER, VIEW_PROJ_BINDING, r.viewubo)
-	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, LIGHT_BINDING, r.lightSSBO)
 	gl.UseProgram(r.shadowProgram)
 }
 
@@ -605,8 +635,14 @@ func (r *RenderManager) EndShadowMap() {
 
 func (r *RenderManager) BeginRender() {
 	r.SetStage(MODE_3D_PERSPECTIVE, DEFAULT_STAGE)
-	gl.BindBufferBase(gl.UNIFORM_BUFFER, VIEW_PROJ_BINDING, r.viewubo)
+	gl.Enable(gl.CULL_FACE)
+	gl.Enable(gl.DEPTH_TEST)
+	gl.DepthFunc(gl.LESS)
+	gl.CullFace(gl.BACK)
 
+	gl.BindBufferBase(gl.UNIFORM_BUFFER, VIEW_PROJ_BINDING, r.viewubo)
+	r.LoadRenderParameters()
+	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, RENDER_PARAMS_BINDING, r.renderParamsSSBO)
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
 	gl.UseProgram(r.ActiveProgram)
 	gl.BindTextureUnit(0, r.shadowMap)

@@ -1,6 +1,87 @@
 package ycore
 
 const (
+	blingPhongVertex = `
+#version 430
+layout(location = 0) in vec3 pos;
+layout(location = 1) in vec3 norm;
+layout(location = 2) in vec2 tc;
+layout(location = 3) in vec4 color;
+layout(location = 10) in uint dInx;
+
+struct per_object_transform {
+	mat4 world;
+	mat4 normal;
+};
+
+layout(std430, binding = 0) buffer matrix_ssbo {
+    per_object_transform world[];
+};
+layout(std140, binding = 4) uniform vp {
+	mat4 view_proj;
+};
+out data {
+	vec3 pos;
+	vec3 normal;
+	vec2 tc;
+	vec4 color;
+}vs_out;
+void main() {
+	vs_out.pos = vec3(world[dInx].world * vec4(pos, 1.0));
+	vs_out.normal = mat3(world[dInx].normal) * norm;
+	vs_out.tc = tc;
+	gl_Position = view_proj * world[dInx].world * vec4(pos, 1.0);
+};
+	`
+	blingPhongFragment = `
+#version 430
+layout(location = 0) out vec4 out_color;
+in data {
+	vec3 pos;
+	vec3 normal;
+	vec2 tc;
+	vec4 color;
+}fs_in;
+
+struct light {
+	vec4 pos;
+	vec4 color;
+	float radius;
+	float inner_radius;
+	uint flag;
+};
+
+layout(std140, binding= 2) uniform material_s {
+    vec4 diffuse;
+    vec4 ambient;
+    vec4 specular;
+    vec4 emissive_shineness;
+} material;
+
+layout(std430,binding = 3) buffer render_parameters {
+	vec3 view_pos;
+	float game_time;
+	light l[128];
+}render_params;
+
+vec4 calculate_bling_phong(int light_index) {
+	vec3 light_direction = normalize(vec3(render_params.l[light_index].pos));
+	vec3 view_direction = normalize(render_params.view_pos - fs_in.pos);
+	vec3 halfway_direction = normalize(light_direction + view_direction);
+
+	float specular_factor = pow(max(dot(fs_in.normal, halfway_direction), 0.0), material.emissive_shineness.w);
+	vec4 specular = render_params.l[light_index].color * material.specular * specular_factor;
+
+	float diffuse_factor = max(dot(fs_in.normal, light_direction), 0.0);
+	vec4 diffuse = render_params.l[light_index].color * material.diffuse * diffuse_factor;
+
+	return (diffuse + specular);
+}
+
+void main() {
+	out_color = calculate_bling_phong(0);
+}	
+	`
 	shadowVertexShader = `
 #version 430
 layout(location = 0) in vec3 pos;
