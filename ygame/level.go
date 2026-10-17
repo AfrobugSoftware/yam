@@ -1,12 +1,16 @@
 package ygame
 
 import (
+	"bytes"
 	"encoding/gob"
 	"errors"
 	"os"
+	"unsafe"
 	"yam/y3d"
 	"yam/ycontroller"
 	"yam/ycore"
+
+	"github.com/go-gl/gl/v4.3-core/gl"
 )
 
 const (
@@ -94,6 +98,35 @@ func (l *Level) RenderEntities(vm *ycore.VertexCacheManager, frustum []y3d.Plane
 	}
 }
 
+func (l *Level) AddEntityDrawData(
+	ent ycore.EntityId,
+	vertexType string,
+	skinId int,
+	v, i *bytes.Buffer, vm *ycore.VertexCacheManager) error {
+	cmd := ycore.DrawCommand{}
+	err := vm.LoadCache(vertexType, v, i, skinId, &cmd)
+	if err != nil {
+		return err
+	}
+	l.World.SetComponent(ent, DrawCommandComponent, cmd)
+	return nil
+}
+
+func (l *Level) AddLight(light y3d.Light) {
+	if l.numLight >= MAX_LIGHTS {
+		return
+	}
+	ptr := unsafe.Pointer(&light)
+	size := unsafe.Sizeof(light)
+	s := unsafe.Slice((*byte)(ptr), int(size))
+	gl.NamedBufferSubData(l.lightSSBO, (int(size) * l.numLight), int(size), gl.Ptr(s))
+}
+func (l *Level) UseLight() {
+	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, ycore.LIGHT_BINDING, l.lightSSBO)
+}
+func (l *Level) ClearLight() {
+	l.numLight = 0
+}
 func (l *Level) Save(filename string) error {
 	file, err := os.Create(filename)
 	if err != nil {
