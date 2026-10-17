@@ -33,7 +33,6 @@ type VertexCacheManager struct {
 	Strides         map[string]int32
 	Formats         map[string][]VertexFormat
 	Caches          map[string][MAX_CACHES]*VertexCache
-	StaticBuffers   []*StaticBuffer
 	MaxVerts        int32
 	MaxIndices      int32
 	MaxDrawCommands int32
@@ -50,7 +49,6 @@ func NewVertexCacheManager(
 		RenderManager:   renderManager,
 		Caches:          make(map[string][MAX_CACHES]*VertexCache),
 		Formats:         make(map[string][]VertexFormat),
-		StaticBuffers:   make([]*StaticBuffer, 0),
 		Strides:         make(map[string]int32),
 		MaxVerts:        maxVerts,
 		MaxIndices:      maxIndices,
@@ -255,10 +253,6 @@ func (vm *VertexCacheManager) Destory() {
 			c.Destroy()
 		}
 	}
-	for _, ss := range vm.StaticBuffers {
-		ss.Destory()
-	}
-	clear(vm.StaticBuffers)
 	clear(vm.Caches)
 }
 
@@ -384,41 +378,6 @@ func (vm *VertexCacheManager) ForceRenderAll() error {
 		}
 	}
 	return nil
-}
-
-func (vm *VertexCacheManager) CreateStaticBuffer(
-	vertexType string,
-	dataV, dataI *bytes.Buffer,
-	command []DrawCommand,
-	skinId int,
-	program uint32,
-	instanceCount int,
-	idxType uint32,
-) (int, error) {
-	id := len(vm.StaticBuffers)
-	s := NewStaticBuffer(
-		vm,
-		dataV, dataI,
-		command,
-		instanceCount,
-		skinId,
-		program,
-		vm.Strides[vertexType],
-		vm.Formats[vertexType],
-		id,
-	)
-	if s == nil {
-		return -1, errors.New("cannot create static buffer")
-	}
-	vm.StaticBuffers = append(vm.StaticBuffers, s)
-	return id, nil
-}
-
-func (vm *VertexCacheManager) RenderSB(id int, world ...y3d.Mat4) {
-	if id >= len(vm.StaticBuffers) {
-		panic("invalid static buffer id")
-	}
-	vm.StaticBuffers[id].Render(world...)
 }
 
 func (vm *VertexCacheManager) CreateDrawCommand(dataI *bytes.Buffer,

@@ -114,6 +114,27 @@ type RenderManager struct {
 	RootUI           *yui.UIElement
 }
 
+func CheckError() error {
+	ierr := gl.GetError()
+	switch ierr {
+	case gl.INVALID_ENUM:
+		return errors.New("invalid enum")
+	case gl.INVALID_VALUE:
+		return errors.New("invalid value")
+	case gl.INVALID_OPERATION:
+		return errors.New("invalid operation")
+	case gl.STACK_OVERFLOW:
+		return errors.New("stack overflow")
+	case gl.STACK_UNDERFLOW:
+		return errors.New("stack underflow")
+	case gl.OUT_OF_MEMORY:
+		return errors.New("out of memory")
+	case gl.INVALID_FRAMEBUFFER_OPERATION:
+		return errors.New("invalid frame buffer operation")
+	default:
+		return nil
+	}
+}
 func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 	rm := &RenderManager{
 		Window: window,
