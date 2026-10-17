@@ -34,16 +34,16 @@ const (
 type InputFunc func(*ycore.InputManager, ycontroller.Controller)
 
 var (
-	MoveControllerComponent = ycore.RegisterComponent[ycontroller.MovementController]()
-	DrawCommandComponent    = ycore.RegisterComponent[ycore.DrawCommand]()
-	TransformComponent      = ycore.RegisterComponent[ycore.Transform]()
-	SkinComponent           = ycore.RegisterComponent[int]()
-	VertexTypeComponent     = ycore.RegisterComponent[string]()
-	RenderFlagComponent     = ycore.RegisterComponent[uint32]()
-	BoundingBoxComponent    = ycore.RegisterComponent[y3d.AABB]()
-	EntityTagComponent      = ycore.RegisterComponent[uint32]()
-	InstanceComponent       = ycore.RegisterComponent[int]()
-	InputComponent          = ycore.RegisterComponent[InputFunc]()
+	MoveControllerComponent = ycore.ComponentId(1)
+	DrawCommandComponent    = ycore.ComponentId(2)
+	TransformComponent      = ycore.ComponentId(3)
+	SkinComponent           = ycore.ComponentId(4)
+	VertexTypeComponent     = ycore.ComponentId(5)
+	RenderFlagComponent     = ycore.ComponentId(6)
+	BoundingBoxComponent    = ycore.ComponentId(7)
+	EntityTagComponent      = ycore.ComponentId(9)
+	InstanceComponent       = ycore.ComponentId(10)
+	InputComponent          = ycore.ComponentId(11)
 )
 
 type LevelParameters struct {
@@ -65,7 +65,9 @@ func NewLevel() *Level {
 	}
 }
 
-func (l *Level) RenderEntities(vm *ycore.VertexCacheManager, frustum []y3d.Plane, cull bool) {
+func (l *Level) RenderEntities(r *ycore.RenderManager, cull bool) {
+	vm := r.VertextManager
+	frustum := r.GetFrustum()
 	entities := l.World.Query(
 		DrawCommandComponent,
 		RenderFlagComponent,
@@ -76,7 +78,7 @@ func (l *Level) RenderEntities(vm *ycore.VertexCacheManager, frustum []y3d.Plane
 		BoundingBoxComponent)
 	for _, e := range entities {
 		box := l.World.GetComponent(e, BoundingBoxComponent).(y3d.AABB)
-		c := box.Cull(frustum)
+		c := box.Cull(frustum[:])
 		if cull && c == y3d.CULLED {
 			continue
 		}
@@ -93,21 +95,24 @@ func (l *Level) RenderEntities(vm *ycore.VertexCacheManager, frustum []y3d.Plane
 
 		v.AddInstances(&drawcommand, instance)
 		v.AddDrawCommand(drawcommand)
-		v.LoadMatrix(int(drawcommand.BaseInstance), transform.World)
+		v.LoadMatrix(int(drawcommand.BaseInstance), transform.World) //this needs to be world
 		v.AddRenderFlag(int(drawcommand.BaseInstance), rflag)
 	}
 }
 
 func (l *Level) UpdateEntitesMovement(deltaTime float32) {
-	entites := l.World.Query(TransformComponent, MoveControllerComponent)
+	entites := l.World.Query(TransformComponent, BoundingBoxComponent, MoveControllerComponent)
 	for _, e := range entites {
 		movement := l.World.GetComponent(e, MoveControllerComponent).(*ycontroller.MovementController)
 		transform := l.World.GetComponent(e, TransformComponent).(ycore.Transform)
-
+		box := l.World.GetComponent(e, BoundingBoxComponent).(y3d.AABB)
 		movement.Update(deltaTime)
 		transform.SetPositionOrientation(movement.Position, movement.Orientation)
+		transform.World = transform.Local
 
+		box = transform.TransformAABB(box)
 		l.World.SetComponent(e, TransformComponent, transform)
+		l.World.SetComponent(e, BoundingBoxComponent, box)
 	}
 }
 
@@ -126,6 +131,7 @@ func (l *Level) AddEntityDrawData(
 	entityTag uint32,
 	vertexType string,
 	skinId int,
+	box y3d.AABB,
 	v, i *bytes.Buffer, vm *ycore.VertexCacheManager) error {
 	cmd := ycore.DrawCommand{}
 	err := vm.LoadCache(vertexType, v, i, skinId, &cmd)
@@ -135,8 +141,32 @@ func (l *Level) AddEntityDrawData(
 	l.World.AddComponent(ent, EntityTagComponent, entityTag)
 	l.World.AddComponent(ent, DrawCommandComponent, cmd)
 	l.World.AddComponent(ent, SkinComponent, skinId)
+	l.World.AddComponent(ent, RenderFlagComponent, uint32(0))
+	l.World.AddComponent(ent, InstanceComponent, 1)
 	l.World.AddComponent(ent, VertexTypeComponent, vertexType)
+	l.World.AddComponent(ent, BoundingBoxComponent, box)
 	return nil
+}
+
+func (l *Level) AddEntityMoveData(
+	ent ycore.EntityId,
+	pos y3d.Vec3,
+	orientation y3d.Quaternion,
+) {
+	move := ycontroller.NewMovementController(pos, orientation)
+	transform := *ycore.NewTransform()
+	l.World.AddComponent(ent, TransformComponent, transform)
+	l.World.AddComponent(ent, MoveControllerComponent, move)
+}
+
+func (l *Level) AddEntityTransformData(ent ycore.EntityId,
+	transform ycore.Transform) {
+	l.World.AddComponent(ent, TransformComponent, transform)
+}
+
+func (l *Level) AddEntityInputData(ent ycore.EntityId,
+	input InputFunc) {
+	l.World.AddComponent(ent, InputComponent, input)
 }
 
 func (l *Level) Save(filename string) error {

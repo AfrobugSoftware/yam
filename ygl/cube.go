@@ -54,9 +54,7 @@ func CreateCube() (dataV, dataI *bytes.Buffer) {
 			},
 		},
 	)
-	addr := unsafe.Pointer(reflect.ValueOf(verties).Index(0).UnsafeAddr())
-	b := unsafe.Slice((*byte)(addr), 36*len(verties))
-	dataV.Write(b)
+
 	indices := []uint32{
 		0, 1, 2,
 		2, 1, 3,
@@ -71,6 +69,22 @@ func CreateCube() (dataV, dataI *bytes.Buffer) {
 		7, 5, 3,
 		7, 3, 1,
 	}
+	// for i := 0; i < len(indices); i += 3 {
+	// 	a, b, c := verties[indices[i]].Pos, verties[indices[i+1]].Pos,
+	// 		verties[indices[i+2]].Pos
+	// 	n := y3d.Normalize(y3d.Cross(y3d.Sub(b, a), y3d.Sub(c, a)))
+	// 	verties[indices[i]].Norm = n
+	// 	verties[indices[i+1]].Norm = n
+	// 	verties[indices[i+2]].Norm = n
+	// }
+
+	for i := range verties {
+		verties[i].Norm = y3d.Normalize(verties[i].Pos)
+	}
+
+	addr := unsafe.Pointer(reflect.ValueOf(verties).Index(0).UnsafeAddr())
+	b := unsafe.Slice((*byte)(addr), 36*len(verties))
+	dataV.Write(b)
 	binary.Write(dataI, binary.NativeEndian, indices)
 	return
 }

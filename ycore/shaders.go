@@ -79,7 +79,7 @@ vec4 calculate_bling_phong(int light_index) {
 }
 
 void main() {
-	out_color = calculate_bling_phong(0);
+	out_color = vec4(calculate_bling_phong(0).xyz, 1.0);
 }	
 	`
 	shadowVertexShader = `

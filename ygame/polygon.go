@@ -7,10 +7,6 @@ import (
 	"yam/ycore"
 )
 
-var (
-	PolygonComponent = ycore.RegisterComponent[Polygon]()
-)
-
 type Polygon struct {
 	Vertices     []y3d.PVertex
 	Indices      []uint32

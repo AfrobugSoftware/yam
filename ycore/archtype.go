@@ -27,48 +27,10 @@ var (
 type ArchetypeId uint64
 type ComponentId uint64
 type EntityId uint64
-
-var (
-	componentMu       sync.RWMutex
-	componentRegistry = map[reflect.Type]ComponentId{}
-	componentCounter  ComponentId
-)
-
 type Component any
-type System interface {
-	Init()
-	Query() []ComponentId
-	Update(w *World, dt float64, entities []EntityId)
-	Shutdown()
-}
 
 type Storage[T any] struct {
 	Store []T
-}
-
-func RegisterComponent[T Component]() ComponentId {
-	componentMu.Lock()
-	defer componentMu.Unlock()
-
-	t := reflect.TypeFor[*T]()
-	if id, ok := componentRegistry[t]; ok {
-		return id
-	}
-	componentCounter++
-	componentRegistry[t] = componentCounter
-	return componentCounter
-}
-
-func ComponentIDOf[T Component]() ComponentId {
-	componentMu.RLock()
-	defer componentMu.RUnlock()
-
-	t := reflect.TypeOf((*T)(nil)).Elem()
-	id, ok := componentRegistry[t]
-	if !ok {
-		panic(fmt.Sprintf("component %s not registered", t.Name()))
-	}
-	return id
 }
 
 type archetypeKey []ComponentId
@@ -129,9 +91,6 @@ func appendToStorage[T any](data T, comp ComponentId, a *Archetype) {
 		str = a.storageBuffer[comp]
 	}
 	store := reflect.ValueOf(str).Elem()
-	if store.Len() >= MAX_COMPONENTS {
-		panic("too many components created for this store!")
-	}
 	slc := store.Field(0)
 	slc.Set(reflect.Append(slc, reflect.ValueOf(data)))
 }

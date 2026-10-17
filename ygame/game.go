@@ -3,7 +3,6 @@ package ygame
 import (
 	"runtime"
 	"time"
-	"yam/y3d"
 	"yam/ycore"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -23,7 +22,7 @@ type Engine struct {
 	InputManager  *ycore.InputManager
 	AudioManager  *ycore.AudioManager
 	NetManager    *ycore.NetManager
-	Level         *y3d.Octree //should this be here
+	Level         *Level //should this be here
 }
 
 var gEngine *Engine
@@ -50,6 +49,7 @@ func NewGame(title string, width, height int32) (*Engine, error) {
 	gEngine.RenderManager = ycore.NewRenderManager(window, int(width), int(height))
 	gEngine.InputManager = ycore.NewInputManager(int(width), int(height))
 	gEngine.AudioManager = ycore.NewAudioManager()
+	gEngine.Level = NewLevel()
 	return gEngine, nil
 }
 
@@ -69,17 +69,20 @@ func (g *Engine) Update(dt float64) {
 	if g.App != nil {
 		g.App.Update(dt)
 	}
+	g.Level.UpdateEntitesMovement(float32(dt))
 }
 
 func (g *Engine) Draw() {
 
 	if g.App != nil {
 		g.RenderManager.BeginShadowMap()
-		g.App.Draw()
+		g.Level.RenderEntities(g.RenderManager, false)
+		//g.App.Draw()
 		g.RenderManager.EndShadowMap()
 
 		g.RenderManager.BeginRender()
-		g.App.Draw()
+		//g.App.Draw()
+		g.Level.RenderEntities(g.RenderManager, false)
 		g.RenderManager.Render()
 		g.RenderManager.EndRender()
 	}
@@ -95,6 +98,7 @@ func (g *Engine) Run() {
 			dt = 1.0 / 60.0
 		}
 		last = now
+		g.Level.ProcessEntityInput(g.InputManager)
 		g.Update(float64(dt))
 		g.Draw()
 	}

@@ -293,7 +293,7 @@ func (v *VertexCache) Render() {
 			v.VManager.RenderManager.SkinManager.BindSkin(v.SkinId)
 			v.VManager.ActiveSkin = v.SkinId
 		}
-		//how to handle render states ???
+		//how to handle framebuffer operations ???
 		gl.BindVertexArray(v.Vao)
 		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, WORLD_MATRIX_BINDING, v.WorldMatrixSSBO)
 		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, RENDER_FLAG_BINDING, v.RenderFlagsSSBO)

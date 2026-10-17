@@ -623,6 +623,11 @@ func (r *RenderManager) BeginShadowMap() {
 	r.SkinManager.OverrideLocalPrograms = true
 	r.SetStage(MODE_3D_ORTHO, SHADOW_STAGE)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.shadowbuffer)
+	gl.Enable(gl.DEPTH_TEST)
+	gl.DepthFunc(gl.LESS)
+	gl.Enable(gl.CULL_FACE)
+	gl.CullFace(gl.BACK)
+
 	gl.Clear(gl.DEPTH_BUFFER_BIT)
 	gl.BindBufferBase(gl.UNIFORM_BUFFER, VIEW_PROJ_BINDING, r.viewubo)
 	gl.UseProgram(r.shadowProgram)
@@ -635,10 +640,12 @@ func (r *RenderManager) EndShadowMap() {
 
 func (r *RenderManager) BeginRender() {
 	r.SetStage(MODE_3D_PERSPECTIVE, DEFAULT_STAGE)
-	gl.Enable(gl.CULL_FACE)
 	gl.Enable(gl.DEPTH_TEST)
 	gl.DepthFunc(gl.LESS)
+	gl.Enable(gl.CULL_FACE)
 	gl.CullFace(gl.BACK)
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
 	gl.BindBufferBase(gl.UNIFORM_BUFFER, VIEW_PROJ_BINDING, r.viewubo)
 	r.LoadRenderParameters()

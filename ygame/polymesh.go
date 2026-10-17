@@ -10,10 +10,6 @@ const (
 	MAX_POLYGONS = 100_000
 )
 
-var (
-	polyMeshComponent = ycore.RegisterComponent[Polymesh]()
-)
-
 type Polymesh struct {
 	Polys       []Polygon
 	DrawCommand ycore.DrawCommand
