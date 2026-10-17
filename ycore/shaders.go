@@ -61,6 +61,7 @@ layout(std140, binding= 2) uniform material_s {
 layout(std430,binding = 3) buffer render_parameters {
 	vec3 view_pos;
 	float game_time;
+	mat4 shadow_matrix;
 	light l[128];
 }render_params;
 
@@ -74,8 +75,8 @@ vec4 calculate_bling_phong(int light_index) {
 
 	float diffuse_factor = max(dot(fs_in.normal, light_direction), 0.0);
 	vec4 diffuse = render_params.l[light_index].color * material.diffuse * diffuse_factor;
-
-	return (diffuse + specular);
+	vec4 ambient = material.ambient * render_params.l[light_index].color * 0.1;
+	return (diffuse + specular + ambient);
 }
 
 void main() {

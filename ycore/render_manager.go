@@ -59,9 +59,10 @@ const (
 )
 
 type RenderParameters struct {
-	ViewPos  y3d.Vec3
-	GameTime float32
-	Lights   [128]y3d.Light
+	ViewPos      y3d.Vec3
+	GameTime     float32
+	shadowMatrix y3d.Mat4
+	Lights       [128]y3d.Light
 }
 
 type RenderManager struct {
@@ -557,7 +558,7 @@ func (r *RenderManager) Transfrom3Dto2D(pos y3d.Vec3) y3d.Vec2 {
 	}
 }
 
-func (r *RenderManager) GetPickRay(pos y3d.Vec2) (y3d.Vec3, y3d.Vec3) {
+func (r *RenderManager) GetPickRay(pos y3d.Vec2) y3d.Ray {
 	width, height := float32(r.ViewPort[r.Stage].Width), float32(r.ViewPort[r.Stage].Height)
 	vcS := y3d.Vec3{
 		X: (((pos.X * 2.0) / width) - 1.0) / r.ProjP[r.Stage][0],
@@ -575,7 +576,10 @@ func (r *RenderManager) GetPickRay(pos y3d.Vec2) (y3d.Vec3, y3d.Vec3) {
 		Z: InvView[14],
 	}
 	dir = y3d.Normalize(dir)
-	return origin, dir
+	return y3d.Ray{
+		O: origin,
+		D: dir,
+	}
 }
 
 func (r *RenderManager) Destroy() {
@@ -660,6 +664,7 @@ func (r *RenderManager) BeginShadowMap() {
 func (r *RenderManager) EndShadowMap() {
 	r.SkinManager.OverrideLocalPrograms = false
 	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+	r.RenderParams.shadowMatrix = r.ViewProj
 }
 
 func (r *RenderManager) BeginRender() {
