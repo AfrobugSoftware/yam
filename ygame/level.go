@@ -108,7 +108,7 @@ func (l *Level) RenderEntities(vm *ycore.VertexCacheManager, frustum []y3d.Plane
 	}
 }
 
-func (l *Level) AddEntityData(
+func (l *Level) AddEntityDrawData(
 	ent ycore.EntityId,
 	vertexType string,
 	skinId int,
