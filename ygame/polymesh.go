@@ -186,10 +186,10 @@ func (pm *Polymesh) WriteCache(vm *ycore.VertexCacheManager) {
 }
 
 func (pm *Polymesh) LoadEntity(world *ycore.World) {
-	world.SetComponent(pm.Ent, TransformComponent, pm.Transform)
-	world.SetComponent(pm.Ent, RenderFlagComponent, pm.RenderFlag)
-	world.SetComponent(pm.Ent, DrawCommandComponent, pm.DrawCommand)
-	world.SetComponent(pm.Ent, InstanceComponent, 1)
+	world.SetComponent(pm.Ent, ycore.TransformComponent, pm.Transform)
+	world.SetComponent(pm.Ent, ycore.RenderFlagComponent, pm.RenderFlag)
+	world.SetComponent(pm.Ent, ycore.DrawCommandComponent, pm.DrawCommand)
+	world.SetComponent(pm.Ent, ycore.InstanceComponent, 1)
 }
 
 func (pm *Polymesh) CalcTextureCoordinate(axis AXIS, box *y3d.AABB) {

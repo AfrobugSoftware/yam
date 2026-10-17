@@ -52,27 +52,27 @@ var attribOrder = []string{
 	"WEIGHTS_0",
 }
 
-func LoadGLTF(filename string, r *RenderManager) (*Node, error) {
+func LoadGLTF(filename string, r *RenderManager, tag uint32, world *World) error {
 	doc, err := gltf.Open(filename)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if doc.Scene == nil {
-		return nil, errors.New("no scene in docuemt")
+		return errors.New("no scene in docuemt")
 	}
 	if doc.Asset.Version != "2.0" {
-		return nil, errors.New("cannot parse gltf version")
+		return errors.New("cannot parse gltf version")
 	}
 	scene := doc.Scenes[*doc.Scene]
 	data := make(map[int][]byte)
-	root := NewNode(r, nil, y3d.UnitAABB, NewTransform())
+	skin := r.SkinManager.AddSkin(ygl.IdentityMaterial)
 	for _, n := range scene.Nodes {
-		err := ProcessNode(root, doc.Nodes[n], doc, r, data)
+		err := ProcessNode(world, doc.Nodes[n], doc, r, tag, skin, data)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
-	return root, nil
+	return nil
 }
 
 func attributeNames[V any](attrs map[string]V) []string {
@@ -210,9 +210,14 @@ func accessorAttrib(doc *gltf.Document, acc *gltf.Accessor, data map[int][]byte)
 	return a, nil
 }
 
-func ProcessNode(p *Node, node *gltf.Node, doc *gltf.Document, r *RenderManager, data map[int][]byte) error {
-	ynode := NewNode(r, p, y3d.UnitAABB, NewTransform())
+func ProcessNode(world *World, node *gltf.Node,
+	doc *gltf.Document,
+	r *RenderManager,
+	tag uint32,
+	skin int,
+	data map[int][]byte) error {
 	if node.Mesh != nil {
+		ynode := world.NewEntity()
 		mesh := doc.Meshes[*node.Mesh]
 		v, i := &bytes.Buffer{}, &bytes.Buffer{}
 		vertexType := ""
@@ -273,49 +278,40 @@ func ProcessNode(p *Node, node *gltf.Node, doc *gltf.Document, r *RenderManager,
 		} else {
 			vertexType = tempVertexType
 		}
-		trans := NewTransform()
-		trans.Position = y3d.Vec3{
+
+		position := y3d.Vec3{
 			X: float32(node.Translation[0]),
 			Y: float32(node.Translation[1]),
 			Z: float32(node.Translation[2]),
 		}
-		trans.Rotation = y3d.Quaternion{
+		rotation := y3d.Quaternion{
 			W: node.Rotation[3],
 			Z: node.Rotation[2],
 			Y: node.Rotation[1],
 			X: node.Rotation[0],
 		}
-		trans.Scale = y3d.Vec3{
-			X: float32(node.Scale[0]),
-			Y: float32(node.Scale[1]),
-			Z: float32(node.Scale[2]),
-		}
-		skin := r.SkinManager.AddSkin(ygl.IdentityMaterial)
-		geo := NewGeometry(r, ynode, y3d.UnitAABB,
-			trans,
+		err := AddEntityDrawData(
+			world,
+			ynode,
+			tag,
 			vertexType,
-			v, i,
 			skin,
-			NO_STATICBUF,
-			nil)
-		ynode.Add(geo)
+			y3d.UnitAABB,
+			v, i,
+			r.VertextManager,
+		)
+		if err != nil {
+			return err
+		}
+		AddEntityMoveData(
+			world,
+			ynode,
+			position,
+			rotation,
+		)
 	}
-
-	if node.Skin != nil {
-		//skin := doc.Skins[*node.Skin]
-
-		//for animation
-	}
-	if node.Camera != nil {
-		//cam := doc.Cameras[*node.Camera]
-		//set camera stage
-		//how
-	}
-
-	p.Add(ynode)
-
 	for _, n := range node.Children {
-		err := ProcessNode(ynode, doc.Nodes[n], doc, r, data)
+		err := ProcessNode(world, doc.Nodes[n], doc, r, tag, skin, data)
 		if err != nil {
 			return err
 		}

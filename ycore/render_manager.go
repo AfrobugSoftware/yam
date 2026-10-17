@@ -167,10 +167,13 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 	rm.SkinManager = NewSkinManager()
 	rm.VertextManager = NewVertexCacheManager(rm,
 		MAX_VERTICES, MAX_VERTICES*3, MAX_DRAW_COMMAND, MAX_INSTANCES)
+	err = CheckError()
+	if err != nil {
+		panic(err)
+	}
 	rm.ShaderManager = NewShaderManager()
 	rm.CreateDefaultShader()
 	rm.SetClippingPlanes(0.1, 1000.0)
-
 	fbW, fbH := window.GLGetDrawableSize()
 	rm.InitStage(DEFAULT_STAGE, y3d.Rect{
 		X:      0,

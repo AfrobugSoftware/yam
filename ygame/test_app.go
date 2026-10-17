@@ -11,11 +11,7 @@ import (
 )
 
 type TestApplication struct {
-	engine    *Engine
-	Obj       ycore.SpatialInterface
-	ObjPlayer ycore.SpatialInterface
-	Helmet    *ycore.Geometry
-	Root      ycore.SpatialInterface
+	engine *Engine
 }
 
 func (t *TestApplication) Startup(e *Engine) {
@@ -25,49 +21,13 @@ func (t *TestApplication) Startup(e *Engine) {
 		panic("failed to create cube")
 	}
 
-	// gt, err := ycore.LoadGLTF("assets/gltf/testgltf.gltf", t.engine.RenderManager)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	helmet, err := ycore.LoadGLTF("assets/gltf/DamagedHelmet.glb", t.engine.RenderManager)
+	err := ycore.LoadGLTF("assets/gltf/DamagedHelmet.glb",
+		t.engine.RenderManager,
+		50, //tag
+		t.engine.Level.World)
 	if err != nil {
 		panic(err)
 	}
-
-	skin := t.engine.RenderManager.SkinManager.AddSkin(ygl.IdentityMaterial)
-	s, box := t.engine.RenderManager.VertextManager.GetScalingAndBox(v, i, 0.5, ycore.VPNTC)
-	sp := ycore.NewGeometry(
-		t.engine.RenderManager,
-		nil, box,
-		ycore.NewTransform(),
-		ycore.VPNTC,
-		v,
-		i,
-		skin,
-		ycore.NO_STATICBUF, ycontroller.NewMovementController(
-			y3d.Vec3{Z: -0.24}, y3d.IdenQuat(),
-		))
-
-	sp.Transform.SetScale(s)
-	//gt.Transform.SetScale(0.025)
-	nt := ycore.NewNode(t.engine.RenderManager, nil, y3d.UnitAABB, ycore.NewTransform())
-	nt.Add(sp)
-	//nt.Add(gt)
-	nt.Add(helmet)
-	n := helmet.Children[0].(*ycore.Node)
-	t.Helmet = n.Children[0].(*ycore.Geometry)
-
-	t.Helmet.MoveController = ycontroller.NewMovementController(
-		y3d.Vec3{Z: -0.24}, y3d.IdenQuat(),
-	)
-
-	t.Root = nt
-	t.Root.UpdateWorldTransform()
-
-	t.Obj = sp
-	//t.ObjPlayer = gt
-
 	t.engine.RenderManager.FpCamera = ycore.NewCamera(y3d.ZEROV)
 
 	//t.TestUI() // test ui
@@ -155,67 +115,69 @@ func (t *TestApplication) LevelTest() {
 	skin := t.engine.RenderManager.SkinManager.AddSkin(ygl.IdentityMaterial)
 	v, i := ygl.CreateSphere(64, 36, 5.0)
 
-	err := t.engine.Level.AddEntityDrawData(ent, 0x01,
+	err := ycore.AddEntityDrawData(t.engine.Level.World, ent, 0x01,
 		ycore.VPNTC, skin, y3d.UnitAABB, v, i, t.engine.RenderManager.VertextManager)
 	if err != nil {
 		panic(err)
 	}
-	t.engine.Level.AddEntityMoveData(ent, y3d.Vec3{Z: -20}, y3d.IdenQuat())
-	t.engine.Level.AddEntityInputData(ent, func(im *ycore.InputManager, c ycontroller.Controller) {
-		if c == nil {
-			return
-		}
-		m, ok := c.(*ycontroller.MovementController)
-		if !ok {
-			return
-		}
+	ycore.AddEntityMoveData(t.engine.Level.World, ent, y3d.Vec3{Z: -20}, y3d.IdenQuat())
+	ycore.AddEntityInputData(t.engine.Level.World,
+		ent,
+		func(im *ycore.InputManager, c ycontroller.Controller) {
+			if c == nil {
+				return
+			}
+			m, ok := c.(*ycontroller.MovementController)
+			if !ok {
+				return
+			}
 
-		speed := 25.0
-		if im.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_PRESSED {
-			m.Thrust = -float32(speed)
-		}
-		if im.GetKeyState(sdl.SCANCODE_DOWN) == ycore.BUTTON_PRESSED {
-			m.Thrust = float32(speed)
-		}
+			speed := 25.0
+			if im.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_PRESSED {
+				m.Thrust = -float32(speed)
+			}
+			if im.GetKeyState(sdl.SCANCODE_DOWN) == ycore.BUTTON_PRESSED {
+				m.Thrust = float32(speed)
+			}
 
-		if im.GetKeyState(sdl.SCANCODE_LEFT) == ycore.BUTTON_PRESSED {
-			m.RotSpeedRoll = float32(speed)
-		}
+			if im.GetKeyState(sdl.SCANCODE_LEFT) == ycore.BUTTON_PRESSED {
+				m.RotSpeedRoll = float32(speed)
+			}
 
-		if im.GetKeyState(sdl.SCANCODE_RIGHT) == ycore.BUTTON_PRESSED {
-			m.RotSpeedRoll = -float32(speed)
-		}
-		if im.GetKeyState(sdl.SCANCODE_Z) == ycore.BUTTON_PRESSED {
-			m.RotSpeedYaw = float32(speed)
-		}
+			if im.GetKeyState(sdl.SCANCODE_RIGHT) == ycore.BUTTON_PRESSED {
+				m.RotSpeedRoll = -float32(speed)
+			}
+			if im.GetKeyState(sdl.SCANCODE_Z) == ycore.BUTTON_PRESSED {
+				m.RotSpeedYaw = float32(speed)
+			}
 
-		if im.GetKeyState(sdl.SCANCODE_X) == ycore.BUTTON_PRESSED {
-			m.RotSpeedYaw = -float32(speed)
-		}
+			if im.GetKeyState(sdl.SCANCODE_X) == ycore.BUTTON_PRESSED {
+				m.RotSpeedYaw = -float32(speed)
+			}
 
-		if im.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_RELEASED {
-			m.Thrust = 0
-		}
+			if im.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_RELEASED {
+				m.Thrust = 0
+			}
 
-		if im.GetKeyState(sdl.SCANCODE_DOWN) == ycore.BUTTON_RELEASED {
-			m.Thrust = 0
-		}
+			if im.GetKeyState(sdl.SCANCODE_DOWN) == ycore.BUTTON_RELEASED {
+				m.Thrust = 0
+			}
 
-		if im.GetKeyState(sdl.SCANCODE_RIGHT) == ycore.BUTTON_RELEASED {
-			m.RotSpeedRoll = 0
-		}
+			if im.GetKeyState(sdl.SCANCODE_RIGHT) == ycore.BUTTON_RELEASED {
+				m.RotSpeedRoll = 0
+			}
 
-		if im.GetKeyState(sdl.SCANCODE_LEFT) == ycore.BUTTON_RELEASED {
-			m.RotSpeedRoll = 0
-		}
-		if im.GetKeyState(sdl.SCANCODE_Z) == ycore.BUTTON_RELEASED {
-			m.RotSpeedYaw = 0
-		}
+			if im.GetKeyState(sdl.SCANCODE_LEFT) == ycore.BUTTON_RELEASED {
+				m.RotSpeedRoll = 0
+			}
+			if im.GetKeyState(sdl.SCANCODE_Z) == ycore.BUTTON_RELEASED {
+				m.RotSpeedYaw = 0
+			}
 
-		if im.GetKeyState(sdl.SCANCODE_X) == ycore.BUTTON_RELEASED {
-			m.RotSpeedYaw = 0
-		}
-	})
+			if im.GetKeyState(sdl.SCANCODE_X) == ycore.BUTTON_RELEASED {
+				m.RotSpeedYaw = 0
+			}
+		})
 }
 
 func (t *TestApplication) Update(deltaTime float64) {
@@ -223,53 +185,6 @@ func (t *TestApplication) Update(deltaTime float64) {
 		ycore.PrintMemoryUsage()
 	}
 	speed := 25.0
-	// g := t.Helmet
-	// if g.MoveController != nil {
-	// 	if gEngine.InputManager.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_PRESSED {
-	// 		g.MoveController.Thrust = -float32(speed)
-	// 	}
-	// 	if gEngine.InputManager.GetKeyState(sdl.SCANCODE_DOWN) == ycore.BUTTON_PRESSED {
-	// 		g.MoveController.Thrust = float32(speed)
-	// 	}
-
-	// 	if gEngine.InputManager.GetKeyState(sdl.SCANCODE_LEFT) == ycore.BUTTON_PRESSED {
-	// 		g.MoveController.RotSpeedRoll = float32(speed)
-	// 	}
-
-	// 	if gEngine.InputManager.GetKeyState(sdl.SCANCODE_RIGHT) == ycore.BUTTON_PRESSED {
-	// 		g.MoveController.RotSpeedRoll = -float32(speed)
-	// 	}
-	// 	if gEngine.InputManager.GetKeyState(sdl.SCANCODE_Z) == ycore.BUTTON_PRESSED {
-	// 		g.MoveController.RotSpeedYaw = float32(speed)
-	// 	}
-
-	// 	if gEngine.InputManager.GetKeyState(sdl.SCANCODE_X) == ycore.BUTTON_PRESSED {
-	// 		g.MoveController.RotSpeedYaw = -float32(speed)
-	// 	}
-
-	// 	if gEngine.InputManager.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_RELEASED {
-	// 		g.MoveController.Thrust = 0
-	// 	}
-
-	// 	if gEngine.InputManager.GetKeyState(sdl.SCANCODE_DOWN) == ycore.BUTTON_RELEASED {
-	// 		g.MoveController.Thrust = 0
-	// 	}
-
-	// 	if gEngine.InputManager.GetKeyState(sdl.SCANCODE_RIGHT) == ycore.BUTTON_RELEASED {
-	// 		g.MoveController.RotSpeedRoll = 0
-	// 	}
-
-	// 	if gEngine.InputManager.GetKeyState(sdl.SCANCODE_LEFT) == ycore.BUTTON_RELEASED {
-	// 		g.MoveController.RotSpeedRoll = 0
-	// 	}
-	// 	if gEngine.InputManager.GetKeyState(sdl.SCANCODE_Z) == ycore.BUTTON_RELEASED {
-	// 		g.MoveController.RotSpeedYaw = 0
-	// 	}
-
-	// 	if gEngine.InputManager.GetKeyState(sdl.SCANCODE_X) == ycore.BUTTON_RELEASED {
-	// 		g.MoveController.RotSpeedYaw = 0
-	// 	}
-	// }
 
 	cam := t.engine.RenderManager.FpCamera
 	if cam != nil {
@@ -303,12 +218,9 @@ func (t *TestApplication) Update(deltaTime float64) {
 	}
 
 	t.engine.RenderManager.UpdateFPCamera(float32(deltaTime))
-	t.Root.UpdateControllers(float32(deltaTime))
-	t.Root.UpdateWorldTransform()
 }
 
 func (t *TestApplication) Draw() {
-	//t.Root.Draw()
 
 }
 

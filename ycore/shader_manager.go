@@ -97,7 +97,7 @@ func (s *ShaderManager) Add(name string, r []string, shaderType []uint32) (uint3
 	if len(r) != len(shaderType) {
 		return 0, errors.New("shader type must match shader file names")
 	}
-	shaders := make([]uint32, len(r))
+	shaders := make([]uint32, 0, len(r))
 	for i, f := range r {
 		sh, err := createShader(f, shaderType[i])
 		if err != nil {

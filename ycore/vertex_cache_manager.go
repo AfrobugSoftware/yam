@@ -343,6 +343,7 @@ func (vm *VertexCacheManager) LoadCache(
 		}
 		if vc[i].IsEmpty() {
 			empty = vc[i]
+			break
 		}
 		if vc[i].NumVertics > fullest.NumVertics {
 			fullest = vc[i]
