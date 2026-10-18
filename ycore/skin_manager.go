@@ -13,7 +13,6 @@ import (
 	"time"
 	"unsafe"
 	"yam/y3d"
-	"yam/ygl"
 
 	"github.com/go-gl/gl/v4.3-core/gl"
 	"github.com/veandco/go-sdl2/img"
@@ -48,7 +47,7 @@ type SkinManager struct {
 	TotalTextureSizeInMemeory uint
 	Skins                     map[int]Skin
 	Textures                  map[int]TextureData
-	Materials                 map[int]ygl.Material
+	Materials                 map[int]Material
 	OverrideLocalPrograms     bool
 	ubo                       uint32
 	maxTextureUnit            int32
@@ -63,7 +62,7 @@ func NewSkinManager() *SkinManager {
 	s := &SkinManager{
 		Skins:          make(map[int]Skin),
 		Textures:       make(map[int]TextureData),
-		Materials:      make(map[int]ygl.Material),
+		Materials:      make(map[int]Material),
 		ubo:            mubo,
 		maxTextureUnit: imageUnits,
 	}
@@ -84,7 +83,7 @@ func generateRandomId() int {
 	return int(time.Now().UnixNano())
 }
 
-func (s *SkinManager) AddSkin(mat ygl.Material) int {
+func (s *SkinManager) AddSkin(mat Material) int {
 	skin := Skin{}
 	skin.Texture = make([]int, s.maxTextureUnit)
 	for i := range skin.Texture {
@@ -351,10 +350,10 @@ func (s *SkinManager) GetTexture(skin int, slot int) (uint32, error) {
 	return tex.Handle, nil
 }
 
-func (s *SkinManager) GetMaterial(skin int) (ygl.Material, error) {
+func (s *SkinManager) GetMaterial(skin int) (Material, error) {
 	sk, ok := s.Skins[skin]
 	if !ok {
-		return ygl.Material{}, errors.New("invalid skin id")
+		return Material{}, errors.New("invalid skin id")
 	}
 	return s.Materials[sk.Material], nil
 }

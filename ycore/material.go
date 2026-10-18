@@ -1,4 +1,4 @@
-package ygl
+package ycore
 
 import "yam/y3d"
 

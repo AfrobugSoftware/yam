@@ -112,7 +112,7 @@ func (t TestApplication) TestUI() {
 
 func (t *TestApplication) LevelTest() {
 	ent := t.engine.Level.World.NewEntity()
-	skin := t.engine.RenderManager.SkinManager.AddSkin(ygl.IdentityMaterial)
+	skin := t.engine.RenderManager.SkinManager.AddSkin(ycore.IdentityMaterial)
 	v, i := ygl.CreateSphere(64, 36, 5.0)
 
 	err := ycore.AddEntityDrawData(t.engine.Level.World, ent, 0x01,

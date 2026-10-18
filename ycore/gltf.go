@@ -12,7 +12,6 @@ import (
 	"sort"
 	"strings"
 	"yam/y3d"
-	"yam/ygl"
 
 	"github.com/qmuntal/gltf"
 )
@@ -65,7 +64,7 @@ func LoadGLTF(filename string, r *RenderManager, tag uint32, world *World) error
 	}
 	scene := doc.Scenes[*doc.Scene]
 	data := make(map[int][]byte)
-	skin := r.SkinManager.AddSkin(ygl.IdentityMaterial)
+	skin := r.SkinManager.AddSkin(IdentityMaterial)
 	for _, n := range scene.Nodes {
 		err := ProcessNode(world, doc.Nodes[n], doc, r, tag, skin, data)
 		if err != nil {
