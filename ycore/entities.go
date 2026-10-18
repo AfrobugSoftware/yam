@@ -9,16 +9,16 @@ import (
 type InputFunc func(*InputManager, ycontroller.Controller)
 
 const (
-	MoveControllerComponent = ComponentId(1)
-	DrawCommandComponent    = ComponentId(2)
-	TransformComponent      = ComponentId(3)
-	SkinComponent           = ComponentId(4)
-	VertexTypeComponent     = ComponentId(5)
-	RenderFlagComponent     = ComponentId(6)
-	BoundingBoxComponent    = ComponentId(7)
-	EntityTagComponent      = ComponentId(9)
-	InstanceComponent       = ComponentId(10)
-	InputComponent          = ComponentId(11)
+	MoveControllerComponent ComponentId = iota
+	DrawCommandComponent
+	TransformComponent
+	SkinComponent
+	VertexTypeComponent
+	RenderFlagComponent
+	BoundingBoxComponent
+	EntityTagComponent
+	InstanceComponent
+	InputComponent
 )
 
 func AddEntityDrawData(
