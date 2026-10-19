@@ -19,7 +19,7 @@ type Portal struct {
 	BoundingBox  y3d.AABB
 	Transform    ycore.Transform
 	SkinId       int
-	RenderFlag   uint32
+	RenderFlag   ycore.PerObjectRendeState
 	DrawCommand  ycore.DrawCommand
 }
 
@@ -76,8 +76,8 @@ func (p *Portal) Render(vm *ycore.VertexCacheManager) {
 	if err != nil {
 		return
 	}
-	v.AddInstances(&p.DrawCommand, 1)
-	v.AddRenderFlag(int(p.DrawCommand.BaseInstance), p.RenderFlag)
+	v.AddInstances(&p.DrawCommand)
+	v.AddRenderState(int(p.DrawCommand.BaseInstance), p.RenderFlag)
 	v.LoadMatrix(int(p.DrawCommand.BaseInstance),
 		p.Transform.World)
 	v.AddDrawCommand(p.DrawCommand)

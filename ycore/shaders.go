@@ -25,13 +25,16 @@ out data {
 	vec3 normal;
 	vec2 tc;
 	vec4 color;
+	flat uint draw_index;
 }vs_out;
 void main() {
 	vs_out.pos = vec3(world[dInx].world * vec4(pos, 1.0));
 	vs_out.normal = mat3(world[dInx].normal) * norm;
 	vs_out.tc = tc;
+	vs_out.draw_index = dInx;
 	gl_Position = view_proj * world[dInx].world * vec4(pos, 1.0);
 };
+
 	`
 	blingPhongFragment = `
 #version 430
@@ -41,6 +44,7 @@ in data {
 	vec3 normal;
 	vec2 tc;
 	vec4 color;
+	flat uint draw_index;
 }fs_in;
 
 struct light {
@@ -50,6 +54,15 @@ struct light {
 	float inner_radius;
 	uint flag;
 };
+
+struct per_object_render_state {
+	uint render_flag;
+	float alpha;
+};
+
+layout(std430, binding = 2) buffer per_object_render_state_buffer {
+	per_object_render_state data[];
+}ors;
 
 layout(std140, binding= 2) uniform material_s {
     vec4 diffuse;
@@ -80,7 +93,7 @@ vec4 calculate_bling_phong(int light_index) {
 }
 
 void main() {
-	out_color = vec4(calculate_bling_phong(0).xyz, 1.0);
+	out_color = vec4(calculate_bling_phong(0).xyz, ors.data[fs_in.draw_index].alpha);
 }	
 	`
 	shadowVertexShader = `
@@ -106,61 +119,60 @@ void main() {
 	`
 	gbufferVertex = `
 #version 430 core
-
 layout(location = 0) in vec3 pos;
-layout(location = 1) in vec3 normal;
-layout(location = 2) in vec2 uv;
+layout(location = 1) in vec3 norm;
+layout(location = 2) in vec2 tc;
 layout(location = 3) in vec4 color;
 layout(location = 10) in uint dInx;
-out data {
-	vec4 fragPos;
-	vec3 fragNormal;
-	vec4 fragColor;
-	vec2 fragUv;
-}vs_out;
-layout(std430, binding = 0) buffer matrix {
-    	mat4 world[];
+
+struct per_object_transform {
+	mat4 world;
+	mat4 normal;
+};
+
+layout(std430, binding = 0) buffer matrix_ssbo {
+    per_object_transform world[];
 };
 layout(std140, binding = 4) uniform vp {
-		mat4 viewproj;
-}
+	mat4 view_proj;
+};
+out data {
+	vec4 pos;
+	vec3 normal;
+	vec2 tc;
+	vec4 color;
+	flat uint draw_index;
+}vs_out;
 
 void main() {
-    vs_in.fragUv = uv;
-    vs_in.fragPos = world[dInx] * vec4(pos, 1.0);
-    vs_in.fragNormal = mat3(transpose(inverse(world[dInx]))) * normal; 
-    vs_in.fragColor = color;
-	gl_Position = viewproj * world * vec4(pos, 1.0);
+    vs_out.tc     = tc;
+    vs_out.pos    = world[dInx].world * vec4(pos, 1.0);
+    vs_out.normal = mat3(world[dInx].normal) * norm; 
+    vs_out.color  = color;
+	gl_Position = viewproj * world[dInx].world * vec4(pos, 1.0);
 }
 	`
 
 	gbufferFragment = `
 #version 430 core
 
-layout (location = 0) out vec4 outWolrdPos;
-layout (location = 1) out vec4 outWorldNormal;
-layout (location = 2) out vec4 outDiffuse;
-
+layout (location = 0) out vec4 positions;
+layout (location = 1) out vec4 normals;
+layout (location = 2) out vec4 albedo;
 in data {
-    vec4 fragPos;
-    vec3 fragNormal;
-	vec4 fragColor
-    vec2 fragUv;
+	vec4 pos;
+	vec3 normal;
+	vec2 tc;
+	vec4 color;
+	flat uint draw_index;
 }fs_in;
-
 
 layout(binding = 0) uniform sampler2D mdiffuse;
 
 void main() {
-	vec4 out_color = texture(mdiffuse, fs_in.fragUv.xy);
-	if(out_color == vec4(0.0)) {
-		outDiffuse = fs_in.fragColor;
-	}else{
-		outDiffuse = out_color
-	}
-    outDiffuse = out_color;
-    outWolrdPos = fs_in.fragPos;
-    outWorldNormal = vec4(fs_in.fragNormal, 0.0);
+    albedo = fs_in.color;
+    positions = fs_in.pos;
+    normals = vec4(fs_in.normal, 0.0);
 }
 	`
 	screenquadVertex = `

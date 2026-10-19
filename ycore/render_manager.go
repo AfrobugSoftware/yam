@@ -92,6 +92,7 @@ type RenderManager struct {
 	SkinManager      *SkinManager
 	VertextManager   *VertexCacheManager
 	ShaderManager    *ShaderManager
+	World            *World
 	DrawMode         uint32
 	ActiveProgram    uint32
 	screenVao        uint32
@@ -177,6 +178,7 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 	if err = gl.Init(); err != nil {
 		panic(err)
 	}
+	fmt.Println(gl.GoStr(gl.GetString(gl.VERSION)))
 	_, h, _, err := sdl.GetDisplayDPI(0)
 	if err != nil {
 		panic(err)
@@ -717,6 +719,18 @@ func (r *RenderManager) CopyDepthToDefault() {
 	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 }
 
+func (r *RenderManager) ForwardPass() {
+
+}
+
+func (r *RenderManager) GeometryPass() {
+	gl.BindFramebuffer(gl.FRAMEBUFFER, r.gBuffer)
+	r.BeginRender()
+	r.RenderEntities(true)
+	r.EndRender()
+	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+}
+
 func (r *RenderManager) UpdateFPCamera(dt float32) {
 	if r.FpCamera != nil {
 		//using first person camera
@@ -755,5 +769,41 @@ func (r *RenderManager) Resize() {
 	r.Prepare2D(float32(fbW), float32(fbH), 0.1, 1000.0)
 	if r.RootUI != nil {
 		r.RootUI.BaseSize = y3d.Vec2{X: float32(fbW), Y: float32(fbH)}
+	}
+}
+
+func (r *RenderManager) RenderEntities(cull bool) {
+	if r.World == nil {
+		return
+	}
+	vm := r.VertextManager
+	frustum := r.GetFrustum()
+	entities := r.World.Query(
+		DrawCommandComponent,
+		RenderStateComponent,
+		TransformComponent,
+		SkinComponent,
+		VertexTypeComponent,
+		BoundingBoxComponent)
+	for _, e := range entities {
+		box := r.World.GetComponent(e, BoundingBoxComponent).(y3d.AABB)
+		c := box.Cull(frustum[:])
+		if cull && c == y3d.CULLED {
+			continue
+		}
+		vertexType := r.World.GetComponent(e, VertexTypeComponent).(string)
+		skinId := r.World.GetComponent(e, SkinComponent).(int)
+		v, err := vm.GetCache(vertexType, skinId)
+		if err != nil {
+			continue //no cache for this entity
+		}
+		transform := r.World.GetComponent(e, TransformComponent).(Transform)
+		rflag := r.World.GetComponent(e, RenderStateComponent).(PerObjectRendeState)
+		drawcommand := r.World.GetComponent(e, DrawCommandComponent).(DrawCommand)
+
+		v.AddInstances(&drawcommand)
+		v.AddDrawCommand(drawcommand)
+		v.LoadMatrix(int(drawcommand.BaseInstance), transform.World) //this needs to be world
+		v.AddRenderState(int(drawcommand.BaseInstance), rflag)
 	}
 }

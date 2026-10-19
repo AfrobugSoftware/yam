@@ -54,10 +54,9 @@ func (l *Level) RenderEntities(r *ycore.RenderManager, cull bool) {
 	frustum := r.GetFrustum()
 	entities := l.World.Query(
 		ycore.DrawCommandComponent,
-		ycore.RenderFlagComponent,
+		ycore.RenderStateComponent,
 		ycore.TransformComponent,
 		ycore.SkinComponent,
-		ycore.InstanceComponent,
 		ycore.VertexTypeComponent,
 		ycore.BoundingBoxComponent)
 	for _, e := range entities {
@@ -72,15 +71,14 @@ func (l *Level) RenderEntities(r *ycore.RenderManager, cull bool) {
 		if err != nil {
 			continue //no cache for this entity
 		}
-		instance := l.World.GetComponent(e, ycore.InstanceComponent).(int)
 		transform := l.World.GetComponent(e, ycore.TransformComponent).(ycore.Transform)
-		rflag := l.World.GetComponent(e, ycore.RenderFlagComponent).(uint32)
+		rflag := l.World.GetComponent(e, ycore.RenderStateComponent).(ycore.PerObjectRendeState)
 		drawcommand := l.World.GetComponent(e, ycore.DrawCommandComponent).(ycore.DrawCommand)
 
-		v.AddInstances(&drawcommand, instance)
+		v.AddInstances(&drawcommand)
 		v.AddDrawCommand(drawcommand)
 		v.LoadMatrix(int(drawcommand.BaseInstance), transform.World) //this needs to be world
-		v.AddRenderFlag(int(drawcommand.BaseInstance), rflag)
+		v.AddRenderState(int(drawcommand.BaseInstance), rflag)
 	}
 }
 

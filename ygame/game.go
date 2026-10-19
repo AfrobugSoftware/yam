@@ -44,6 +44,7 @@ func NewGame(title string, width, height int32) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	window.SetResizable(true)
 	gEngine = &Engine{}
 	gEngine.RenderManager = ycore.NewRenderManager(window, int(width), int(height))
@@ -77,11 +78,10 @@ func (g *Engine) Draw() {
 	if g.App != nil {
 		g.RenderManager.BeginShadowMap()
 		g.Level.RenderEntities(g.RenderManager, false)
-		//g.App.Draw()
+		g.RenderManager.Render()
 		g.RenderManager.EndShadowMap()
 
 		g.RenderManager.BeginRender()
-		//g.App.Draw()
 		g.Level.RenderEntities(g.RenderManager, false)
 		g.RenderManager.Render()
 		g.RenderManager.EndRender()

@@ -12,6 +12,11 @@ import (
 	"github.com/go-gl/gl/v4.3-core/gl"
 )
 
+type PerObjectRendeState struct {
+	Flag  uint32
+	Alpha float32
+}
+
 type VertexFormat struct {
 	ComponentSize  int32
 	Type           uint32
@@ -34,7 +39,7 @@ type VertexCache struct {
 	DrawCommandBo   uint32
 	DrawIndexVbo    uint32
 	WorldMatrixSSBO uint32
-	RenderFlagsSSBO uint32
+	RenderStateSSBO uint32
 	MaxVertices     int32
 	MaxIndices      int32
 	MaxDrawCommands int32
@@ -101,8 +106,8 @@ func NewVertexCache(
 	gl.NamedBufferStorage(mssbo, int((unsafe.Sizeof(y3d.Mat4{})*2)*uintptr(maxInstances)), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
 	UpdateGPUMem(uint64(unsafe.Sizeof(y3d.Mat4{}) * uintptr(maxInstances)))
 	gl.CreateBuffers(1, &rfssobo)
-	gl.NamedBufferStorage(rfssobo, int(unsafe.Sizeof(uint32(0))*uintptr(maxInstances)), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
-	UpdateGPUMem(uint64(unsafe.Sizeof(uint32(0)) * uintptr(maxInstances)))
+	gl.NamedBufferStorage(rfssobo, int(unsafe.Sizeof(PerObjectRendeState{})*uintptr(maxInstances)), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
+	UpdateGPUMem(uint64(unsafe.Sizeof(PerObjectRendeState{}) * uintptr(maxInstances)))
 	return &VertexCache{
 		Vao:             vao,
 		VertexVbo:       vvbo,
@@ -110,7 +115,7 @@ func NewVertexCache(
 		DrawCommandBo:   dcbo,
 		DrawIndexVbo:    divbo,
 		WorldMatrixSSBO: mssbo,
-		RenderFlagsSSBO: rfssobo,
+		RenderStateSSBO: rfssobo,
 		MaxVertices:     maxVertex,
 		MaxIndices:      maxIndex,
 		MaxDrawCommands: maxDraws,
@@ -181,18 +186,19 @@ func (v *VertexCache) Add(command *DrawCommand,
 		gl.Ptr(dataI.Bytes()))
 	v.NumIndices += int32(dataI.Len() / 4)
 	command.Count = uint32(dataI.Len() / 4)
+	command.InstanceCount = 1 //always set to one
 	return CheckError()
 }
 func (v *VertexCache) IsEmpty() bool {
 	return v.NumVertics == 0 || v.NumDrawCommands == 0
 }
 
-func (v *VertexCache) AddInstances(command *DrawCommand, instanceCount int) error {
+func (v *VertexCache) AddInstances(command *DrawCommand) error {
 	if v.NumOfInstances >= v.MaxInstances {
 		return errors.New("no space for new instances")
 	}
 	command.BaseInstance = uint32(v.NumOfInstances)
-	command.InstanceCount = uint32(instanceCount)
+	instanceCount := int(command.InstanceCount)
 	ptr := gl.MapNamedBufferRange(
 		v.DrawIndexVbo,
 		int(unsafe.Sizeof(uint32(0)))*int(command.BaseInstance),
@@ -219,27 +225,27 @@ func (v *VertexCache) AddDrawCommand(command DrawCommand) error {
 	}
 	gl.NamedBufferSubData(v.DrawCommandBo, int(unsafe.Sizeof(command)*uintptr(v.NumDrawCommands)),
 		int(unsafe.Sizeof(command)), unsafe.Pointer(&command))
-	v.NumDrawCommands += 1
+	v.NumDrawCommands++
 	return CheckError()
 }
 
-func (v *VertexCache) AddRenderFlag(baseInstance int, flag ...uint32) error {
+func (v *VertexCache) AddRenderState(baseInstance int, flag ...PerObjectRendeState) error {
 	if baseInstance+len(flag) >= int(v.MaxInstances) {
 		return errors.New("invalid matrix instance range")
 	}
 	ptr := gl.MapNamedBufferRange(
-		v.RenderFlagsSSBO,
-		int(unsafe.Sizeof(uint32(0)))*int(baseInstance),
-		int(len(flag)*int(unsafe.Sizeof(uint32(0)))),
+		v.RenderStateSSBO,
+		int(unsafe.Sizeof(PerObjectRendeState{}))*int(baseInstance),
+		int(len(flag)*int(unsafe.Sizeof(PerObjectRendeState{}))),
 		gl.MAP_WRITE_BIT|gl.MAP_INVALIDATE_RANGE_BIT,
 	)
 	if ptr == nil {
 		CheckError()
 		return errors.New("cannot load world matrix")
 	}
-	slice := unsafe.Slice((*uint32)(ptr), len(flag))
+	slice := unsafe.Slice((*PerObjectRendeState)(ptr), len(flag))
 	copy(slice, flag)
-	if !gl.UnmapNamedBuffer(v.RenderFlagsSSBO) {
+	if !gl.UnmapNamedBuffer(v.RenderStateSSBO) {
 		CheckError()
 		return errors.New("cannot release world matrix buffer")
 	}
@@ -296,7 +302,7 @@ func (v *VertexCache) Render() {
 		//how to handle framebuffer operations ???
 		gl.BindVertexArray(v.Vao)
 		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, WORLD_MATRIX_BINDING, v.WorldMatrixSSBO)
-		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, RENDER_FLAG_BINDING, v.RenderFlagsSSBO)
+		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, RENDER_FLAG_BINDING, v.RenderStateSSBO)
 		gl.BindBuffer(gl.DRAW_INDIRECT_BUFFER, v.DrawCommandBo)
 		//who should have draw mode???
 		switch v.VManager.RenderManager.DrawMode {
@@ -334,7 +340,7 @@ func (v *VertexCache) Destroy() {
 	gl.DeleteBuffers(1, &v.DrawCommandBo)
 	gl.DeleteBuffers(1, &v.DrawIndexVbo)
 	gl.DeleteBuffers(1, &v.WorldMatrixSSBO)
-	gl.DeleteBuffers(1, &v.RenderFlagsSSBO)
+	gl.DeleteBuffers(1, &v.RenderStateSSBO)
 	gl.DeleteVertexArrays(1, &v.Vao)
 }
 

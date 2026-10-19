@@ -21,15 +21,22 @@ func (t *TestApplication) Startup(e *Engine) {
 		panic("failed to create cube")
 	}
 
-	err := ycore.LoadGLTF("assets/gltf/DamagedHelmet.glb",
+	// err := ycore.LoadGLTF("assets/gltf/DamagedHelmet.glb",
+	// 	t.engine.RenderManager,
+	// 	50, //tag
+	// 	t.engine.Level.World)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	err := ycore.LoadGLTF("assets/gltf/SheenChair.glb",
 		t.engine.RenderManager,
-		50, //tag
+		51, //tag
 		t.engine.Level.World)
 	if err != nil {
 		panic(err)
 	}
-	t.engine.RenderManager.FpCamera = ycore.NewCamera(y3d.ZEROV)
 
+	t.engine.RenderManager.FpCamera = ycore.NewCamera(y3d.ZEROV)
 	//t.TestUI() // test ui
 	t.LevelTest() //level test
 }
@@ -112,6 +119,7 @@ func (t TestApplication) TestUI() {
 
 func (t *TestApplication) LevelTest() {
 	ent := t.engine.Level.World.NewEntity()
+	ent2 := t.engine.Level.World.NewEntity()
 	skin := t.engine.RenderManager.SkinManager.AddSkin(ycore.IdentityMaterial)
 	v, i := ygl.CreateSphere(64, 36, 5.0)
 
@@ -120,7 +128,13 @@ func (t *TestApplication) LevelTest() {
 	if err != nil {
 		panic(err)
 	}
+	err = ycore.AddEntityDrawData(t.engine.Level.World, ent2, 0x02,
+		ycore.VPNTC, skin, y3d.UnitAABB, v, i, t.engine.RenderManager.VertextManager)
+	if err != nil {
+		panic(err)
+	}
 	ycore.AddEntityMoveData(t.engine.Level.World, ent, y3d.Vec3{Z: -20}, y3d.IdenQuat())
+	ycore.AddEntityMoveData(t.engine.Level.World, ent2, y3d.Vec3{Z: -50, Y: 5.0}, y3d.IdenQuat())
 	ycore.AddEntityInputData(t.engine.Level.World,
 		ent,
 		func(im *ycore.InputManager, c ycontroller.Controller) {

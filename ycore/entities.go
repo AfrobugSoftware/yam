@@ -14,10 +14,9 @@ const (
 	TransformComponent
 	SkinComponent
 	VertexTypeComponent
-	RenderFlagComponent
+	RenderStateComponent
 	BoundingBoxComponent
 	EntityTagComponent
-	InstanceComponent
 	InputComponent
 )
 
@@ -37,8 +36,9 @@ func AddEntityDrawData(
 	world.AddComponent(ent, EntityTagComponent, entityTag)
 	world.AddComponent(ent, DrawCommandComponent, cmd)
 	world.AddComponent(ent, SkinComponent, skinId)
-	world.AddComponent(ent, RenderFlagComponent, uint32(0))
-	world.AddComponent(ent, InstanceComponent, 1)
+	world.AddComponent(ent, RenderStateComponent, PerObjectRendeState{
+		Alpha: 1.0,
+	})
 	world.AddComponent(ent, VertexTypeComponent, vertexType)
 	world.AddComponent(ent, BoundingBoxComponent, box)
 	return nil

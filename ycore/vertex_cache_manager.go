@@ -308,7 +308,8 @@ func (vm *VertexCacheManager) LoadInstances(vertexType string, skinId int, comma
 	}
 	for i := range MAX_CACHES {
 		if vc[i].SkinId == skinId {
-			vc[i].AddInstances(command, instanceCount)
+			command.InstanceCount = uint32(instanceCount)
+			vc[i].AddInstances(command)
 			return nil
 		}
 	}

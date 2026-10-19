@@ -241,9 +241,7 @@ func ProcessNode(world *World, node *gltf.Node,
 				attribs = append(attribs, a)
 			}
 			vertexType = strings.Join(names, ".")
-			PrintMemoryUsage()
 			count, vs, err := makeVBuffer(v, pf, attribs)
-			PrintMemoryUsage()
 			vertexSize = vs
 			if err != nil {
 				return err
@@ -289,6 +287,7 @@ func ProcessNode(world *World, node *gltf.Node,
 			Y: node.Rotation[1],
 			X: node.Rotation[0],
 		}
+		//skin_ := r.SkinManager.AddSkin(IdentityMaterial)
 		err := AddEntityDrawData(
 			world,
 			ynode,
@@ -361,6 +360,7 @@ func loadBufferURI(doc *gltf.Document, accessor *gltf.Accessor) ([]byte, error) 
 
 func GetVertexFormat(vf []VertexFormat, r *RenderManager) string {
 	vm := r.VertextManager
+formatSearch:
 	for vt, f := range vm.Formats {
 		if len(f) == len(vf) {
 			for i := range f {
@@ -368,9 +368,12 @@ func GetVertexFormat(vf []VertexFormat, r *RenderManager) string {
 					f[i].RelativeOffset == vf[i].RelativeOffset &&
 					f[i].Type == vf[i].Type &&
 					f[i].Normalized == vf[i].Normalized {
-					return vt
+					continue
+				} else {
+					continue formatSearch
 				}
 			}
+			return vt
 		}
 	}
 	return INVALID_VERTEX_FORMAT

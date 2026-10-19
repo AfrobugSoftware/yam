@@ -8,7 +8,9 @@ import (
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
+	"math"
 	"math/bits"
+	"math/rand"
 	"strings"
 	"time"
 	"unsafe"
@@ -80,7 +82,7 @@ func mipLevels(minFilter, w, h int32) int32 {
 }
 
 func generateRandomId() int {
-	return int(time.Now().UnixNano())
+	return rand.Intn(math.MaxInt)
 }
 
 func (s *SkinManager) AddSkin(mat Material) int {
