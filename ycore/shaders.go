@@ -224,14 +224,15 @@ layout(std430,binding = 3) buffer render_parameters {
 
 out data{
 	vec3 pos;
+	flat vec2 campos;
 }vs_out;
 uniform float grid_size = 100.0;
 void main() {
 	int index = indices[gl_VertexID];
 	vec3 pos = positions[index] * grid_size;
 	pos.x += render_params.view_pos.x;
-	pos.y = -0.5;
 	pos.z += render_params.view_pos.z;
+	vs_out.campos = render_params.view_pos.xz;
 	vs_out.pos = pos;
 	gl_Position = viewproj * vec4(pos, 1.0);
 }	
@@ -241,6 +242,7 @@ void main() {
 layout(location = 0) out vec4 out_color;
 in data {
 	vec3 pos;
+	flat vec2 campos;
 }fs_in;
 uniform float min_pixels_between_cells = 2.0;
 uniform float cell_size = 0.025;
@@ -258,7 +260,7 @@ vec2 calcAlpha(vec2 position, float grid_size_lod, vec2 dudv) {
 	vec2 d = vec2(1.0) - c;
 	return d;
 }
-
+uniform float grid_size = 100.0;
 void main() {
 	vec2 dvx = vec2(dFdx(fs_in.pos.x), dFdy(fs_in.pos.x));
 	vec2 dvy = vec2(dFdx(fs_in.pos.z), dFdy(fs_in.pos.z));
@@ -294,7 +296,11 @@ void main() {
 			color.a *= (lod0a * 1.0 - lod_fade);
 		}
 	}
-	out_color =color;
+	float wl = length(fs_in.pos.xz - fs_in.campos) / grid_size;
+	float opacity_falloff = 1.0 - clamp(wl, 0.0, 1.0);
+	color.a *= opacity_falloff;
+	out_color = color;
+
 }
 `
 )
