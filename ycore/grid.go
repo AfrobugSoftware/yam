@@ -1,0 +1,3 @@
+package ycore
+
+const ()

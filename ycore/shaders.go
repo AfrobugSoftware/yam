@@ -196,4 +196,30 @@ void main() {
     fragUv = vec2((pos.x +1) / 2.0, (pos.y + 1) / 2.0);
 }
 	`
+	gridVertexShader = `
+#version 430
+const vec3 positions[4] = vec3[4](
+	vec3(-1.0, 0.0, -1.0),
+	vec3(1.0, 0.0, -1.0),
+	vec3(1.0, 0.0,  1.0),
+	vec3(-1.0, 0.0, 1.0));
+	
+const int indices[6] = int[6](0, 2, 1,  0, 3, 2);
+layout(std140, binding = 4) uniform vp {
+	mat4 viewproj;
+};
+void main() {
+	int index = indices[gl_VertexID];
+	gl_Position = viewproj * vec4(positions[index], 1.0);
+}	
+`
+	gridFragmentShader = `
+#version 430
+layout(location = 0) out vec4 out_color;
+
+void main() {
+	out_color = vec4(1.0);
+}
+
+`
 )

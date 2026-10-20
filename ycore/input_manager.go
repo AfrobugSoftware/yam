@@ -40,8 +40,8 @@ type InputManager struct {
 	PrevKeyState      []uint8
 	ModKeyState       [4]uint8
 	PrevModKeyState   [4]uint8
-	CurMouseKeyState  uint32
-	PrevMouseKeyState uint32
+	CurMouseKeyState  [3]uint8
+	PrevMouseKeyState [3]uint8
 	MousePosition     y3d.Vec2
 	ShowCursor        int
 	IsRelative        bool
@@ -121,28 +121,9 @@ func (im *InputManager) GetKeyStateMod(key int) uint8 {
 
 func (im *InputManager) GetMouseButtonState(button int) uint8 {
 	if button < 1 || button > MOUSE_MAX {
-		return BUTTON_NONE
+		return sdl.RELEASED
 	}
-	p := im.PrevMouseKeyState & (1 << (button - 1))
-	c := im.CurMouseKeyState & (1 << (button - 1))
-	r := BUTTON_NONE
-	switch c {
-	case 0:
-		switch p {
-		case 0:
-			r = BUTTON_NONE
-		case 1:
-			r = BUTTON_RELEASED
-		}
-	case 1:
-		switch p {
-		case 0:
-			r = BUTTON_PRESSED
-		case 1:
-			r = BUTTON_HELD
-		}
-	}
-	return r
+	return im.CurMouseKeyState[button-1]
 }
 
 func (im *InputManager) ConnectController(idx int) {
@@ -169,10 +150,10 @@ func (im *InputManager) DisconnectController(idx int) {
 func (im *InputManager) ProcessInput() bool {
 	copy(im.PrevKeyState, im.CurKeyState)
 	copy(im.PrevModKeyState[:], im.ModKeyState[:])
-	im.PrevMouseKeyState = im.CurMouseKeyState
+	copy(im.PrevMouseKeyState[:], im.CurMouseKeyState[:])
 	clear(im.CurKeyState)
 	clear(im.ModKeyState[:])
-	im.CurMouseKeyState = 0
+
 	im.ScrollWheelDir = 0
 	im.ScrollWheelPos = y3d.Vec3{}
 	im.MousePosition = y3d.Vec2{}
@@ -187,6 +168,12 @@ func (im *InputManager) ProcessInput() bool {
 		case sdl.CONTROLLERDEVICEREMOVED:
 			c := event.(*sdl.ControllerDeviceEvent)
 			im.DisconnectController(int(c.Which))
+		case sdl.MOUSEBUTTONDOWN:
+			m := event.(*sdl.MouseButtonEvent)
+			im.CurMouseKeyState[int(m.Button-1)] = m.State
+		case sdl.MOUSEBUTTONUP:
+			m := event.(*sdl.MouseButtonEvent)
+			im.CurMouseKeyState[int(m.Button-1)] = m.State
 		case sdl.MOUSEWHEEL:
 			w := event.(*sdl.MouseWheelEvent)
 			im.ScrollWheelPos = y3d.Vec3{
@@ -215,23 +202,21 @@ func (im *InputManager) ProcessInput() bool {
 				im.ModKeyState[SUPER] = 1
 			}
 		}
-		state := sdl.GetKeyboardState()
-		if state != nil {
-			if state[sdl.SCANCODE_ESCAPE] != 0 {
-				return false
-			}
-			copy(im.CurKeyState, state)
-		}
-		var x, y int32
-		var mState uint32
-		if im.IsRelative {
-			x, y, mState = sdl.GetRelativeMouseState()
-		} else {
-			x, y, mState = sdl.GetMouseState()
-		}
-		im.MousePosition.X = float32(min(max(x, int32(im.MouseCage.X)), int32(im.MouseCage.Width)))
-		im.MousePosition.Y = float32(min(max(y, int32(im.MouseCage.Y)), int32(im.MouseCage.Height)))
-		im.CurMouseKeyState = mState
 	}
+	state := sdl.GetKeyboardState()
+	if state != nil {
+		if state[sdl.SCANCODE_ESCAPE] != 0 {
+			return false
+		}
+		copy(im.CurKeyState, state)
+	}
+	var x, y int32
+	if im.IsRelative {
+		x, y, _ = sdl.GetRelativeMouseState()
+	} else {
+		x, y, _ = sdl.GetMouseState()
+	}
+	im.MousePosition.X = float32(x) //float32(min(max(x, int32(im.MouseCage.X)), int32(im.MouseCage.Width)))
+	im.MousePosition.Y = float32(y) //float32(min(max(y, int32(im.MouseCage.Y)), int32(im.MouseCage.Height)))
 	return true
 }

@@ -1,6 +1,7 @@
 package ygame
 
 import (
+	"math"
 	"yam/y3d"
 	"yam/ycontroller"
 	"yam/ycore"
@@ -11,11 +12,16 @@ import (
 )
 
 type TestApplication struct {
-	engine *Engine
+	engine      *Engine
+	camFront    y3d.Vec3
+	camPostiion y3d.Vec3
+	camUp       y3d.Vec3
+	yaw, pitch  float32
 }
 
 func (t *TestApplication) Startup(e *Engine) {
 	t.engine = e
+	t.camFront = y3d.UNIT_Z
 	v, i := ygl.CreateCube()
 	if v == nil || i == nil {
 		panic("failed to create cube")
@@ -35,8 +41,8 @@ func (t *TestApplication) Startup(e *Engine) {
 	if err != nil {
 		panic(err)
 	}
-
-	t.engine.RenderManager.FpCamera = ycore.NewCamera(y3d.ZEROV)
+	t.engine.InputManager.IsRelative = true
+	t.yaw = 90.0
 	//t.TestUI() // test ui
 	t.LevelTest() //level test
 }
@@ -198,42 +204,59 @@ func (t *TestApplication) Update(deltaTime float64) {
 	if gEngine.InputManager.GetKeyState(sdl.SCANCODE_P) == ycore.BUTTON_PRESSED {
 		ycore.PrintMemoryUsage()
 	}
-	speed := 25.0
-
-	cam := t.engine.RenderManager.FpCamera
-	if cam != nil {
-		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_W) == ycore.BUTTON_PRESSED {
-			cam.ForwardSpeed = -float32(speed)
-		}
-		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_W) == ycore.BUTTON_RELEASED {
-			cam.ForwardSpeed = 0
-		}
-
-		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_S) == ycore.BUTTON_PRESSED {
-			cam.ForwardSpeed = float32(speed)
-		}
-		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_S) == ycore.BUTTON_RELEASED {
-			cam.ForwardSpeed = 0
-		}
-
-		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_A) == ycore.BUTTON_PRESSED {
-			cam.RotSpeedYaw = -float32(speed)
-		}
-		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_A) == ycore.BUTTON_RELEASED {
-			cam.RotSpeedYaw = 0
-		}
-
-		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_D) == ycore.BUTTON_PRESSED {
-			cam.RotSpeedYaw = float32(speed)
-		}
-		if gEngine.InputManager.GetKeyState(sdl.SCANCODE_D) == ycore.BUTTON_RELEASED {
-			cam.RotSpeedYaw = 0
-		}
-	}
-
-	t.engine.RenderManager.UpdateFPCamera(float32(deltaTime))
+	t.ProcessInput(float32(deltaTime))
+	t.UpdateCamera()
 }
 
+func (t *TestApplication) ProcessInput(deltaTime float32) {
+	camSpeed := 5 * deltaTime
+	im := t.engine.InputManager
+
+	if im.GetMouseButtonState(sdl.BUTTON_LEFT) == sdl.PRESSED {
+		t.yaw += im.MousePosition.X * 0.01
+		t.pitch += im.MousePosition.Y * 0.01
+		if t.pitch > 89.0 {
+			t.pitch = 89.0
+		} else if t.pitch < -89.0 {
+			t.pitch = -89.0
+		}
+		t.camFront = y3d.Normalize(y3d.Vec3{
+			X: float32(math.Cos(float64(t.yaw)) * math.Cos(float64(t.pitch))),
+			Y: float32(math.Sin(float64(t.pitch))),
+			Z: float32(math.Sin(float64(t.yaw)) * math.Cos(float64(t.pitch))),
+		})
+	}
+	if im.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_HELD {
+		t.camPostiion = y3d.Add(t.camPostiion, y3d.Smul(t.camFront, float32(camSpeed)))
+	}
+	if im.GetKeyState(sdl.SCANCODE_DOWN) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_DOWN) == ycore.BUTTON_HELD {
+		t.camPostiion = y3d.Sub(t.camPostiion, y3d.Smul(t.camFront, float32(camSpeed)))
+	}
+	if im.GetKeyState(sdl.SCANCODE_RIGHT) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_RIGHT) == ycore.BUTTON_HELD {
+		right := y3d.Normalize(y3d.Cross(t.camFront, t.camUp))
+		t.camPostiion = y3d.Add(t.camPostiion, y3d.Smul(right, float32(camSpeed)))
+	}
+	if im.GetKeyState(sdl.SCANCODE_LEFT) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_LEFT) == ycore.BUTTON_HELD {
+		right := y3d.Normalize(y3d.Cross(t.camFront, t.camUp))
+		t.camPostiion = y3d.Sub(t.camPostiion, y3d.Smul(right, float32(camSpeed)))
+	}
+
+}
+
+func (t *TestApplication) UpdateCamera() {
+	dir := t.camFront
+	vRight := y3d.Normalize(y3d.Cross(y3d.UNIT_Y, dir))
+	vUp := y3d.Cross(dir, vRight)
+	eye := t.camPostiion
+
+	t.engine.RenderManager.View3D[t.engine.RenderManager.Stage] = y3d.Mat4{
+		vRight.X, vUp.X, dir.X, 0,
+		vRight.Y, vUp.Y, dir.Y, 0,
+		vRight.Z, vUp.Z, dir.Z, 0,
+		-y3d.Dot(vRight, eye), -y3d.Dot(vUp, eye), -y3d.Dot(dir, eye), 1,
+	}
+	t.camUp = vUp
+}
 func (t *TestApplication) Draw() {
 
 }

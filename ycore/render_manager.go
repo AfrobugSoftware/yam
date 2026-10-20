@@ -66,32 +66,34 @@ type RenderParameters struct {
 }
 
 type RenderManager struct {
-	Context          sdl.GLContext
-	Window           *sdl.Window
-	ClearColor       y3d.Vec4
-	PixelDepth       uint8
-	PixelPerInch     float32
-	DoubleBuffer     bool
-	MinorVersion     int
-	MajorVersion     int
-	ViewPort         [4]y3d.Rect
-	View2D           y3d.Mat4
-	Proj2D           y3d.Mat4
-	View3D           [4]y3d.Mat4
-	ProjP            [4]y3d.Mat4
-	ProjO            [4]y3d.Mat4
-	ViewProj         y3d.Mat4
-	Near             float32
-	Far              float32
-	Width            int
-	Height           int
-	Fov              [4]float32
-	AspectRatio      [4]float32
-	Stage            int
-	Mode             int
-	SkinManager      *SkinManager
-	VertextManager   *VertexCacheManager
-	ShaderManager    *ShaderManager
+	Context        sdl.GLContext
+	Window         *sdl.Window
+	ClearColor     y3d.Vec4
+	PixelDepth     uint8
+	PixelPerInch   float32
+	DoubleBuffer   bool
+	MinorVersion   int
+	MajorVersion   int
+	ViewPort       [4]y3d.Rect
+	View2D         y3d.Mat4
+	Proj2D         y3d.Mat4
+	View3D         [4]y3d.Mat4
+	ProjP          [4]y3d.Mat4
+	ProjO          [4]y3d.Mat4
+	ViewProj       y3d.Mat4
+	Near           float32
+	Far            float32
+	Width          int
+	Height         int
+	Fov            [4]float32
+	AspectRatio    [4]float32
+	Stage          int
+	Mode           int
+	SkinManager    *SkinManager
+	VertextManager *VertexCacheManager
+	ShaderManager  *ShaderManager
+	InputManager   *InputManager
+
 	World            *World
 	DrawMode         uint32
 	ActiveProgram    uint32
@@ -107,6 +109,8 @@ type RenderManager struct {
 	shadowbuffer     uint32
 	shadowProgram    uint32
 	renderParamsSSBO uint32
+	gridVao          uint32
+	gridProgram      uint32
 	RenderParams     RenderParameters
 	lightSphere      int
 	numLight         int
@@ -257,6 +261,7 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 		Y: 4.0,
 		Z: -1.0}, y3d.Vec3{}, y3d.UNIT_Y)
 	rm.AddLight(l)
+	rm.SetupGrid()
 	return rm
 }
 
@@ -325,6 +330,10 @@ func (r *RenderManager) CreateShadowBuffer() error {
 	}
 	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 	return nil
+}
+
+func (r *RenderManager) SetupGrid() {
+	gl.CreateVertexArrays(1, &r.gridVao)
 }
 
 func (l *RenderManager) AddLight(light y3d.Light) {
@@ -647,6 +656,12 @@ func (r *RenderManager) CreateDefaultShader() {
 		panic(err)
 	}
 	r.shadowProgram = p
+	g, err := r.ShaderManager.Add("grid", []string{gridVertexShader, gridFragmentShader},
+		[]uint32{gl.VERTEX_SHADER, gl.FRAGMENT_SHADER})
+	if err != nil {
+		panic(err)
+	}
+	r.gridProgram = g
 }
 
 func (r *RenderManager) BeginShadowMap() {
@@ -697,6 +712,18 @@ func (r *RenderManager) Render() {
 		p := r.Proj2D.Mul(r.View2D)
 		yui.Draw(r.RootUI, p)
 	}
+
+	//render grid
+	gl.Enable(gl.DEPTH_TEST)
+	gl.DepthFunc(gl.LESS)
+	gl.Disable(gl.CULL_FACE)
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+	gl.UseProgram(r.gridProgram)
+	gl.BindVertexArray(r.gridVao)
+	gl.DrawArrays(gl.TRIANGLES, 0, 6)
+
+	gl.Flush()
 }
 
 func (r *RenderManager) EndRender() {
