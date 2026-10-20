@@ -156,7 +156,6 @@ func (im *InputManager) ProcessInput() bool {
 
 	im.ScrollWheelDir = 0
 	im.ScrollWheelPos = y3d.Vec3{}
-	im.MousePosition = y3d.Vec2{}
 	im.IsResized = false
 	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 		switch event.GetType() {
@@ -190,16 +189,16 @@ func (im *InputManager) ProcessInput() bool {
 			e := event.(*sdl.KeyboardEvent)
 			mod := sdl.Keymod(e.Keysym.Mod)
 			if mod&sdl.KMOD_CTRL != 0 {
-				im.ModKeyState[CTRL] = 1
+				im.ModKeyState[CTRL] = e.State
 			}
 			if mod&sdl.KMOD_ALT != 0 {
-				im.ModKeyState[ALT] = 1
+				im.ModKeyState[ALT] = e.State
 			}
 			if mod&sdl.KMOD_SHIFT != 0 {
-				im.ModKeyState[SHIFT] = 1
+				im.ModKeyState[SHIFT] = e.State
 			}
 			if mod&sdl.KMOD_GUI != 0 {
-				im.ModKeyState[SUPER] = 1
+				im.ModKeyState[SUPER] = e.State
 			}
 		}
 	}

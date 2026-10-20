@@ -145,9 +145,9 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 	rm := &RenderManager{
 		Window: window,
 		ClearColor: y3d.Vec4{
-			X: 0,
-			Y: 0,
-			Z: 0,
+			X: 1,
+			Y: 1,
+			Z: 1,
 			W: 1,
 		},
 		View2D: y3d.Identity,
@@ -349,7 +349,7 @@ func (r *RenderManager) LoadRenderParameters() {
 	tx, ty, tz := view3d[12], view3d[13], view3d[14]
 	camX := -(view3d[0]*tx + view3d[1]*ty + view3d[2]*tz)
 	camY := -(view3d[4]*tx + view3d[5]*ty + view3d[6]*tz)
-	camZ := -(view3d[8]*tx + view3d[8]*ty + view3d[10]*tz)
+	camZ := -(view3d[8]*tx + view3d[9]*ty + view3d[10]*tz)
 	r.RenderParams.ViewPos = y3d.Vec3{
 		X: camX,
 		Y: camY,
@@ -714,6 +714,11 @@ func (r *RenderManager) Render() {
 	}
 
 	//render grid
+	r.RenderGrid()
+	gl.Flush()
+}
+
+func (r *RenderManager) RenderGrid() {
 	gl.Enable(gl.DEPTH_TEST)
 	gl.DepthFunc(gl.LESS)
 	gl.Disable(gl.CULL_FACE)
@@ -722,8 +727,6 @@ func (r *RenderManager) Render() {
 	gl.UseProgram(r.gridProgram)
 	gl.BindVertexArray(r.gridVao)
 	gl.DrawArrays(gl.TRIANGLES, 0, 6)
-
-	gl.Flush()
 }
 
 func (r *RenderManager) EndRender() {

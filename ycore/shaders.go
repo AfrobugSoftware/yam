@@ -208,18 +208,93 @@ const int indices[6] = int[6](0, 2, 1,  0, 3, 2);
 layout(std140, binding = 4) uniform vp {
 	mat4 viewproj;
 };
+struct light {
+	vec4 pos;
+	vec4 color;
+	float radius;
+	float inner_radius;
+	uint flag;
+};
+layout(std430,binding = 3) buffer render_parameters {
+	vec3 view_pos;
+	float game_time;
+	mat4 shadow_matrix;
+	light l[128];
+}render_params;
+
+out data{
+	vec3 pos;
+}vs_out;
+uniform float grid_size = 100.0;
 void main() {
 	int index = indices[gl_VertexID];
-	gl_Position = viewproj * vec4(positions[index], 1.0);
+	vec3 pos = positions[index] * grid_size;
+	pos.x += render_params.view_pos.x;
+	pos.y = -0.5;
+	pos.z += render_params.view_pos.z;
+	vs_out.pos = pos;
+	gl_Position = viewproj * vec4(pos, 1.0);
 }	
 `
 	gridFragmentShader = `
 #version 430
 layout(location = 0) out vec4 out_color;
+in data {
+	vec3 pos;
+}fs_in;
+uniform float min_pixels_between_cells = 2.0;
+uniform float cell_size = 0.025;
+uniform vec4  color_thin = vec4(0.5,0.5,0.5,1.0);
+uniform vec4  color_thick = vec4(0.0, 0.0,0.0,1.0);
 
-void main() {
-	out_color = vec4(1.0);
+float log10(float x) {
+	return log(x)/log(10);
 }
 
+vec2 calcAlpha(vec2 position, float grid_size_lod, vec2 dudv) {
+	vec2 a = mod(position, grid_size_lod)/ (dudv);
+	vec2 b = clamp(a, 0.0, 1.0);
+	vec2 c = abs(b * 2 - vec2(1.0));
+	vec2 d = vec2(1.0) - c;
+	return d;
+}
+
+void main() {
+	vec2 dvx = vec2(dFdx(fs_in.pos.x), dFdy(fs_in.pos.x));
+	vec2 dvy = vec2(dFdx(fs_in.pos.z), dFdy(fs_in.pos.z));
+	float lx = length(dvx);
+	float ly = length(dvy);
+	vec2 dudv = vec2(lx, ly);
+	float l = length(dudv);
+	float LOD = max(0.0, log10(l * min_pixels_between_cells / cell_size) + 1);
+	float grid_size_lod0 = cell_size * pow(10, floor(LOD));
+	float grid_size_lod1 = grid_size_lod0 * 10.0;
+	float grid_size_lod2 = grid_size_lod1 * 10.0;
+	dudv *= 4.0;
+
+	vec2 d = calcAlpha(fs_in.pos.xz, grid_size_lod0, dudv);
+	float lod0a = max(d.x, d.y);
+
+	d = calcAlpha(fs_in.pos.xz, grid_size_lod1, dudv);
+	float lod1a = max(d.x, d.y);
+
+	d = calcAlpha(fs_in.pos.xz, grid_size_lod2, dudv);
+	float lod2a = max(d.x, d.y);
+	float lod_fade = fract(LOD);
+	vec4 color;
+	if(lod2a > 0.0) {
+		color = color_thick;
+		color.a *= lod2a;
+	}else{
+		if(lod1a > 0.0) {
+			color = mix(color_thick, color_thin, lod_fade);
+			color.a *= lod1a;
+		}else{
+			color = color_thin;
+			color.a *= (lod0a * 1.0 - lod_fade);
+		}
+	}
+	out_color =color;
+}
 `
 )

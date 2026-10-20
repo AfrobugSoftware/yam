@@ -3,7 +3,6 @@ package ygame
 import (
 	"math"
 	"yam/y3d"
-	"yam/ycontroller"
 	"yam/ycore"
 	"yam/ygl"
 	"yam/yui"
@@ -27,14 +26,14 @@ func (t *TestApplication) Startup(e *Engine) {
 		panic("failed to create cube")
 	}
 
-	// err := ycore.LoadGLTF("assets/gltf/DamagedHelmet.glb",
-	// 	t.engine.RenderManager,
-	// 	50, //tag
-	// 	t.engine.Level.World)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	err := ycore.LoadGLTF("assets/gltf/SheenChair.glb",
+	err := ycore.LoadGLTF("assets/gltf/DamagedHelmet.glb",
+		t.engine.RenderManager,
+		50, //tag
+		t.engine.Level.World)
+	if err != nil {
+		panic(err)
+	}
+	err = ycore.LoadGLTF("assets/gltf/SheenChair.glb",
 		t.engine.RenderManager,
 		51, //tag
 		t.engine.Level.World)
@@ -42,7 +41,8 @@ func (t *TestApplication) Startup(e *Engine) {
 		panic(err)
 	}
 	t.engine.InputManager.IsRelative = true
-	t.yaw = 90.0
+	t.camPostiion.Y = 1
+	t.yaw = y3d.TwoPI
 	//t.TestUI() // test ui
 	t.LevelTest() //level test
 }
@@ -141,63 +141,7 @@ func (t *TestApplication) LevelTest() {
 	}
 	ycore.AddEntityMoveData(t.engine.Level.World, ent, y3d.Vec3{Z: -20}, y3d.IdenQuat())
 	ycore.AddEntityMoveData(t.engine.Level.World, ent2, y3d.Vec3{Z: -50, Y: 5.0}, y3d.IdenQuat())
-	ycore.AddEntityInputData(t.engine.Level.World,
-		ent,
-		func(im *ycore.InputManager, c ycontroller.Controller) {
-			if c == nil {
-				return
-			}
-			m, ok := c.(*ycontroller.MovementController)
-			if !ok {
-				return
-			}
 
-			speed := 25.0
-			if im.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_PRESSED {
-				m.Thrust = -float32(speed)
-			}
-			if im.GetKeyState(sdl.SCANCODE_DOWN) == ycore.BUTTON_PRESSED {
-				m.Thrust = float32(speed)
-			}
-
-			if im.GetKeyState(sdl.SCANCODE_LEFT) == ycore.BUTTON_PRESSED {
-				m.RotSpeedRoll = float32(speed)
-			}
-
-			if im.GetKeyState(sdl.SCANCODE_RIGHT) == ycore.BUTTON_PRESSED {
-				m.RotSpeedRoll = -float32(speed)
-			}
-			if im.GetKeyState(sdl.SCANCODE_Z) == ycore.BUTTON_PRESSED {
-				m.RotSpeedYaw = float32(speed)
-			}
-
-			if im.GetKeyState(sdl.SCANCODE_X) == ycore.BUTTON_PRESSED {
-				m.RotSpeedYaw = -float32(speed)
-			}
-
-			if im.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_RELEASED {
-				m.Thrust = 0
-			}
-
-			if im.GetKeyState(sdl.SCANCODE_DOWN) == ycore.BUTTON_RELEASED {
-				m.Thrust = 0
-			}
-
-			if im.GetKeyState(sdl.SCANCODE_RIGHT) == ycore.BUTTON_RELEASED {
-				m.RotSpeedRoll = 0
-			}
-
-			if im.GetKeyState(sdl.SCANCODE_LEFT) == ycore.BUTTON_RELEASED {
-				m.RotSpeedRoll = 0
-			}
-			if im.GetKeyState(sdl.SCANCODE_Z) == ycore.BUTTON_RELEASED {
-				m.RotSpeedYaw = 0
-			}
-
-			if im.GetKeyState(sdl.SCANCODE_X) == ycore.BUTTON_RELEASED {
-				m.RotSpeedYaw = 0
-			}
-		})
 }
 
 func (t *TestApplication) Update(deltaTime float64) {
@@ -215,10 +159,10 @@ func (t *TestApplication) ProcessInput(deltaTime float32) {
 	if im.GetMouseButtonState(sdl.BUTTON_LEFT) == sdl.PRESSED {
 		t.yaw += im.MousePosition.X * 0.01
 		t.pitch += im.MousePosition.Y * 0.01
-		if t.pitch > 89.0 {
-			t.pitch = 89.0
-		} else if t.pitch < -89.0 {
-			t.pitch = -89.0
+		if t.pitch > y3d.TwoPI {
+			t.pitch -= y3d.TwoPI
+		} else if t.pitch < -y3d.TwoPI {
+			t.pitch += y3d.TwoPI
 		}
 		t.camFront = y3d.Normalize(y3d.Vec3{
 			X: float32(math.Cos(float64(t.yaw)) * math.Cos(float64(t.pitch))),
@@ -240,7 +184,6 @@ func (t *TestApplication) ProcessInput(deltaTime float32) {
 		right := y3d.Normalize(y3d.Cross(t.camFront, t.camUp))
 		t.camPostiion = y3d.Sub(t.camPostiion, y3d.Smul(right, float32(camSpeed)))
 	}
-
 }
 
 func (t *TestApplication) UpdateCamera() {
