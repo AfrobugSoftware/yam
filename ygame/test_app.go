@@ -40,9 +40,15 @@ func (t *TestApplication) Startup(e *Engine) {
 	if err != nil {
 		panic(err)
 	}
+
 	t.engine.InputManager.IsRelative = true
 	t.camPostiion.Y = 1
-	t.yaw = y3d.TwoPI
+	t.yaw = float32(y3d.ToRadians(90))
+	t.camFront = y3d.Normalize(y3d.Vec3{
+		X: float32(math.Cos(float64(t.yaw)) * math.Cos(float64(t.pitch))),
+		Y: float32(math.Sin(float64(t.pitch))),
+		Z: float32(math.Sin(float64(t.yaw)) * math.Cos(float64(t.pitch))),
+	})
 	//t.TestUI() // test ui
 	t.LevelTest() //level test
 }
@@ -157,18 +163,21 @@ func (t *TestApplication) ProcessInput(deltaTime float32) {
 	im := t.engine.InputManager
 
 	if im.GetMouseButtonState(sdl.BUTTON_LEFT) == sdl.PRESSED {
-		t.yaw += im.MousePosition.X * 0.01
-		t.pitch += im.MousePosition.Y * 0.01
-		if t.pitch > y3d.TwoPI {
-			t.pitch -= y3d.TwoPI
-		} else if t.pitch < -y3d.TwoPI {
-			t.pitch += y3d.TwoPI
+		if math.Abs(float64(im.MousePosition.X)) > y3d.NearZero ||
+			math.Abs(float64(im.MousePosition.Y)) > y3d.NearZero {
+			t.yaw += float32(y3d.ToRadians(float64(im.MousePosition.X))) * 0.5
+			t.pitch += float32(y3d.ToRadians(float64(im.MousePosition.Y))) * 0.5
+			if t.pitch > float32(y3d.ToRadians(89.0)) {
+				t.pitch = float32(y3d.ToRadians(89.0))
+			} else if t.pitch < -float32(y3d.ToRadians(89.0)) {
+				t.pitch = -float32(y3d.ToRadians(89.0))
+			}
+			t.camFront = y3d.Normalize(y3d.Vec3{
+				X: float32(math.Cos(float64(t.yaw)) * math.Cos(float64(t.pitch))),
+				Y: float32(math.Sin(float64(t.pitch))),
+				Z: float32(math.Sin(float64(t.yaw)) * math.Cos(float64(t.pitch))),
+			})
 		}
-		t.camFront = y3d.Normalize(y3d.Vec3{
-			X: float32(math.Cos(float64(t.yaw)) * math.Cos(float64(t.pitch))),
-			Y: float32(math.Sin(float64(t.pitch))),
-			Z: float32(math.Sin(float64(t.yaw)) * math.Cos(float64(t.pitch))),
-		})
 	}
 	if im.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_HELD {
 		t.camPostiion = y3d.Add(t.camPostiion, y3d.Smul(t.camFront, float32(camSpeed)))
