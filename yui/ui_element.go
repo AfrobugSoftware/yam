@@ -30,6 +30,11 @@ const (
 	UI_ALIGN_CENTER = UI_ALIGN_CENTER_X | UI_ALIGN_CENTER_Y
 )
 
+const (
+	UI_PRESSED = 1 << iota
+	UI_HOVERED
+)
+
 type UIElement struct {
 	Position      y3d.Vec2
 	Size          y3d.Vec2
