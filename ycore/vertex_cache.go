@@ -178,16 +178,16 @@ func (v *VertexCache) Add(command *DrawCommand,
 		int(v.Stride*v.NumVertics),
 		dataV.Len(),
 		gl.Ptr(dataV.Bytes()))
-	command.BaseVertex = uint32(v.NumVertics)
-	v.NumVertics += int32(dataV.Len() / int(v.Stride))
 	gl.NamedBufferSubData(v.IndexVbo,
 		int(4*v.NumIndices),
 		dataI.Len(),
 		gl.Ptr(dataI.Bytes()))
+	command.BaseVertex = uint32(v.NumVertics)
 	command.FirstIndex = uint32(v.NumIndices)
-	v.NumIndices += int32(dataI.Len() / 4)
 	command.Count = uint32(dataI.Len() / 4)
 	command.InstanceCount = 1 //always set to one
+	v.NumVertics += int32(dataV.Len() / int(v.Stride))
+	v.NumIndices += int32(dataI.Len() / 4)
 	return CheckError()
 }
 func (v *VertexCache) IsEmpty() bool {

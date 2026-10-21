@@ -26,14 +26,14 @@ func (t *TestApplication) Startup(e *Engine) {
 		panic("failed to create cube")
 	}
 
-	err := ycore.LoadGLTF("assets/gltf/DamagedHelmet.glb",
-		t.engine.RenderManager,
-		50, //tag
-		t.engine.Level.World)
-	if err != nil {
-		panic(err)
-	}
-	err = ycore.LoadGLTF("assets/gltf/SheenChair.glb",
+	// err := ycore.LoadGLTF("assets/gltf/DamagedHelmet.glb",
+	// 	t.engine.RenderManager,
+	// 	50, //tag
+	// 	t.engine.Level.World)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	err := ycore.LoadGLTF("assets/gltf/SheenChair.glb",
 		t.engine.RenderManager,
 		51, //tag
 		t.engine.Level.World)
@@ -160,7 +160,6 @@ func (t *TestApplication) LevelTest() {
 	t.engine.Level.World.SetComponent(ent3, ycore.TransformComponent, tranform)
 
 	v, i := ygl.CreateSphere(64, 36, 5.0)
-	//v, i := ygl.CreateCube()
 	err := ycore.AddEntityRenderableData(t.engine.Level.World, ent, 0x01,
 		ycore.VPNTC, skin, v, i, t.engine.RenderManager.VertextManager)
 	if err != nil {
