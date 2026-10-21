@@ -15,15 +15,15 @@ const (
 	EntityTagComponent
 	InputComponent
 	RenderableComponent
+	SkeletalAnimatorComponent
 )
 
-func AddEntityDrawData(
+func AddEntityRenderableData(
 	world *World,
 	ent EntityId,
 	entityTag uint32,
 	vertexType string,
 	skinId int,
-	box y3d.AABB,
 	v, i *bytes.Buffer, vm *VertexCacheManager) error {
 	cmd := DrawCommand{}
 	err := vm.LoadCache(vertexType, v, i, skinId, &cmd)
@@ -39,7 +39,7 @@ func AddEntityDrawData(
 		},
 	}
 	world.AddComponent(ent, EntityTagComponent, entityTag)
-	world.AddComponent(ent, BoundingBoxComponent, box)
+	world.AddComponent(ent, BoundingBoxComponent, NewBox())
 	world.AddComponent(ent, RenderableComponent, renderable)
 	return nil
 }

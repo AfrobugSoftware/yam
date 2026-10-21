@@ -821,8 +821,8 @@ func (r *RenderManager) RenderEntities(cull bool) {
 		TransformComponent,
 		BoundingBoxComponent)
 	for _, e := range entities {
-		box := r.World.GetComponent(e, BoundingBoxComponent).(y3d.AABB)
-		c := box.Cull(frustum[:])
+		box := r.World.GetComponent(e, BoundingBoxComponent).(Box)
+		c := box.World.Cull(frustum[:])
 		if cull && c == y3d.CULLED {
 			continue
 		}

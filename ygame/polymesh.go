@@ -26,7 +26,6 @@ type Polymesh struct {
 func (pm *Polymesh) AddPolygon(p *Polygon) {
 	p2 := &Polygon{}
 	p2.Copy(p)
-	p2.SkinId = pm.SkinId
 	pm.Polys = append(pm.Polys, *p2)
 
 	pm.NumIndices += len(p.Indices)

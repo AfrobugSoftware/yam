@@ -184,6 +184,7 @@ func (v *VertexCache) Add(command *DrawCommand,
 		int(4*v.NumIndices),
 		dataI.Len(),
 		gl.Ptr(dataI.Bytes()))
+	command.FirstIndex = uint32(v.NumIndices)
 	v.NumIndices += int32(dataI.Len() / 4)
 	command.Count = uint32(dataI.Len() / 4)
 	command.InstanceCount = 1 //always set to one

@@ -288,13 +288,12 @@ func ProcessNode(world *World, node *gltf.Node,
 			X: node.Rotation[0],
 		}
 		//skin_ := r.SkinManager.AddSkin(IdentityMaterial)
-		err := AddEntityDrawData(
+		err := AddEntityRenderableData(
 			world,
 			ynode,
 			tag,
 			vertexType,
 			skin,
-			y3d.UnitAABB,
 			v, i,
 			r.VertextManager,
 		)

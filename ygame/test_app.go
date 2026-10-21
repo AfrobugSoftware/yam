@@ -149,21 +149,34 @@ func (t *TestApplication) TestUI() {
 func (t *TestApplication) LevelTest() {
 	ent := t.engine.Level.World.NewEntity()
 	ent2 := t.engine.Level.World.NewEntity()
+	ent3 := t.engine.Level.World.NewEntity()
 	skin := t.engine.RenderManager.SkinManager.AddSkin(ycore.IdentityMaterial)
-	v, i := ygl.CreateSphere(64, 36, 5.0)
 
-	err := ycore.AddEntityDrawData(t.engine.Level.World, ent, 0x01,
-		ycore.VPNTC, skin, y3d.UnitAABB, v, i, t.engine.RenderManager.VertextManager)
-	if err != nil {
-		panic(err)
-	}
-	err = ycore.AddEntityDrawData(t.engine.Level.World, ent2, 0x02,
-		ycore.VPNTC, skin, y3d.UnitAABB, v, i, t.engine.RenderManager.VertextManager)
-	if err != nil {
-		panic(err)
-	}
 	ycore.AddEntityMoveData(t.engine.Level.World, ent, y3d.Vec3{Z: -20}, y3d.IdenQuat())
 	ycore.AddEntityMoveData(t.engine.Level.World, ent2, y3d.Vec3{Z: -50, Y: 5.0}, y3d.IdenQuat())
+	ycore.AddEntityMoveData(t.engine.Level.World, ent3, y3d.Vec3{Z: 100, Y: 0.0}, y3d.IdenQuat())
+	tranform := t.engine.Level.World.GetComponent(ent3, ycore.TransformComponent).(ycore.Transform)
+	(&tranform).SetScale(35)
+	t.engine.Level.World.SetComponent(ent3, ycore.TransformComponent, tranform)
+
+	v, i := ygl.CreateSphere(64, 36, 5.0)
+	//v, i := ygl.CreateCube()
+	err := ycore.AddEntityRenderableData(t.engine.Level.World, ent, 0x01,
+		ycore.VPNTC, skin, v, i, t.engine.RenderManager.VertextManager)
+	if err != nil {
+		panic(err)
+	}
+	v2, i2 := ygl.CreateCube()
+	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent3, 80,
+		ycore.VPNTC, skin, v2, i2, t.engine.RenderManager.VertextManager)
+	if err != nil {
+		panic(err)
+	}
+	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent2, 0x02,
+		ycore.VPNTC, skin, v, i, t.engine.RenderManager.VertextManager)
+	if err != nil {
+		panic(err)
+	}
 
 }
 

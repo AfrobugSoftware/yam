@@ -57,12 +57,14 @@ func (l *Level) UpdateEntitesMovement(deltaTime float32) {
 	for _, e := range entites {
 		movement := l.World.GetComponent(e, ycore.MoveControllerComponent).(*ycontroller.MovementController)
 		transform := l.World.GetComponent(e, ycore.TransformComponent).(ycore.Transform)
-		box := l.World.GetComponent(e, ycore.BoundingBoxComponent).(y3d.AABB)
+		box := l.World.GetComponent(e, ycore.BoundingBoxComponent).(ycore.Box)
 		movement.Update(deltaTime)
 		transform.SetPositionOrientation(movement.Position, movement.Orientation)
+
+		//this should be handled by the scene hierarchy updating method
 		transform.World = transform.Local
 
-		box = transform.TransformAABB(box)
+		box.World = transform.TransformAABB(box.Local)
 		l.World.SetComponent(e, ycore.TransformComponent, transform)
 		l.World.SetComponent(e, ycore.BoundingBoxComponent, box)
 	}

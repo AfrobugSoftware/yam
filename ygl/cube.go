@@ -69,17 +69,16 @@ func CreateCube() (dataV, dataI *bytes.Buffer) {
 		7, 5, 3,
 		7, 3, 1,
 	}
-	// for i := 0; i < len(indices); i += 3 {
-	// 	a, b, c := verties[indices[i]].Pos, verties[indices[i+1]].Pos,
-	// 		verties[indices[i+2]].Pos
-	// 	n := y3d.Normalize(y3d.Cross(y3d.Sub(b, a), y3d.Sub(c, a)))
-	// 	verties[indices[i]].Norm = n
-	// 	verties[indices[i+1]].Norm = n
-	// 	verties[indices[i+2]].Norm = n
-	// }
-
-	for i := range verties {
-		verties[i].Norm = y3d.Normalize(verties[i].Pos)
+	for i := 0; i < len(indices); i += 6 {
+		a, b, c := verties[indices[i]].Pos, verties[indices[i+1]].Pos,
+			verties[indices[i+2]].Pos
+		n := y3d.Normalize(y3d.Cross(y3d.Sub(b, a), y3d.Sub(c, a)))
+		verties[indices[i]].Norm = y3d.Add(verties[indices[i]].Norm, y3d.Smul(n, 1.0/3.0))
+		verties[indices[i+1]].Norm = y3d.Normalize(y3d.Add(verties[indices[i+1]].Norm, y3d.Smul(n, 1.0/3.0)))
+		verties[indices[i+2]].Norm = y3d.Normalize(y3d.Add(verties[indices[i+2]].Norm, y3d.Smul(n, 1.0/3.0)))
+		verties[indices[i+3]].Norm = y3d.Normalize(y3d.Add(verties[indices[i+3]].Norm, y3d.Smul(n, 1.0/3.0)))
+		verties[indices[i+4]].Norm = y3d.Normalize(y3d.Add(verties[indices[i+4]].Norm, y3d.Smul(n, 1.0/3.0)))
+		verties[indices[i+5]].Norm = y3d.Normalize(y3d.Add(verties[indices[i+5]].Norm, y3d.Smul(n, 1.0/3.0)))
 	}
 
 	addr := unsafe.Pointer(reflect.ValueOf(verties).Index(0).UnsafeAddr())
@@ -102,21 +101,25 @@ func CreateQuad() (dataV, dataI *bytes.Buffer) {
 			Pos: y3d.Vec3{
 				X: -1.00, Y: -1.00, Z: 0,
 			},
+			Norm: y3d.Vec3{Z: 1.0},
 		},
 		y3d.PVertex{
 			Pos: y3d.Vec3{
 				X: -1.00, Y: 1.00, Z: 0,
 			},
+			Norm: y3d.Vec3{Z: 1.0},
 		},
 		y3d.PVertex{
 			Pos: y3d.Vec3{
 				X: 1.00, Y: -1.00, Z: 0,
 			},
+			Norm: y3d.Vec3{Z: 1.0},
 		},
 		y3d.PVertex{
 			Pos: y3d.Vec3{
 				X: 1.00, Y: 1.00, Z: 0,
 			},
+			Norm: y3d.Vec3{Z: 1.0},
 		},
 	)
 	addr := unsafe.Pointer(reflect.ValueOf(verties).Index(0).UnsafeAddr())
@@ -129,17 +132,41 @@ func CreateQuad() (dataV, dataI *bytes.Buffer) {
 func CreateYPlaneQuad() (dataV, dataI *bytes.Buffer) {
 	dataV = &bytes.Buffer{}
 	dataI = &bytes.Buffer{}
-	buf := []float32{
-		-1.00, 0, -1.00,
-		-1.00, 0, 1.00,
-		1.00, 0, -1.00,
-		1.00, 0, 1.00,
-	}
-	binary.Write(dataV, binary.NativeEndian, buf)
+	verties := make([]y3d.PVertex, 0, 4)
 	indices := []uint32{
 		0, 1, 2,
 		2, 1, 3,
 	}
+	verties = append(verties,
+		y3d.PVertex{
+			Pos: y3d.Vec3{
+				X: -1.00, Z: -1.00,
+			},
+			Norm: y3d.Vec3{Y: 1.0},
+		},
+		y3d.PVertex{
+			Pos: y3d.Vec3{
+				X: -1.00, Z: 1.00,
+			},
+			Norm: y3d.Vec3{Y: 1.0},
+		},
+		y3d.PVertex{
+			Pos: y3d.Vec3{
+				X: 1.00, Z: -1.00,
+			},
+			Norm: y3d.Vec3{Y: 1.0},
+		},
+		y3d.PVertex{
+			Pos: y3d.Vec3{
+				X: 1.00, Z: 1.00,
+			},
+			Norm: y3d.Vec3{Y: 1.0},
+		},
+	)
+	addr := unsafe.Pointer(reflect.ValueOf(verties).Index(0).UnsafeAddr())
+	b := unsafe.Slice((*byte)(addr), 36*len(verties))
+	dataV.Write(b)
+
 	binary.Write(dataI, binary.NativeEndian, indices)
 	return
 }
