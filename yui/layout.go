@@ -373,7 +373,7 @@ func Position(ui *UIElement) {
 
 	used := ui.gap()
 	for _, c := range ui.Children {
-		if c.Flag&UI_FLOATING != 0 {
+		if c.Flag&UI_FLOATING != 0 || c.Flag&UI_ABSOLUTE_POSITION != 0 {
 			continue
 		}
 		used += get(c.Size, main)

@@ -51,6 +51,7 @@ func NewGame(title string, width, height int32) (*Engine, error) {
 	gEngine.InputManager = ycore.NewInputManager(int(width), int(height))
 	gEngine.AudioManager = ycore.NewAudioManager()
 	gEngine.Level = NewLevel()
+	gEngine.RenderManager.World = gEngine.Level.World // this might be an issue
 	return gEngine, nil
 }
 
@@ -75,17 +76,13 @@ func (g *Engine) Update(dt float64) {
 
 func (g *Engine) Draw() {
 
-	if g.App != nil {
-		g.RenderManager.BeginShadowMap()
-		g.Level.RenderEntities(g.RenderManager, false)
-		g.RenderManager.Render()
-		g.RenderManager.EndShadowMap()
+	g.RenderManager.BeginShadowMap()
+	g.RenderManager.Render()
+	g.RenderManager.EndShadowMap()
 
-		g.RenderManager.BeginRender()
-		g.Level.RenderEntities(g.RenderManager, false)
-		g.RenderManager.Render()
-		g.RenderManager.EndRender()
-	}
+	g.RenderManager.BeginRender()
+	g.RenderManager.Render()
+	g.RenderManager.EndRender()
 }
 
 func (g *Engine) Run() {

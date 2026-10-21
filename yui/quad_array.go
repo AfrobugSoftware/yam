@@ -166,6 +166,7 @@ func (q *QuadArray) Draw(numQuads int, font *Font) {
 	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, BUFFER_BINDING, q.ssbo)
 	gl.Disable(gl.DEPTH_TEST)
 	gl.Enable(gl.BLEND)
+	gl.Enable(gl.CULL_FACE)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
 	gl.BindVertexArray(q.vbo)

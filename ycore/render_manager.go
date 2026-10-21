@@ -65,6 +65,13 @@ type RenderParameters struct {
 	Lights       [128]y3d.Light
 }
 
+type Renderable struct {
+	DrawCmd      DrawCommand
+	RenderParams PerObjectRendeState
+	SkinId       int
+	VertexType   string
+}
+
 type RenderManager struct {
 	Context        sdl.GLContext
 	Window         *sdl.Window
@@ -703,18 +710,19 @@ func (r *RenderManager) BeginRender() {
 
 // hmmm
 func (r *RenderManager) Render() {
+	r.RenderEntities(true)
 	err := r.VertextManager.ForceRenderAll()
 	if err != nil {
 		log.Println(err)
 	}
+	//render grid
+	r.RenderGrid()
+
 	if r.RootUI != nil {
 		yui.Layout(r.RootUI)
 		p := r.Proj2D.Mul(r.View2D)
 		yui.Draw(r.RootUI, p)
 	}
-
-	//render grid
-	r.RenderGrid()
 	gl.Flush()
 }
 
@@ -809,11 +817,8 @@ func (r *RenderManager) RenderEntities(cull bool) {
 	vm := r.VertextManager
 	frustum := r.GetFrustum()
 	entities := r.World.Query(
-		DrawCommandComponent,
-		RenderStateComponent,
+		RenderableComponent,
 		TransformComponent,
-		SkinComponent,
-		VertexTypeComponent,
 		BoundingBoxComponent)
 	for _, e := range entities {
 		box := r.World.GetComponent(e, BoundingBoxComponent).(y3d.AABB)
@@ -821,19 +826,16 @@ func (r *RenderManager) RenderEntities(cull bool) {
 		if cull && c == y3d.CULLED {
 			continue
 		}
-		vertexType := r.World.GetComponent(e, VertexTypeComponent).(string)
-		skinId := r.World.GetComponent(e, SkinComponent).(int)
-		v, err := vm.GetCache(vertexType, skinId)
+		renderable := r.World.GetComponent(e, RenderableComponent).(Renderable)
+		v, err := vm.GetCache(renderable.VertexType, renderable.SkinId)
 		if err != nil {
 			continue //no cache for this entity
 		}
 		transform := r.World.GetComponent(e, TransformComponent).(Transform)
-		rflag := r.World.GetComponent(e, RenderStateComponent).(PerObjectRendeState)
-		drawcommand := r.World.GetComponent(e, DrawCommandComponent).(DrawCommand)
 
-		v.AddInstances(&drawcommand)
-		v.AddDrawCommand(drawcommand)
-		v.LoadMatrix(int(drawcommand.BaseInstance), transform.World) //this needs to be world
-		v.AddRenderState(int(drawcommand.BaseInstance), rflag)
+		v.AddInstances(&renderable.DrawCmd)
+		v.AddDrawCommand(renderable.DrawCmd)
+		v.LoadMatrix(int(renderable.DrawCmd.BaseInstance), transform.World) //this needs to be world
+		v.AddRenderState(int(renderable.DrawCmd.BaseInstance), renderable.RenderParams)
 	}
 }

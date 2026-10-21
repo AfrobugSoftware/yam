@@ -49,39 +49,6 @@ func NewLevel() *Level {
 	}
 }
 
-func (l *Level) RenderEntities(r *ycore.RenderManager, cull bool) {
-	vm := r.VertextManager
-	frustum := r.GetFrustum()
-	entities := l.World.Query(
-		ycore.DrawCommandComponent,
-		ycore.RenderStateComponent,
-		ycore.TransformComponent,
-		ycore.SkinComponent,
-		ycore.VertexTypeComponent,
-		ycore.BoundingBoxComponent)
-	for _, e := range entities {
-		box := l.World.GetComponent(e, ycore.BoundingBoxComponent).(y3d.AABB)
-		c := box.Cull(frustum[:])
-		if cull && c == y3d.CULLED {
-			continue
-		}
-		vertexType := l.World.GetComponent(e, ycore.VertexTypeComponent).(string)
-		skinId := l.World.GetComponent(e, ycore.SkinComponent).(int)
-		v, err := vm.GetCache(vertexType, skinId)
-		if err != nil {
-			continue //no cache for this entity
-		}
-		transform := l.World.GetComponent(e, ycore.TransformComponent).(ycore.Transform)
-		rflag := l.World.GetComponent(e, ycore.RenderStateComponent).(ycore.PerObjectRendeState)
-		drawcommand := l.World.GetComponent(e, ycore.DrawCommandComponent).(ycore.DrawCommand)
-
-		v.AddInstances(&drawcommand)
-		v.AddDrawCommand(drawcommand)
-		v.LoadMatrix(int(drawcommand.BaseInstance), transform.World) //this needs to be world
-		v.AddRenderState(int(drawcommand.BaseInstance), rflag)
-	}
-}
-
 func (l *Level) UpdateEntitesMovement(deltaTime float32) {
 	entites := l.World.Query(
 		ycore.TransformComponent,

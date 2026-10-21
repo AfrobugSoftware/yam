@@ -24,6 +24,7 @@ const (
 	UI_SCROLLABLE           = 1 << 16
 	UI_FLOATING             = 1 << 17
 	UI_TEXT                 = 1 << 18
+	UI_ABSOLUTE_POSITION    = 1 << 19
 )
 const (
 	UI_GROW         = UI_GROW_X | UI_GROW_Y

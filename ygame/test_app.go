@@ -49,11 +49,28 @@ func (t *TestApplication) Startup(e *Engine) {
 		Y: float32(math.Sin(float64(t.pitch))),
 		Z: float32(math.Sin(float64(t.yaw)) * math.Cos(float64(t.pitch))),
 	})
-	//t.TestUI() // test ui
+	//t.TestUI()    // test ui
 	t.LevelTest() //level test
+	t.TestAbsolutePositioning()
+}
+func (t *TestApplication) TestAbsolutePositioning() {
+	root := &yui.UIElement{
+		Position: y3d.Vec2{
+			X: float32(t.engine.RenderManager.Width) - 110,
+			Y: 10,
+		},
+		BaseSize: y3d.Vec2{
+			X: 100,
+			Y: 120,
+		},
+		Radius: 5.0,
+		Flag:   yui.UI_ABSOLUTE_POSITION,
+		Color:  [4]uint8{39, 245, 0, 255},
+	}
+	t.engine.RenderManager.RootUI = root
 }
 
-func (t TestApplication) TestUI() {
+func (t *TestApplication) TestUI() {
 	font := yui.NewFont(12, t.engine.RenderManager.PixelPerInch,
 		"assets/fonts/Mina-Regular.ttf")
 	root := yui.NewUIElement(y3d.Vec2{X: float32(t.engine.RenderManager.Width),

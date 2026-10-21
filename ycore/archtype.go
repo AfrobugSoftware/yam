@@ -184,6 +184,7 @@ type World struct {
 	mu         sync.RWMutex
 	entities   map[EntityId]*entityRecord
 	archetypes map[string]*Archetype
+	SceneRoot  Hierarchy
 }
 
 func NewWorld() *World {

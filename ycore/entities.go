@@ -10,14 +10,11 @@ type InputFunc func(*InputManager, ycontroller.Controller)
 
 const (
 	MoveControllerComponent ComponentId = iota
-	DrawCommandComponent
 	TransformComponent
-	SkinComponent
-	VertexTypeComponent
-	RenderStateComponent
 	BoundingBoxComponent
 	EntityTagComponent
 	InputComponent
+	RenderableComponent
 )
 
 func AddEntityDrawData(
@@ -33,14 +30,17 @@ func AddEntityDrawData(
 	if err != nil {
 		return err
 	}
+	renderable := Renderable{
+		DrawCmd:    cmd,
+		VertexType: vertexType,
+		SkinId:     skinId,
+		RenderParams: PerObjectRendeState{
+			Alpha: 1.0,
+		},
+	}
 	world.AddComponent(ent, EntityTagComponent, entityTag)
-	world.AddComponent(ent, DrawCommandComponent, cmd)
-	world.AddComponent(ent, SkinComponent, skinId)
-	world.AddComponent(ent, RenderStateComponent, PerObjectRendeState{
-		Alpha: 1.0,
-	})
-	world.AddComponent(ent, VertexTypeComponent, vertexType)
 	world.AddComponent(ent, BoundingBoxComponent, box)
+	world.AddComponent(ent, RenderableComponent, renderable)
 	return nil
 }
 

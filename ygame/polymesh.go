@@ -12,10 +12,9 @@ const (
 
 type Polymesh struct {
 	Polys       []Polygon
-	DrawCommand ycore.DrawCommand
+	Renderable  ycore.Renderable
 	Transform   ycore.Transform
 	BoundingBox y3d.AABB
-	RenderFlag  uint32
 	SkinId      int
 	IsHidden    bool
 	IsSelected  bool
@@ -175,20 +174,19 @@ func (pm *Polymesh) WriteCache(vm *ycore.VertexCacheManager) {
 	if err != nil {
 		return
 	}
-	pm.DrawCommand.BaseVertex = uint32(v.NumVertics)
+	pm.Renderable.DrawCmd.BaseVertex = uint32(v.NumVertics)
 	for _, p := range pm.Polys {
 		if p.IsHidden || p.IsDeleted {
 			continue
 		}
 		p.WriteCache(v)
-		pm.DrawCommand.Count += uint32(len(p.Indices))
+		pm.Renderable.DrawCmd.Count += uint32(len(p.Indices))
 	}
 }
 
 func (pm *Polymesh) LoadEntity(world *ycore.World) {
 	world.SetComponent(pm.Ent, ycore.TransformComponent, pm.Transform)
-	world.SetComponent(pm.Ent, ycore.RenderStateComponent, pm.RenderFlag)
-	world.SetComponent(pm.Ent, ycore.DrawCommandComponent, pm.DrawCommand)
+	world.SetComponent(pm.Ent, ycore.RenderableComponent, pm.Renderable)
 }
 
 func (pm *Polymesh) CalcTextureCoordinate(axis AXIS, box *y3d.AABB) {
