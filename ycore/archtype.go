@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"reflect"
-	"slices"
 	"sort"
 	"sync"
 )
@@ -268,15 +267,16 @@ func (w *World) AddComponent(entity EntityId, cid ComponentId, comp Component) {
 	w.entities[entity] = &entityRecord{archetype: arch, row: row}
 }
 
-func (w *World) HasComponent(entity EntityId, cid ComponentId) bool {
+func (w *World) HasComponent(entity EntityId, cid ...ComponentId) bool {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
 	record, ok := w.entities[entity]
-	if !ok || record == nil || record.archetype != nil {
+	if !ok || record == nil || record.archetype == nil {
 		return false
 	}
-	return slices.Contains(record.archetype.key, cid)
+
+	return record.archetype.key.containsAll(cid)
 }
 
 func (w *World) RemoveComponent(entity EntityId, cid ComponentId) {

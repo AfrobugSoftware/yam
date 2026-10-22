@@ -150,11 +150,30 @@ func (t *TestApplication) LevelTest() {
 	ent := t.engine.Level.World.NewEntity()
 	ent2 := t.engine.Level.World.NewEntity()
 	ent3 := t.engine.Level.World.NewEntity()
+	ent4 := t.engine.Level.World.NewEntity()
 	skin := t.engine.RenderManager.SkinManager.AddSkin(ycore.IdentityMaterial)
 
 	ycore.AddEntityMoveData(t.engine.Level.World, ent, y3d.Vec3{Z: -20}, y3d.IdenQuat())
 	ycore.AddEntityMoveData(t.engine.Level.World, ent2, y3d.Vec3{Z: -50, Y: 5.0}, y3d.IdenQuat())
 	ycore.AddEntityMoveData(t.engine.Level.World, ent3, y3d.Vec3{Z: 100, Y: 0.0}, y3d.IdenQuat())
+	ycore.AddEntityMoveData(t.engine.Level.World, ent4, y3d.Vec3{X: 50, Z: 100, Y: 0.0}, y3d.IdenQuat())
+	ycore.AddEntityMatInstnaces(t.engine.Level.World, ent3,
+		y3d.Translation(y3d.Vec3{X: 5, Z: 0, Y: 0.0}),
+		y3d.Translation(y3d.Vec3{X: 10, Z: 0, Y: 0.0}),
+		y3d.Translation(y3d.Vec3{X: -5, Z: 0, Y: 0.0}),
+	)
+	ycore.AddEnityRenderParamsInstance(t.engine.Level.World,
+		ent3,
+		ycore.PerObjectRenderState{
+			Alpha: 1.0,
+		},
+		ycore.PerObjectRenderState{
+			Alpha: 1.0,
+		},
+		ycore.PerObjectRenderState{
+			Alpha: 1.0,
+		},
+	)
 	tranform := t.engine.Level.World.GetComponent(ent3, ycore.TransformComponent).(ycore.Transform)
 	(&tranform).SetScale(35)
 	t.engine.Level.World.SetComponent(ent3, ycore.TransformComponent, tranform)
@@ -172,6 +191,12 @@ func (t *TestApplication) LevelTest() {
 		panic(err)
 	}
 	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent2, 0x02,
+		ycore.VPNTC, skin, v, i, t.engine.RenderManager.VertextManager)
+	if err != nil {
+		panic(err)
+	}
+	v, i = ygl.CreateQuad()
+	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent4, 0x03,
 		ycore.VPNTC, skin, v, i, t.engine.RenderManager.VertextManager)
 	if err != nil {
 		panic(err)

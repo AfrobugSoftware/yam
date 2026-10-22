@@ -56,8 +56,12 @@ struct light {
 };
 
 struct per_object_render_state {
-	uint render_flag;
 	float alpha;
+	uint render_flag;
+	uint tex1;
+	uint tex2;
+	uint tex3;
+	uint tex4;
 };
 
 layout(std430, binding = 2) buffer per_object_render_state_buffer {

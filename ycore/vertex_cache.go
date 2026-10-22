@@ -12,9 +12,13 @@ import (
 	"github.com/go-gl/gl/v4.3-core/gl"
 )
 
-type PerObjectRendeState struct {
-	Flag  uint32
+type PerObjectRenderState struct {
 	Alpha float32
+	Flag  uint32
+	Tex1  uint32
+	Tex2  uint32
+	Tex3  uint32
+	Tex4  uint32
 }
 
 type VertexFormat struct {
@@ -106,8 +110,8 @@ func NewVertexCache(
 	gl.NamedBufferStorage(mssbo, int((unsafe.Sizeof(y3d.Mat4{})*2)*uintptr(maxInstances)), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
 	UpdateGPUMem(uint64(unsafe.Sizeof(y3d.Mat4{}) * uintptr(maxInstances)))
 	gl.CreateBuffers(1, &rfssobo)
-	gl.NamedBufferStorage(rfssobo, int(unsafe.Sizeof(PerObjectRendeState{})*uintptr(maxInstances)), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
-	UpdateGPUMem(uint64(unsafe.Sizeof(PerObjectRendeState{}) * uintptr(maxInstances)))
+	gl.NamedBufferStorage(rfssobo, int(unsafe.Sizeof(PerObjectRenderState{})*uintptr(maxInstances)), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
+	UpdateGPUMem(uint64(unsafe.Sizeof(PerObjectRenderState{}) * uintptr(maxInstances)))
 	return &VertexCache{
 		Vao:             vao,
 		VertexVbo:       vvbo,
@@ -138,7 +142,7 @@ func (v *VertexCache) AddPolygon(indices []uint32,
 		int32(len(indices)*4) >= (v.MaxIndices*4) {
 		return errors.New("cannot add data, please check parameters sizes")
 	}
-	if v.Stride != 36 {
+	if v.Stride != int32(unsafe.Sizeof(y3d.PVertex{})) {
 		return errors.New("cannot write to this cache, stride size not 36")
 	}
 	for i, x := range indices {
@@ -230,21 +234,21 @@ func (v *VertexCache) AddDrawCommand(command DrawCommand) error {
 	return CheckError()
 }
 
-func (v *VertexCache) AddRenderState(baseInstance int, flag ...PerObjectRendeState) error {
+func (v *VertexCache) AddRenderState(baseInstance int, flag ...PerObjectRenderState) error {
 	if baseInstance+len(flag) >= int(v.MaxInstances) {
 		return errors.New("invalid matrix instance range")
 	}
 	ptr := gl.MapNamedBufferRange(
 		v.RenderStateSSBO,
-		int(unsafe.Sizeof(PerObjectRendeState{}))*int(baseInstance),
-		int(len(flag)*int(unsafe.Sizeof(PerObjectRendeState{}))),
+		int(unsafe.Sizeof(PerObjectRenderState{}))*int(baseInstance),
+		int(len(flag)*int(unsafe.Sizeof(PerObjectRenderState{}))),
 		gl.MAP_WRITE_BIT|gl.MAP_INVALIDATE_RANGE_BIT,
 	)
 	if ptr == nil {
 		CheckError()
 		return errors.New("cannot load world matrix")
 	}
-	slice := unsafe.Slice((*PerObjectRendeState)(ptr), len(flag))
+	slice := unsafe.Slice((*PerObjectRenderState)(ptr), len(flag))
 	copy(slice, flag)
 	if !gl.UnmapNamedBuffer(v.RenderStateSSBO) {
 		CheckError()
@@ -257,36 +261,30 @@ func (v *VertexCache) LoadMatrix(baseInstance int, world ...y3d.Mat4) error {
 	if baseInstance+len(world) >= int(v.MaxInstances) {
 		return errors.New("invalid matrix instance range")
 	}
-	ptr := gl.MapNamedBufferRange(
-		v.WorldMatrixSSBO,
-		(int(unsafe.Sizeof(y3d.Mat4{}))*2)*int(baseInstance),
-		int(len(world)*int(unsafe.Sizeof(y3d.Mat4{}))),
-		gl.MAP_WRITE_BIT|gl.MAP_INVALIDATE_RANGE_BIT,
-	)
-	if ptr == nil {
-		CheckError()
-		return errors.New("cannot load world matrix")
-	}
 	type outObject struct {
 		world  y3d.Mat4
 		normal y3d.Mat4
 	}
 	out := make([]outObject, len(world))
 	for i := range world {
-		out[i].world = world[i]
-		world[i][12] = 0
-		world[i][13] = 0
-		world[i][14] = 0
-		out[i].normal = world[i]
+		hold := world[i]
+		out[i].world = hold
+		hold[12] = 0
+		hold[13] = 0
+		hold[14] = 0
+		out[i].normal = hold
 		(&out[i].normal).Invert()
 		(&out[i].normal).Transpose()
 	}
-	slice := unsafe.Slice((*outObject)(ptr), len(world))
-	copy(slice, out)
-	if !gl.UnmapNamedBuffer(v.WorldMatrixSSBO) {
-		CheckError()
-		return errors.New("cannot release world matrix buffer")
-	}
+	count := int(unsafe.Sizeof(outObject{})) * len(world)
+	addr := unsafe.Pointer(reflect.ValueOf(out).Index(0).UnsafeAddr())
+	b := unsafe.Slice((*byte)(addr), count)
+
+	gl.NamedBufferSubData(v.WorldMatrixSSBO,
+		int(baseInstance)*int(unsafe.Sizeof(outObject{})),
+		count,
+		gl.Ptr(b),
+	)
 	return CheckError()
 }
 

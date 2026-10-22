@@ -287,7 +287,6 @@ func ProcessNode(world *World, node *gltf.Node,
 			Y: node.Rotation[1],
 			X: node.Rotation[0],
 		}
-		//skin_ := r.SkinManager.AddSkin(IdentityMaterial)
 		err := AddEntityRenderableData(
 			world,
 			ynode,

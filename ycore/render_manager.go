@@ -67,7 +67,7 @@ type RenderParameters struct {
 
 type Renderable struct {
 	DrawCmd      DrawCommand
-	RenderParams PerObjectRendeState
+	RenderParams PerObjectRenderState
 	SkinId       int
 	VertexType   string
 }
@@ -832,10 +832,18 @@ func (r *RenderManager) RenderEntities(cull bool) {
 			continue //no cache for this entity
 		}
 		transform := r.World.GetComponent(e, TransformComponent).(Transform)
-
-		v.AddInstances(&renderable.DrawCmd)
+		if r.World.HasComponent(e, MatInstanceComponent, RenderParamsInstanceComponent) {
+			imat := r.World.GetComponent(e, MatInstanceComponent).([]y3d.Mat4)
+			ip := r.World.GetComponent(e, RenderParamsInstanceComponent).([]PerObjectRenderState)
+			renderable.DrawCmd.InstanceCount = uint32(len(imat))
+			v.AddInstances(&renderable.DrawCmd)
+			v.AddRenderState(int(renderable.DrawCmd.BaseInstance), ip...)
+			v.LoadMatrix(int(renderable.DrawCmd.BaseInstance), imat...)
+		} else {
+			v.AddInstances(&renderable.DrawCmd)
+			v.LoadMatrix(int(renderable.DrawCmd.BaseInstance), transform.World) //this needs to be world
+			v.AddRenderState(int(renderable.DrawCmd.BaseInstance), renderable.RenderParams)
+		}
 		v.AddDrawCommand(renderable.DrawCmd)
-		v.LoadMatrix(int(renderable.DrawCmd.BaseInstance), transform.World) //this needs to be world
-		v.AddRenderState(int(renderable.DrawCmd.BaseInstance), renderable.RenderParams)
 	}
 }

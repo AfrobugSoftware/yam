@@ -16,6 +16,8 @@ const (
 	InputComponent
 	RenderableComponent
 	SkeletalAnimatorComponent
+	MatInstanceComponent
+	RenderParamsInstanceComponent
 )
 
 func AddEntityRenderableData(
@@ -34,7 +36,7 @@ func AddEntityRenderableData(
 		DrawCmd:    cmd,
 		VertexType: vertexType,
 		SkinId:     skinId,
-		RenderParams: PerObjectRendeState{
+		RenderParams: PerObjectRenderState{
 			Alpha: 1.0,
 		},
 	}
@@ -68,4 +70,18 @@ func AddEntityInputData(
 	ent EntityId,
 	input InputFunc) {
 	world.AddComponent(ent, InputComponent, input)
+}
+
+// make the instance an entity, so entites can be instances
+func AddEntityMatInstnaces(world *World, e EntityId, mats ...y3d.Mat4) {
+	imat := make([]y3d.Mat4, 0, len(mats))
+	imat = append(imat, mats...)
+
+	world.AddComponent(e, MatInstanceComponent, imat)
+}
+
+func AddEnityRenderParamsInstance(world *World, e EntityId, p ...PerObjectRenderState) {
+	ip := make([]PerObjectRenderState, 0, len(p))
+	ip = append(ip, p...)
+	world.AddComponent(e, RenderParamsInstanceComponent, ip)
 }

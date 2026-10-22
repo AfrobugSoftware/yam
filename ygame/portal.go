@@ -19,7 +19,7 @@ type Portal struct {
 	BoundingBox  y3d.AABB
 	Transform    ycore.Transform
 	SkinId       int
-	RenderFlag   ycore.PerObjectRendeState
+	RenderFlag   ycore.PerObjectRenderState
 	DrawCommand  ycore.DrawCommand
 }
 
