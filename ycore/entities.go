@@ -18,6 +18,8 @@ const (
 	SkeletalAnimatorComponent
 	MatInstanceComponent
 	RenderParamsInstanceComponent
+	HierarchyComponent
+	FlagComponent
 )
 
 func AddEntityRenderableData(
@@ -40,8 +42,11 @@ func AddEntityRenderableData(
 			Alpha: 1.0,
 		},
 	}
+	box := NewBox()
+	_, localBox := vm.GetScalingAndBox(v, i, 1.0, vertexType)
+	box.Local = localBox
 	world.AddComponent(ent, EntityTagComponent, entityTag)
-	world.AddComponent(ent, BoundingBoxComponent, NewBox())
+	world.AddComponent(ent, BoundingBoxComponent, box)
 	world.AddComponent(ent, RenderableComponent, renderable)
 	return nil
 }

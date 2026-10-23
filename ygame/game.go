@@ -75,14 +75,7 @@ func (g *Engine) Update(dt float64) {
 }
 
 func (g *Engine) Draw() {
-
-	g.RenderManager.BeginShadowMap()
-	g.RenderManager.Render()
-	g.RenderManager.EndShadowMap()
-
-	g.RenderManager.BeginRender()
-	g.RenderManager.Render()
-	g.RenderManager.EndRender()
+	g.RenderManager.Draw()
 }
 
 func (g *Engine) Run() {

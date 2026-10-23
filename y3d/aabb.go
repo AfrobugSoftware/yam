@@ -102,20 +102,25 @@ func (box AABB) GetHalfSize() Vec3 {
 }
 
 func (b AABB) CullPlane(p Plane) bool {
-	c := Smul(Add(b.Max, b.Min), 0.5)
-	e := Sub(b.Max, c)
+	c := b.GetCenter()
+	e := b.GetHalfSize()
 
 	r := math.Abs(float64(e.X*p.N.X)) +
 		math.Abs(float64(e.Y*p.N.Y)) +
 		math.Abs(float64(e.Z*p.N.Z))
 
-	s := Dot(p.N, c) - p.D
+	s := Dot(p.N, c) + p.D
 
-	return math.Abs(float64(s)) <= r
+	return s < -float32(r)
 }
 
-func (aabb AABB) Cull(planes []Plane) int {
-	return 0
+func (aabb AABB) Cull(planes []Plane) bool {
+	for _, p := range planes {
+		if !aabb.CullPlane(p) {
+			return false
+		}
+	}
+	return true
 }
 
 func (aabb AABB) GetPlanes() []Plane {
@@ -158,7 +163,7 @@ func (a AABB) ContainRay(r Ray, len float32) bool {
 	return (a.Contains(end) && a.Contains(r.O))
 }
 
-func (b AABB) WhichSide(p Plane) int {
+func (b AABB) WhichSide(p Plane) Side {
 	c := b.GetCenter()
 	e := b.GetHalfSize()
 
@@ -168,11 +173,11 @@ func (b AABB) WhichSide(p Plane) int {
 	projc := Dot(p.N, c)
 
 	if projc-float32(r) > p.D {
-		return 1
+		return FRONT
 	} else if projc+float32(r) < p.D {
-		return -1
+		return BACK
 	}
-	return 0
+	return PLANER
 }
 
 func (b AABB) Contains(point Vec3) bool {
@@ -211,4 +216,8 @@ func (b AABB) MinDistSq(point Vec3) float32 {
 func (b AABB) IntersectsSphere(sphere Sphere) bool {
 	distSq := b.MinDistSq(sphere.C)
 	return distSq <= (sphere.R * sphere.R)
+}
+
+func (b *AABB) GrowToInclude(a AABB) {
+
 }

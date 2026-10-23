@@ -363,7 +363,7 @@ func GetAABBPoly(aabb *AABB, polys []Polygon) {
 }
 
 func (o *Octree) Traverse(frustum []Plane, polys []Polygon, aabbpolys []Polygon) {
-	if o.BoundingBox.Cull(frustum) == CULLED {
+	if o.BoundingBox.Cull(frustum) {
 		return
 	}
 	if o.IsLeaf() {

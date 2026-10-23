@@ -4,7 +4,6 @@ import (
 	"encoding/gob"
 	"errors"
 	"os"
-	"yam/y3d"
 	"yam/ycontroller"
 	"yam/ycore"
 )
@@ -37,16 +36,18 @@ type LevelParameters struct {
 
 type Level struct {
 	World   *ycore.World
-	OctTree *y3d.Octree
+	OctTree *ycore.Octree
 	Meshes  []*Polymesh
 
 	levelParametersUBO uint32
 }
 
 func NewLevel() *Level {
-	return &Level{
+	l := &Level{
 		World: ycore.NewWorld(),
 	}
+	l.OctTree = ycore.NewOctree(l.World)
+	return l
 }
 
 func (l *Level) UpdateEntitesMovement(deltaTime float32) {
@@ -68,6 +69,7 @@ func (l *Level) UpdateEntitesMovement(deltaTime float32) {
 		l.World.SetComponent(e, ycore.TransformComponent, transform)
 		l.World.SetComponent(e, ycore.BoundingBoxComponent, box)
 	}
+	l.OctTree.BuildTree(entites)
 }
 
 func (l *Level) ProcessEntityInput(input *ycore.InputManager) {

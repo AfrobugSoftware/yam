@@ -667,28 +667,35 @@ func (r *RenderManager) CreateDefaultShader() {
 	r.gridProgram = g
 }
 
-func (r *RenderManager) BeginShadowMap() {
+func (r *RenderManager) Draw() {
 	r.SkinManager.OverrideLocalPrograms = true
 	r.SetStage(MODE_3D_ORTHO, SHADOW_STAGE)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.shadowbuffer)
-	gl.Enable(gl.DEPTH_TEST)
-	gl.DepthFunc(gl.LESS)
-	gl.Enable(gl.CULL_FACE)
-	gl.CullFace(gl.BACK)
-
 	gl.Clear(gl.DEPTH_BUFFER_BIT)
 	gl.BindBufferBase(gl.UNIFORM_BUFFER, VIEW_PROJ_BINDING, r.viewubo)
 	gl.UseProgram(r.shadowProgram)
-}
-
-func (r *RenderManager) EndShadowMap() {
+	r.Render()
 	r.SkinManager.OverrideLocalPrograms = false
-	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 	r.RenderParams.shadowMatrix = r.ViewProj
+
+	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+	r.SetStage(MODE_3D_PERSPECTIVE, DEFAULT_STAGE)
+	r.LoadRenderParameters()
+	gl.BindBufferBase(gl.UNIFORM_BUFFER, VIEW_PROJ_BINDING, r.viewubo)
+	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, RENDER_PARAMS_BINDING, r.renderParamsSSBO)
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
+
+	//render grid
+	r.RenderGrid()
+
+	gl.UseProgram(r.ActiveProgram)
+	gl.BindTextureUnit(0, r.shadowMap)
+	r.Render()
+	r.Window.GLSwap()
 }
 
-func (r *RenderManager) BeginRender() {
-	r.SetStage(MODE_3D_PERSPECTIVE, DEFAULT_STAGE)
+// hmmm
+func (r *RenderManager) Render() {
 	gl.Enable(gl.DEPTH_TEST)
 	gl.DepthFunc(gl.LESS)
 	gl.Enable(gl.CULL_FACE)
@@ -696,23 +703,11 @@ func (r *RenderManager) BeginRender() {
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
-	gl.BindBufferBase(gl.UNIFORM_BUFFER, VIEW_PROJ_BINDING, r.viewubo)
-	r.LoadRenderParameters()
-	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, RENDER_PARAMS_BINDING, r.renderParamsSSBO)
-	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
-	gl.UseProgram(r.ActiveProgram)
-	gl.BindTextureUnit(0, r.shadowMap)
-}
-
-// hmmm
-func (r *RenderManager) Render() {
 	r.RenderEntities(true)
 	err := r.VertextManager.ForceRenderAll()
 	if err != nil {
 		log.Println(err)
 	}
-	//render grid
-	r.RenderGrid()
 
 	if r.RootUI != nil {
 		yui.Layout(r.RootUI)
@@ -733,10 +728,6 @@ func (r *RenderManager) RenderGrid() {
 	gl.DrawArrays(gl.TRIANGLES, 0, 6)
 }
 
-func (r *RenderManager) EndRender() {
-	r.Window.GLSwap()
-}
-
 func (r *RenderManager) CopyDepthToDefault() {
 	gl.BindFramebuffer(gl.READ_FRAMEBUFFER, r.gBuffer)
 	gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, 0)
@@ -750,18 +741,6 @@ func (r *RenderManager) CopyDepthToDefault() {
 		gl.DEPTH_BUFFER_BIT,
 		gl.NEAREST,
 	)
-	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
-}
-
-func (r *RenderManager) ForwardPass() {
-
-}
-
-func (r *RenderManager) GeometryPass() {
-	gl.BindFramebuffer(gl.FRAMEBUFFER, r.gBuffer)
-	r.BeginRender()
-	r.RenderEntities(true)
-	r.EndRender()
 	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 }
 
@@ -818,8 +797,7 @@ func (r *RenderManager) RenderEntities(cull bool) {
 		BoundingBoxComponent)
 	for _, e := range entities {
 		box := r.World.GetComponent(e, BoundingBoxComponent).(Box)
-		c := box.World.Cull(frustum[:])
-		if cull && c == y3d.CULLED {
+		if cull && box.World.Cull(frustum[:]) {
 			continue
 		}
 		renderable := r.World.GetComponent(e, RenderableComponent).(Renderable)

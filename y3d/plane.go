@@ -73,6 +73,14 @@ func (p Plane) ClassifyPolygon(polygon Polygon) Side {
 	}
 	return s
 }
+func (p Plane) ClassifyAABB(aabb AABB) Side {
+	a := p.Classify(aabb.Max)
+	b := p.Classify(aabb.Min)
+	if a != b {
+		return CLIPPED
+	}
+	return a
+}
 
 func (p Plane) IntersectTriangle(a, b, c Vec3) bool {
 	n := p.Classify(a)

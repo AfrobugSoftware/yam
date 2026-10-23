@@ -140,7 +140,7 @@ func (bs *BSPTree) BuildTree(poly []Polygon) {
 }
 
 func (bs *BSPTree) TransverseTreeFtB(polys []Polygon, pos Vec3, frustum []Plane) {
-	if bs.BoundingBox.Cull(frustum) == CULLED {
+	if bs.BoundingBox.Cull(frustum) {
 		return
 	}
 	if bs.IsLeaf() {
@@ -158,7 +158,7 @@ func (bs *BSPTree) TransverseTreeFtB(polys []Polygon, pos Vec3, frustum []Plane)
 	}
 }
 func (bs *BSPTree) TransverseTreeBtF(polys []Polygon, pos Vec3, frustum []Plane) {
-	if bs.BoundingBox.Cull(frustum) == CULLED {
+	if bs.BoundingBox.Cull(frustum) {
 		return
 	}
 	if bs.IsLeaf() {

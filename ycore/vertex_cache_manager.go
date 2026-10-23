@@ -244,6 +244,8 @@ func (vm *VertexCacheManager) CreateVertexCache(name string, skinId, stride int,
 		)
 		vm.CacheId++
 	}
+	vm.Strides[name] = int32(stride)
+	vm.Formats[name] = format
 	vm.Caches[name] = c
 }
 

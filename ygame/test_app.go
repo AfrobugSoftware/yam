@@ -153,14 +153,14 @@ func (t *TestApplication) LevelTest() {
 	ent4 := t.engine.Level.World.NewEntity()
 	skin := t.engine.RenderManager.SkinManager.AddSkin(ycore.IdentityMaterial)
 
-	ycore.AddEntityMoveData(t.engine.Level.World, ent, y3d.Vec3{Z: -20}, y3d.IdenQuat())
+	ycore.AddEntityMoveData(t.engine.Level.World, ent, y3d.Vec3{Z: -20, Y: 5}, y3d.IdenQuat())
 	ycore.AddEntityMoveData(t.engine.Level.World, ent2, y3d.Vec3{Z: -50, Y: 5.0}, y3d.IdenQuat())
-	ycore.AddEntityMoveData(t.engine.Level.World, ent3, y3d.Vec3{Z: 100, Y: 0.0}, y3d.IdenQuat())
-	ycore.AddEntityMoveData(t.engine.Level.World, ent4, y3d.Vec3{X: 50, Z: 100, Y: 0.0}, y3d.IdenQuat())
+	ycore.AddEntityMoveData(t.engine.Level.World, ent3, y3d.Vec3{Z: 100, Y: 5.0}, y3d.IdenQuat())
+	ycore.AddEntityMoveData(t.engine.Level.World, ent4, y3d.Vec3{X: 5, Z: 10, Y: 5.0}, y3d.IdenQuat())
 	ycore.AddEntityMatInstnaces(t.engine.Level.World, ent3,
-		y3d.Translation(y3d.Vec3{X: 5, Z: 0, Y: 0.0}),
-		y3d.Translation(y3d.Vec3{X: 10, Z: 0, Y: 0.0}),
-		y3d.Translation(y3d.Vec3{X: -5, Z: 0, Y: 0.0}),
+		y3d.Translation(y3d.Vec3{X: 5, Z: 0, Y: 2.0}),
+		y3d.Translation(y3d.Vec3{X: 10, Z: 0, Y: 2.0}),
+		y3d.Translation(y3d.Vec3{X: -5, Z: 0, Y: 2.0}),
 	)
 	ycore.AddEnityRenderParamsInstance(t.engine.Level.World,
 		ent3,

@@ -63,8 +63,13 @@ func (trans *Transform) RecalulateNoScale() {
 }
 
 func (t *Transform) TransformAABB(b y3d.AABB) y3d.AABB {
-	max := t.World.MulVec3(b.Max)
-	min := t.World.MulVec3(b.Min)
+	translate := y3d.Vec3{
+		X: t.World[12],
+		Y: t.World[13],
+		Z: t.World[14],
+	}
+	max := y3d.Add(b.Max, translate)
+	min := y3d.Add(b.Min, translate)
 	return y3d.AABB{
 		Min: min,
 		Max: max,
