@@ -333,32 +333,6 @@ func ViewFromAxis(vRight, vUp, dir, eye Vec3) Mat4 {
 	}
 }
 
-func Ortho(left, right, bottom, top, near, far float32) Mat4 {
-	rml := right - left
-	tmb := top - bottom
-	nmf := near - far
-
-	return Mat4{
-		2 / rml, 0, 0, 0,
-		0, 2 / tmb, 0, 0,
-		0, 0, 2 / nmf, 0,
-		(right + left) / (left - right), (top + bottom) / (bottom - top), (far + near) / (far - near), 1,
-	}
-}
-
-func Frustum(left, right, bottom, top, near, far float32) Mat4 {
-	rml := right - left
-	tmb := top - bottom
-	fmn := far - near
-
-	return Mat4{
-		(2 * near) / rml, 0, 0, 0,
-		0, (2 * near) / tmb, 0, 0,
-		(right + left) / rml, (top + bottom) / tmb, -(far + near) / fmn, -1,
-		0, 0, (-2 * far * near) / fmn, 0,
-	}
-}
-
 func (m1 Mat4) String() string {
 	var buf bytes.Buffer
 	w := tabwriter.NewWriter(&buf, 4, 4, 1, ' ', tabwriter.AlignRight)
