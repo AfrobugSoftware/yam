@@ -1,6 +1,7 @@
 package ycore
 
 import (
+	"fmt"
 	"yam/y3d"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -37,6 +38,7 @@ type PadController struct {
 
 type InputManager struct {
 	CurKeyState       []uint8
+	Window            *sdl.Window
 	PrevKeyState      []uint8
 	ModKeyState       [4]uint8
 	PrevModKeyState   [4]uint8
@@ -54,7 +56,7 @@ type InputManager struct {
 	Controllers       map[int]*PadController
 }
 
-func NewInputManager(width, height int) *InputManager {
+func NewInputManager(window *sdl.Window, width, height int) *InputManager {
 	return &InputManager{
 		CurKeyState:  make([]uint8, sdl.NUM_SCANCODES),
 		PrevKeyState: make([]uint8, sdl.NUM_SCANCODES),
@@ -65,7 +67,9 @@ func NewInputManager(width, height int) *InputManager {
 			Width:  width,
 			Height: height,
 		},
+		Window: window,
 	}
+
 }
 
 func (im *InputManager) GetKeyState(key int) uint8 {
@@ -180,7 +184,8 @@ func (im *InputManager) ProcessInput() bool {
 				Y: float32(w.Y),
 			}
 			im.ScrollWheelDir = w.Direction
-		case sdl.WINDOWEVENT_RESIZED:
+		case sdl.WINDOWEVENT_SIZE_CHANGED:
+			fmt.Println("resized")
 			im.IsResized = true
 		case sdl.TEXTINPUT:
 			c := event.(*sdl.TextInputEvent)
@@ -201,6 +206,7 @@ func (im *InputManager) ProcessInput() bool {
 				im.ModKeyState[SUPER] = e.State
 			}
 		}
+
 	}
 	state := sdl.GetKeyboardState()
 	if state != nil {

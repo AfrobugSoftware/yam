@@ -33,6 +33,7 @@ layout (std430, binding = 15) buffer QuadInfo {
     vec4  Color[MAX_QUADS];
 	float Radius[MAX_QUADS];
 	uint  Flag[MAX_QUADS];
+	uint  Tex[MAX_QUADS];
 };
 
 out Frag {
@@ -133,6 +134,7 @@ type QuadArray struct {
 	colorOffset                int32
 	flagOffset                 int32
 	radiusOffset               int32
+	texOffset                  int32
 	blockPtr                   unsafe.Pointer
 }
 
@@ -148,7 +150,9 @@ func CreateQuadArray(shader uint32) *QuadArray {
 	q.colorOffset = (int32(unsafe.Sizeof(y3d.Vec4{})) * MAX_QUADS) * 2
 	q.radiusOffset = (int32(unsafe.Sizeof(y3d.Vec4{})) * MAX_QUADS) * 3
 	q.flagOffset = (int32(unsafe.Sizeof(y3d.Vec4{})*MAX_QUADS))*3 + (int32(unsafe.Sizeof(float32(0))) * MAX_QUADS)
-	q.blockSize = (int32(unsafe.Sizeof(y3d.Vec4{})*MAX_QUADS))*3 + (int32(unsafe.Sizeof(uint32(0))*2) * MAX_QUADS)
+	q.texOffset = (int32(unsafe.Sizeof(y3d.Vec4{})*MAX_QUADS))*3 + (int32(unsafe.Sizeof(float32(0))) * MAX_QUADS) + int32(unsafe.Sizeof(uint32(0))*MAX_QUADS)
+	q.blockSize = (int32(unsafe.Sizeof(y3d.Vec4{})*MAX_QUADS))*3 +
+		(int32(unsafe.Sizeof(uint32(0))*3) * MAX_QUADS)
 	gl.CreateBuffers(1, &q.ssbo)
 	gl.NamedBufferStorage(q.ssbo, int(q.blockSize), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
 	return q
@@ -203,7 +207,7 @@ func (q *QuadArray) CloseArray() {
 func (q *QuadArray) SetQuad(idx int, x, y,
 	width, height,
 	UBase, VBase,
-	texUSize, texVSize, r, g, b, a, radius float32, flag uint32) {
+	texUSize, texVSize, r, g, b, a, radius float32, flag, tex uint32) {
 	if idx >= MAX_QUADS {
 		return
 	}
@@ -217,6 +221,7 @@ func (q *QuadArray) SetQuad(idx int, x, y,
 	color := ViewAsVec4(block, int(q.colorOffset), MAX_QUADS)
 	rad := ViewAsFloat32(block, int(q.radiusOffset), MAX_QUADS)
 	flagb := ViewAsUint32(block, int(q.flagOffset), MAX_QUADS)
+	texb := ViewAsUint32(block, int(q.texOffset), MAX_QUADS)
 
 	basePos[idx][0] = x
 	basePos[idx][1] = y
@@ -232,6 +237,7 @@ func (q *QuadArray) SetQuad(idx int, x, y,
 	color[idx][3] = a
 	rad[idx] = radius
 	flagb[idx] = flag
+	texb[idx] = tex
 }
 
 func ViewAsVec4(buf []byte, byteOffset, count int) [][4]float32 {

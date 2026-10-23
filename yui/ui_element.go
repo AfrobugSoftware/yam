@@ -56,6 +56,7 @@ type UIElement struct {
 	MouseCallback func(any)
 	Font          *Font
 	Name          string
+	Tex           uint32
 }
 
 func NewUIElement(baseSize y3d.Vec2) *UIElement {

@@ -48,7 +48,7 @@ func NewGame(title string, width, height int32) (*Engine, error) {
 	window.SetResizable(true)
 	gEngine = &Engine{}
 	gEngine.RenderManager = ycore.NewRenderManager(window, int(width), int(height))
-	gEngine.InputManager = ycore.NewInputManager(int(width), int(height))
+	gEngine.InputManager = ycore.NewInputManager(window, int(width), int(height))
 	gEngine.AudioManager = ycore.NewAudioManager()
 	gEngine.Level = NewLevel()
 	gEngine.RenderManager.World = gEngine.Level.World // this might be an issue

@@ -520,7 +520,7 @@ func (r *RenderManager) CalcViewProj() {
 	r.ViewProj = (*a).Mul(*b)
 	m := r.ViewProj
 	gl.NamedBufferSubData(r.viewubo, 0, int(unsafe.Sizeof(y3d.Mat4{})),
-		gl.Ptr(&m[0]))
+		gl.Ptr(m[:]))
 }
 func (r *RenderManager) SetStage(mode int, stage int) {
 	if stage < 0 || stage >= 4 {
@@ -628,10 +628,6 @@ func (r *RenderManager) Clear() {
 func (r *RenderManager) SetClearColor(color y3d.Vec4) {
 	r.ClearColor = color
 	gl.ClearColor(r.ClearColor.X, r.ClearColor.Y, r.ClearColor.Z, r.ClearColor.W)
-}
-
-func (r *RenderManager) Present() {
-	r.Window.GLSwap()
 }
 
 func (r *RenderManager) String() string {
