@@ -7,10 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/url"
 	"os"
+	"reflect"
 	"sort"
 	"strings"
+	"unsafe"
 	"yam/y3d"
 
 	"github.com/qmuntal/gltf"
@@ -72,6 +75,40 @@ func LoadGLTF(filename string, r *RenderManager, tag uint32, world *World) error
 		}
 	}
 	return nil
+}
+
+func CreateAnimation()
+
+func loadTimestamps(doc *gltf.Document, acc *gltf.Accessor, data map[int][]byte) ([]float32, error) {
+	accb, err := accessorAttrib(doc, acc, data)
+	if err != nil {
+		return nil, err
+	}
+	if accb.size != int(unsafe.Sizeof(float32(0))) {
+		return nil, errors.New("invalid timestamp type")
+	}
+	timestamps := make([]float32, 0, accb.count)
+	for i := range accb.count {
+		e := accb.src[i*accb.size:]
+		val := binary.LittleEndian.Uint32(e)
+		timestamps = append(timestamps, math.Float32frombits(val))
+	}
+	return timestamps, nil
+}
+
+func loadInverseBindMats(doc *gltf.Document, acc *gltf.Accessor, data map[int][]byte) ([]y3d.Mat4, error) {
+	a, err := accessorAttrib(doc, acc, data)
+	if err != nil {
+		return nil, err
+	}
+	if a.size != int(unsafe.Sizeof(y3d.Mat4{})) {
+		return nil, errors.New("invalid timestamp type")
+	}
+	out := make([]y3d.Mat4, a.count)
+	ptr := unsafe.Pointer(reflect.ValueOf(a.src).Index(0).UnsafeAddr())
+	in := unsafe.Slice((*y3d.Mat4)(ptr), a.count)
+	copy(out, in)
+	return out, nil
 }
 
 func attributeNames[V any](attrs map[string]V) []string {
@@ -305,7 +342,25 @@ func ProcessNode(world *World, node *gltf.Node,
 			position,
 			rotation,
 		)
+		if node.Skin != nil {
+			sskin := doc.Skins[*node.Skin]
+
+			if sskin.InverseBindMatrices != nil {
+				acc := doc.Accessors[*sskin.InverseBindMatrices]
+				mats, err := loadInverseBindMats(doc, acc, data)
+				if err != nil {
+					return err
+				}
+				//load the joints
+				joints := make([]*Joint, 0)
+				for i, j := range sskin.Joints {
+					n := doc.Nodes[j]
+					nj := NewJoint(i)
+				}
+			}
+		}
 	}
+
 	for _, n := range node.Children {
 		err := ProcessNode(world, doc.Nodes[n], doc, r, tag, skin, data)
 		if err != nil {
@@ -358,19 +413,8 @@ func loadBufferURI(doc *gltf.Document, accessor *gltf.Accessor) ([]byte, error) 
 
 func GetVertexFormat(vf []VertexFormat, r *RenderManager) string {
 	vm := r.VertextManager
-formatSearch:
 	for vt, f := range vm.Formats {
-		if len(f) == len(vf) {
-			for i := range f {
-				if f[i].ComponentSize == vf[i].ComponentSize &&
-					f[i].RelativeOffset == vf[i].RelativeOffset &&
-					f[i].Type == vf[i].Type &&
-					f[i].Normalized == vf[i].Normalized {
-					continue
-				} else {
-					continue formatSearch
-				}
-			}
+		if sameFormat(vf, f) {
 			return vt
 		}
 	}

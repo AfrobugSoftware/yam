@@ -18,7 +18,6 @@ type Animation struct {
 	Name         string
 	StartFrame   float32
 	EndFrame     float32
-	CurFrame     float32
 	FPS          float32
 	PlaybackTime float32
 	IsActive     bool
@@ -49,14 +48,19 @@ func NewAnimation(
 	}
 }
 
-type PFrame struct {
+type TranslationSampler struct {
 	Time float32
 	Pos  y3d.Vec3
 }
 
-type RFrame struct {
+type RotationSampler struct {
 	Time float32
 	Rot  y3d.Quaternion
+}
+
+type ScaleSampler struct {
+	Time  float32
+	Scale y3d.Vec3
 }
 
 type Joint struct {
@@ -64,8 +68,8 @@ type Joint struct {
 	Parent     int
 	Name       string
 	Children   []int
-	KPos       []PFrame
-	KRot       []RFrame
+	KPos       []TranslationSampler
+	KRot       []RotationSampler
 	BindPose   y3d.Mat4
 	Transform  *Transform
 	IsAnimated bool
@@ -97,9 +101,6 @@ func (sa *SkeletalAnimator) Add(animation *Animation, calcInverseBind bool) (int
 		return NO_ANIMATION, errors.New("more joints in the animation that is expected")
 	}
 	sa.Animation = append(sa.Animation, animation)
-	if calcInverseBind {
-		animation.CalcBindPoses() //set up bind poses
-	}
 	sa.CurrentAnimation = len(sa.Animation) - 1
 	return sa.CurrentAnimation, nil
 }
@@ -110,7 +111,6 @@ func (sa *SkeletalAnimator) SetAnimation(i int) error {
 	}
 	sa.CurrentAnimation = i
 	animation := sa.Animation[sa.CurrentAnimation]
-	animation.CurFrame = 0
 	animation.PlaybackTime = 0
 	animation.IsComplete = false
 	animation.IsActive = true
@@ -125,13 +125,10 @@ func (sa *SkeletalAnimator) Play(deltaTime float32) {
 	if animation.RunOnce && animation.IsComplete {
 		return
 	}
-	animation.CurFrame = max(animation.StartFrame+
-		animation.FPS*animation.PlaybackTime, animation.StartFrame)
 	animation.PlaybackTime += deltaTime
-	if animation.CurFrame >= animation.EndFrame {
+	if animation.PlaybackTime >= animation.EndFrame {
 		animation.IsComplete = true
-		animation.CurFrame = animation.StartFrame
-		animation.PlaybackTime = 0
+		animation.PlaybackTime = animation.StartFrame
 	} else {
 		animation.IsComplete = false
 		//I do not think this is correct, my idea on the way the frames are calculated might be wrong
@@ -139,38 +136,38 @@ func (sa *SkeletalAnimator) Play(deltaTime float32) {
 
 		for _, j := range animation.Joints {
 			if len(j.KPos) != 0 && len(j.KRot) != 0 && j.IsAnimated {
-				lastpos, thispos := -1, -1
+				lastpos, nextpos := -1, -1
 				for i := range j.KPos {
-					if j.KPos[i].Time >= animation.CurFrame {
-						thispos = i
+					if j.KPos[i].Time >= animation.PlaybackTime {
+						nextpos = i
 						break
 					}
 					lastpos = i
 				}
-				if lastpos != -1 && thispos != -1 {
-					t := (animation.CurFrame - j.KPos[lastpos].Time) /
-						(j.KPos[thispos].Time - j.KPos[lastpos].Time)
-					j.Transform.Position = y3d.Lerp(j.KPos[lastpos].Pos, j.KPos[thispos].Pos, t)
+				if lastpos != -1 && nextpos != -1 {
+					t := (animation.PlaybackTime - j.KPos[lastpos].Time) /
+						(j.KPos[nextpos].Time - j.KPos[lastpos].Time)
+					j.Transform.Position = y3d.Lerp(j.KPos[lastpos].Pos, j.KPos[nextpos].Pos, t)
 				} else if lastpos == -1 {
-					j.Transform.Position = j.KPos[thispos].Pos
+					j.Transform.Position = j.KPos[nextpos].Pos
 				} else {
 					j.Transform.Position = j.KPos[lastpos].Pos
 				}
 
-				lastpos, thispos = -1, -1
+				lastpos, nextpos = -1, -1
 				for i := range j.KRot {
-					if j.KRot[i].Time >= animation.CurFrame {
-						thispos = i
+					if j.KRot[i].Time >= animation.PlaybackTime {
+						nextpos = i
 						break
 					}
 					lastpos = i
 				}
-				if lastpos != -1 && thispos != -1 {
-					t := (animation.CurFrame - j.KPos[lastpos].Time) /
-						(j.KRot[thispos].Time - j.KRot[lastpos].Time)
-					j.Transform.Rotation = y3d.Slerp(j.KRot[lastpos].Rot, j.KRot[thispos].Rot, float64(t))
+				if lastpos != -1 && nextpos != -1 {
+					t := (animation.PlaybackTime - j.KPos[lastpos].Time) /
+						(j.KRot[nextpos].Time - j.KRot[lastpos].Time)
+					j.Transform.Rotation = y3d.Slerp(j.KRot[lastpos].Rot, j.KRot[nextpos].Rot, float64(t))
 				} else if lastpos == -1 {
-					j.Transform.Rotation = j.KRot[thispos].Rot
+					j.Transform.Rotation = j.KRot[nextpos].Rot
 				} else {
 					j.Transform.Rotation = j.KRot[lastpos].Rot
 				}
@@ -207,7 +204,7 @@ func (sa *SkeletalAnimator) LoadBuffer() error {
 	}
 	jointP := unsafe.Slice((*y3d.Mat4)(ptr), sa.MaxJoints)
 	for i, j := range animation.Joints {
-		jointP[i] = j.Transform.World
+		jointP[i] = j.Transform.World.Mul(j.BindPose)
 	}
 	gl.UnmapNamedBuffer(sa.JointBufferObject)
 	return nil
@@ -245,20 +242,6 @@ func (j *Joint) Update(joints []*Joint) {
 	for _, c := range j.Children {
 		joints[c].Update(joints)
 	}
-}
-
-func (j *Joint) CalcBind(joint []*Joint) {
-	if j.Parent != NIL_JOINT_PARENT {
-		j.BindPose = joint[j.Parent].BindPose.Mul(j.BindPose)
-	}
-	for _, c := range j.Children {
-		joint[c].CalcBind(joint)
-	}
-	(&j.BindPose).Invert()
-}
-
-func (a *Animation) CalcBindPoses() {
-	a.Joints[a.Root].CalcBind(a.Joints)
 }
 
 func (a *Animation) Destory() {
