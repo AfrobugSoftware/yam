@@ -37,11 +37,12 @@ type VertexCacheManager struct {
 	MaxIndices      int32
 	MaxDrawCommands int32
 	MaxInstances    int32
+	MaxJoints       int32
 }
 
 func NewVertexCacheManager(
 	renderManager *RenderManager,
-	maxVerts, maxIndices, maxDrawCommands, maxInstances int32,
+	maxVerts, maxIndices, maxDrawCommands, maxInstances, maxJoints int32,
 ) *VertexCacheManager {
 	vm := &VertexCacheManager{
 		ActiveSkin:      NO_SKINID,
@@ -54,6 +55,7 @@ func NewVertexCacheManager(
 		MaxIndices:      maxIndices,
 		MaxDrawCommands: maxDrawCommands,
 		MaxInstances:    maxInstances,
+		MaxJoints:       maxJoints,
 	}
 	vm.Strides[VPNT] = 32
 	vm.Strides[VPNTC] = 36
@@ -166,7 +168,9 @@ func NewVertexCacheManager(
 			maxIndices,
 			maxDrawCommands,
 			maxInstances,
+			maxJoints,
 			vm.Strides[VPNT],
+			gl.TRIANGLES,
 			-1,
 			vm.CacheId,
 			vm.Formats[VPNT],
@@ -182,7 +186,9 @@ func NewVertexCacheManager(
 			maxIndices,
 			maxDrawCommands,
 			maxInstances,
+			maxJoints,
 			vm.Strides[VPNTC],
+			gl.TRIANGLES,
 			-1,
 			vm.CacheId,
 			vm.Formats[VPNTC],
@@ -198,7 +204,9 @@ func NewVertexCacheManager(
 			maxIndices,
 			maxDrawCommands,
 			maxInstances,
+			maxJoints,
 			vm.Strides[VPNTWJ],
+			gl.TRIANGLES,
 			-1,
 			vm.CacheId,
 			vm.Formats[VPNTWJ],
@@ -213,7 +221,9 @@ func NewVertexCacheManager(
 			maxIndices,
 			maxDrawCommands,
 			maxInstances,
+			maxJoints,
 			vm.Strides[VPNTTB],
+			gl.TRIANGLES,
 			-1,
 			vm.CacheId,
 			vm.Formats[VPNTTB],
@@ -223,7 +233,7 @@ func NewVertexCacheManager(
 	return vm
 }
 
-func (vm *VertexCacheManager) CreateVertexCache(name string, skinId, stride int,
+func (vm *VertexCacheManager) CreateVertexCache(name string, drawMode uint32, skinId, stride int,
 	format []VertexFormat) {
 	if _, exists := vm.Caches[name]; exists {
 		return // already have a cache with this tag
@@ -237,7 +247,9 @@ func (vm *VertexCacheManager) CreateVertexCache(name string, skinId, stride int,
 			vm.MaxIndices,
 			vm.MaxDrawCommands,
 			vm.MaxInstances,
+			vm.MaxJoints,
 			int32(stride),
+			drawMode,
 			skinId,
 			vm.CacheId,
 			format,

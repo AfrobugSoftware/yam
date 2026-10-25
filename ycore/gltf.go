@@ -16,6 +16,7 @@ import (
 	"unsafe"
 	"yam/y3d"
 
+	"github.com/go-gl/gl/v4.3-core/gl"
 	"github.com/qmuntal/gltf"
 )
 
@@ -35,6 +36,11 @@ var (
 		gltf.ComponentFloat:  5126,
 	}
 )
+
+type childNode struct {
+	parent int
+	node   int
+}
 
 type vertexAttrib struct {
 	src    []byte
@@ -76,8 +82,6 @@ func LoadGLTF(filename string, r *RenderManager, tag uint32, world *World) error
 	}
 	return nil
 }
-
-func CreateAnimation()
 
 func loadTimestamps(doc *gltf.Document, acc *gltf.Accessor, data map[int][]byte) ([]float32, error) {
 	accb, err := accessorAttrib(doc, acc, data)
@@ -308,7 +312,8 @@ func ProcessNode(world *World, node *gltf.Node,
 		}
 		tempVertexType := GetVertexFormat(format, r)
 		if tempVertexType == INVALID_VERTEX_FORMAT {
-			r.VertextManager.CreateVertexCache(vertexType, NO_SKINID, vertexSize, format)
+			//EACH PRIMITVE CAN HAVE DIFFERENT DRAW MODES
+			r.VertextManager.CreateVertexCache(vertexType, gl.TRIANGLES, NO_SKINID, vertexSize, format)
 		} else {
 			vertexType = tempVertexType
 		}
@@ -344,7 +349,6 @@ func ProcessNode(world *World, node *gltf.Node,
 		)
 		if node.Skin != nil {
 			sskin := doc.Skins[*node.Skin]
-
 			if sskin.InverseBindMatrices != nil {
 				acc := doc.Accessors[*sskin.InverseBindMatrices]
 				mats, err := loadInverseBindMats(doc, acc, data)
@@ -352,12 +356,69 @@ func ProcessNode(world *World, node *gltf.Node,
 					return err
 				}
 				//load the joints
-				joints := make([]*Joint, 0)
+				jointsMap := make(map[int]int)
+				joints := make([]*Joint, 0, len(mats))
 				for i, j := range sskin.Joints {
-					n := doc.Nodes[j]
-					nj := NewJoint(i)
+					node := doc.Nodes[j]
+					position := y3d.Vec3{
+						X: float32(node.Translation[0]),
+						Y: float32(node.Translation[1]),
+						Z: float32(node.Translation[2]),
+					}
+					scale := y3d.Vec3{
+						X: float32(node.Scale[0]),
+						Y: float32(node.Scale[1]),
+						Z: float32(node.Scale[2]),
+					}
+					rotation := y3d.Quaternion{
+						W: node.Rotation[3],
+						Z: node.Rotation[2],
+						Y: node.Rotation[1],
+						X: node.Rotation[0],
+					}
+					var um y3d.Mat4
+					for i := range um {
+						um[i] = float32(node.Matrix[i])
+					}
+					nj := NewJoint(j, -1, node.Name, position, rotation, scale,
+						um, mats[i], true)
+					joints = append(joints, nj)
+					jointsMap[j] = len(joints) - 1
 				}
+				q := make([]childNode, 0, len(sskin.Joints))
+				q = append(q, childNode{parent: -1, node: sskin.Joints[0]}) // add root
+				for len(q) > 0 {
+					n := q[0]
+					dn := doc.Nodes[n.node]
+					q = q[1:]
+					if n.parent != -1 {
+						j, ok := jointsMap[n.node]
+						p, ok2 := jointsMap[n.parent]
+						if ok && ok2 {
+							joint := joints[j]
+							joint.Parent = p
+						}
+					}
+					for _, k := range dn.Children {
+						q = append(q, childNode{parent: n.node, node: k})
+					}
+				}
+				//load the animations
+				for _, a := range doc.Animations {
+					if a == nil {
+						continue
+					}
+					for _, c := range a.Channels {
+						switch c.Target.Path.String() {
+						case "rotation":
+						case "translation":
+						case "scale":
+						}
+					}
+				}
+
 			}
+
 		}
 	}
 

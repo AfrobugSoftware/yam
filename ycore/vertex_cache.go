@@ -44,15 +44,19 @@ type VertexCache struct {
 	DrawIndexVbo    uint32
 	WorldMatrixSSBO uint32
 	RenderStateSSBO uint32
+	JointSSBO       uint32
 	MaxVertices     int32
 	MaxIndices      int32
 	MaxDrawCommands int32
 	MaxInstances    int32
+	MaxJoints       int32
 	NumVertics      int32
 	NumIndices      int32
 	NumDrawCommands int32
 	NumOfInstances  int32
+	NumOfJoints     int32
 	Stride          int32
+	DrawMode        uint32
 	SkinId          int
 	Id              int
 	Format          []VertexFormat
@@ -63,13 +67,14 @@ type VertexCache struct {
 func NewVertexCache(
 	skinmanager *SkinManager,
 	vertexManger *VertexCacheManager,
-	maxVertex, maxIndex, maxDraws, maxInstances int32,
+	maxVertex, maxIndex, maxDraws, maxInstances, maxJoints int32,
 	stride int32,
+	drawMode uint32,
 	skinId int,
 	id int,
 	format []VertexFormat,
 ) *VertexCache {
-	var vao, vvbo, ivbo, dcbo, divbo, mssbo, rfssobo uint32
+	var vao, vvbo, ivbo, dcbo, divbo, mssbo, rfssobo, jssbo uint32
 	gl.CreateVertexArrays(1, &vao)
 	gl.BindVertexArray(vao)
 
@@ -112,6 +117,10 @@ func NewVertexCache(
 	gl.CreateBuffers(1, &rfssobo)
 	gl.NamedBufferStorage(rfssobo, int(unsafe.Sizeof(PerObjectRenderState{})*uintptr(maxInstances)), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
 	UpdateGPUMem(uint64(unsafe.Sizeof(PerObjectRenderState{}) * uintptr(maxInstances)))
+
+	gl.CreateBuffers(1, &jssbo)
+	gl.NamedBufferStorage(jssbo, int(unsafe.Sizeof(y3d.Mat4{}))*int(maxJoints),
+		nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
 	return &VertexCache{
 		Vao:             vao,
 		VertexVbo:       vvbo,
@@ -119,13 +128,16 @@ func NewVertexCache(
 		DrawCommandBo:   dcbo,
 		DrawIndexVbo:    divbo,
 		WorldMatrixSSBO: mssbo,
+		JointSSBO:       jssbo,
 		RenderStateSSBO: rfssobo,
 		MaxVertices:     maxVertex,
 		MaxIndices:      maxIndex,
 		MaxDrawCommands: maxDraws,
 		MaxInstances:    maxInstances,
+		MaxJoints:       maxJoints,
 		Stride:          stride,
 		Id:              id,
+		DrawMode:        drawMode,
 		SkinId:          skinId,
 		SkinManager:     skinmanager,
 		VManager:        vertexManger,
@@ -196,6 +208,18 @@ func (v *VertexCache) Add(command *DrawCommand,
 }
 func (v *VertexCache) IsEmpty() bool {
 	return v.NumVertics == 0 || v.NumDrawCommands == 0
+}
+
+func (v *VertexCache) AddSkeleton(s *Skeleton) (int, error) {
+	if v.NumOfJoints >= v.MaxJoints {
+		return 0, errors.New("cannot add more joints to the cache")
+	}
+	gl.NamedCopyBufferSubDataEXT(s.jbo, v.JointSSBO,
+		0, int(unsafe.Sizeof(y3d.Mat4{}))*int(v.NumOfJoints),
+		int(unsafe.Sizeof(y3d.Mat4{}))*len(s.Joints))
+	baseJoint := v.NumOfJoints
+	v.NumOfJoints += int32(len(s.Joints))
+	return int(baseJoint), CheckError()
 }
 
 func (v *VertexCache) AddInstances(command *DrawCommand) error {
@@ -302,18 +326,19 @@ func (v *VertexCache) Render() {
 		gl.BindVertexArray(v.Vao)
 		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, WORLD_MATRIX_BINDING, v.WorldMatrixSSBO)
 		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, RENDER_FLAG_BINDING, v.RenderStateSSBO)
+		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, JOINTS_SSBO_BINDING, v.JointSSBO)
 		gl.BindBuffer(gl.DRAW_INDIRECT_BUFFER, v.DrawCommandBo)
-		//who should have draw mode???
-		switch v.VManager.RenderManager.DrawMode {
+		switch v.DrawMode {
 		case gl.TRIANGLES, gl.LINES, gl.LINE_STRIP:
-			gl.MultiDrawElementsIndirect(v.VManager.RenderManager.DrawMode,
+			gl.MultiDrawElementsIndirect(v.DrawMode,
 				gl.UNSIGNED_INT, nil, v.NumDrawCommands, int32(unsafe.Sizeof(DrawCommand{})))
 		case gl.POINTS:
-			gl.MultiDrawArraysIndirect(v.VManager.RenderManager.DrawMode, nil, int32(v.NumDrawCommands),
+			gl.MultiDrawArraysIndirect(v.DrawMode, nil, int32(v.NumDrawCommands),
 				int32(unsafe.Sizeof(DrawCommand{})))
 		}
 		//reset draw command buffer
 		v.NumDrawCommands = 0
+		v.NumOfJoints = 0
 		v.NumOfInstances = 0
 	}
 }
@@ -340,6 +365,7 @@ func (v *VertexCache) Destroy() {
 	gl.DeleteBuffers(1, &v.DrawIndexVbo)
 	gl.DeleteBuffers(1, &v.WorldMatrixSSBO)
 	gl.DeleteBuffers(1, &v.RenderStateSSBO)
+	gl.DeleteBuffers(1, &v.JointSSBO)
 	gl.DeleteVertexArrays(1, &v.Vao)
 }
 

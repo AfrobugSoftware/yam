@@ -50,6 +50,7 @@ const (
 	MAX_VERTICES     = 100000
 	MAX_INSTANCES    = 100000
 	MAX_DRAW_COMMAND = 10000
+	MAX_JOINTS       = 10000
 )
 
 // SHADOW RESOLUTION
@@ -201,7 +202,7 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 		rm.ClearColor.W)
 	rm.SkinManager = NewSkinManager()
 	rm.VertextManager = NewVertexCacheManager(rm,
-		MAX_VERTICES, MAX_VERTICES*3, MAX_DRAW_COMMAND, MAX_INSTANCES)
+		MAX_VERTICES, MAX_VERTICES*3, MAX_DRAW_COMMAND, MAX_INSTANCES, MAX_JOINTS)
 	err = CheckError()
 	if err != nil {
 		panic(err)

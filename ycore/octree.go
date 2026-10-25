@@ -2,6 +2,7 @@ package ycore
 
 import (
 	"math"
+	"slices"
 	"yam/y3d"
 )
 
@@ -141,12 +142,17 @@ func (o *Octree) ChopListToMe(entites []EntityId) {
 		return
 	}
 	o.Entites = o.Entites[:0]
-	for _, p := range entites {
+	entites = slices.DeleteFunc(entites, func(p EntityId) bool {
+		if p == NullEntity {
+			return false
+		}
 		pbox := o.World.GetComponent(p, BoundingBoxComponent).(Box).World
 		if o.BoundingBox.Overlaps(pbox) {
 			o.Entites = append(o.Entites, p)
+			return true
 		}
-	}
+		return false
+	})
 }
 
 func (o *Octree) CreateChild() {

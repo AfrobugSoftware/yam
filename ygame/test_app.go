@@ -26,14 +26,14 @@ func (t *TestApplication) Startup(e *Engine) {
 		panic("failed to create cube")
 	}
 
-	// err := ycore.LoadGLTF("assets/gltf/DamagedHelmet.glb",
-	// 	t.engine.RenderManager,
-	// 	50, //tag
-	// 	t.engine.Level.World)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	err := ycore.LoadGLTF("assets/gltf/SheenChair.glb",
+	err := ycore.LoadGLTF("assets/gltf/BrainStem.glb",
+		t.engine.RenderManager,
+		50, //tag
+		t.engine.Level.World)
+	if err != nil {
+		panic(err)
+	}
+	err = ycore.LoadGLTF("assets/gltf/SheenChair.glb",
 		t.engine.RenderManager,
 		51, //tag
 		t.engine.Level.World)

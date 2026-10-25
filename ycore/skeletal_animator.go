@@ -75,6 +75,41 @@ type Joint struct {
 	IsAnimated bool
 }
 
+type Skeleton struct {
+	Joints []*Joint
+	jbo    uint32
+}
+
+func NewSkeleton(joints []*Joint) *Skeleton {
+	s := &Skeleton{
+		Joints: joints,
+	}
+	var ubo uint32
+	gl.CreateBuffers(1, &ubo)
+	gl.NamedBufferStorage(ubo, int(unsafe.Sizeof(y3d.Mat4{}))*len(joints),
+		nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
+	s.jbo = ubo
+	return s
+}
+
+func (s *Skeleton) Load() error {
+	ptr := gl.MapNamedBufferRange(
+		s.jbo,
+		0,
+		int(unsafe.Sizeof(y3d.Mat4{}))*len(s.Joints),
+		gl.MAP_WRITE_BIT|gl.MAP_INVALIDATE_RANGE_BIT,
+	)
+	if ptr == nil {
+		return errors.New("cannot map joint buffer")
+	}
+	jointP := unsafe.Slice((*y3d.Mat4)(ptr), len(s.Joints))
+	for i, j := range s.Joints {
+		jointP[i] = j.Transform.World.Mul(j.BindPose)
+	}
+	gl.UnmapNamedBuffer(s.jbo)
+	return nil
+}
+
 type SkeletalAnimator struct {
 	Animation         []*Animation
 	JointBufferObject uint32
@@ -216,6 +251,8 @@ func NewJoint(
 	name string,
 	pos y3d.Vec3,
 	rot y3d.Quaternion,
+	scale y3d.Vec3,
+	undeformedMatrix y3d.Mat4,
 	bindPose y3d.Mat4,
 	isAnimated bool,
 ) *Joint {
@@ -229,7 +266,10 @@ func NewJoint(
 	}
 	j.Transform.Position = pos
 	j.Transform.Rotation = rot
+	j.Transform.Scale = scale
 	j.Transform.Recalulate()
+
+	j.Transform.Local = j.Transform.Local.Mul(undeformedMatrix)
 	return j
 }
 
