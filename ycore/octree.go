@@ -3,6 +3,7 @@ package ycore
 import (
 	"math"
 	"slices"
+	"sync"
 	"yam/y3d"
 )
 
@@ -18,7 +19,7 @@ const (
 )
 
 const (
-	ENTITES_PER_LEAF = 4
+	ENTITES_PER_LEAF = 10
 )
 
 type Octree struct {
@@ -159,11 +160,13 @@ func (o *Octree) CreateChild() {
 	if len(o.Entites) <= ENTITES_PER_LEAF {
 		return
 	}
+	var wg sync.WaitGroup
 	for i := range 8 {
 		o.InitChild(i)
 		o.Children[i].ChopListToMe(o.Entites)
-		o.Children[i].CreateChild()
+		wg.Go(o.Children[i].CreateChild)
 	}
+	wg.Wait()
 	o.Entites = o.Entites[:0]
 }
 
