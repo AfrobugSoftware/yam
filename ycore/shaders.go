@@ -62,6 +62,7 @@ struct per_object_render_state {
 	uint tex2;
 	uint tex3;
 	uint tex4;
+	uint base_joint_idx;
 };
 
 layout(std430, binding = 2) buffer per_object_render_state_buffer {

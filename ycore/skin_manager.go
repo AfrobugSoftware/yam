@@ -185,6 +185,64 @@ func (s *SkinManager) AddTexture(skin int, filename string,
 	s.Skins[skin] = sk
 	return nil
 }
+
+func (s *SkinManager) AddCubeMap(skin int, filename [6]string) error {
+	var texId uint32
+	gl.CreateTextures(gl.TEXTURE_CUBE_MAP, 1, &texId)
+	gl.TextureParameteri(texId, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	gl.TextureParameteri(texId, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	gl.TextureParameteri(texId, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TextureParameteri(texId, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	for i, s := range filename {
+		surface, err := img.Load(s)
+		if err != nil {
+			return fmt.Errorf("img.Load(%q): %w", s, err)
+		}
+		converted, err := surface.ConvertFormat(uint32(sdl.PIXELFORMAT_RGBA32), 0)
+		surface.Free()
+		if err != nil {
+			return fmt.Errorf("ConvertFormat: %w", err)
+		}
+		w, h := int32(converted.W), int32(converted.H)
+		if w != h {
+			converted.Free()
+			return fmt.Errorf("cube face %q is %dx%d, must be square", s, w, h)
+		}
+		if i == 0 {
+			gl.TextureStorage2D(texId, 1, gl.RGBA8, w, h)
+		}
+		if converted.MustLock() {
+			if err := converted.Lock(); err != nil {
+				converted.Free()
+				converted.Unlock()
+				return fmt.Errorf("Lock(%q): %w", s, err)
+			}
+			converted.Unlock()
+		}
+		gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
+		gl.PixelStorei(gl.UNPACK_ROW_LENGTH, converted.Pitch/4)
+		gl.TextureSubImage3D(texId, 0, 0, 0, int32(i), w, h, 1,
+			gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(converted.Pixels()))
+		gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
+		converted.Free()
+	}
+	id := generateRandomId()
+	td := TextureData{
+		Handle:       texId,
+		LastAccessed: time.Now(),
+	}
+	s.Textures[id] = td
+	sk := s.Skins[skin]
+	for slot := range sk.Texture {
+		if sk.Texture[slot] == EmptyTexture {
+			sk.Texture[slot] = id
+			break
+		}
+	}
+	s.Skins[skin] = sk
+	return nil
+}
+
 func (s *SkinManager) AddTextureHandle(skin int, texId uint32, size uint32) error {
 	td := TextureData{
 		Handle:       texId,

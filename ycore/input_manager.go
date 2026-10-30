@@ -45,8 +45,8 @@ type InputManager struct {
 	CurMouseKeyState  [3]uint8
 	PrevMouseKeyState [3]uint8
 	MousePosition     y3d.Vec2
+	AbsolutePosition  y3d.Vec2
 	ShowCursor        int
-	IsRelative        bool
 	IsResized         bool
 	ScrollWheelPos    y3d.Vec3
 	ScrollWheelDir    uint32
@@ -127,7 +127,26 @@ func (im *InputManager) GetMouseButtonState(button int) uint8 {
 	if button < 1 || button > MOUSE_MAX {
 		return sdl.RELEASED
 	}
-	return im.CurMouseKeyState[button-1]
+	c := im.CurMouseKeyState[button-1]
+	p := im.PrevMouseKeyState[button-1]
+	r := BUTTON_NONE
+	switch c {
+	case sdl.RELEASED:
+		switch p {
+		case sdl.RELEASED:
+			r = BUTTON_NONE
+		case sdl.PRESSED:
+			r = BUTTON_RELEASED
+		}
+	case sdl.PRESSED:
+		switch p {
+		case sdl.RELEASED:
+			r = BUTTON_PRESSED
+		case sdl.PRESSED:
+			r = BUTTON_HELD
+		}
+	}
+	return r
 }
 
 func (im *InputManager) ConnectController(idx int) {
@@ -160,7 +179,6 @@ func (im *InputManager) ProcessInput() bool {
 
 	im.ScrollWheelDir = 0
 	im.ScrollWheelPos = y3d.Vec3{}
-	im.IsResized = false
 	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 		switch event.GetType() {
 		case sdl.QUIT:
@@ -215,13 +233,19 @@ func (im *InputManager) ProcessInput() bool {
 		}
 		copy(im.CurKeyState, state)
 	}
-	var x, y int32
-	if im.IsRelative {
-		x, y, _ = sdl.GetRelativeMouseState()
-	} else {
-		x, y, _ = sdl.GetMouseState()
-	}
+	var x, y, x1, y1 int32
+	x, y, _ = sdl.GetRelativeMouseState()
+	x1, y1, _ = sdl.GetMouseState()
 	im.MousePosition.X = float32(x) //float32(min(max(x, int32(im.MouseCage.X)), int32(im.MouseCage.Width)))
 	im.MousePosition.Y = float32(y) //float32(min(max(y, int32(im.MouseCage.Y)), int32(im.MouseCage.Height)))
+	im.AbsolutePosition.X = float32(x1)
+	im.AbsolutePosition.Y = float32(y1)
 	return true
+}
+
+func (im *InputManager) BoundToCage(pos y3d.Vec2) y3d.Vec2 {
+	return y3d.Vec2{
+		X: float32(min(max(int(pos.X), im.MouseCage.X), im.MouseCage.Width)),
+		Y: float32(min(max(int(pos.Y), im.MouseCage.Y), im.MouseCage.Height)),
+	}
 }

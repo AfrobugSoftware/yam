@@ -224,7 +224,7 @@ func (o *Octree) TestCollisionWithRay(r y3d.Ray, fl float32) (bool, EntityId, y3
 		}
 		return false, NullEntity, y3d.Vec3{}
 	}
-	var b bool
+	var br bool
 	var hit y3d.Vec3
 	var e EntityId
 	for _, p := range o.Entites {
@@ -234,13 +234,13 @@ func (o *Octree) TestCollisionWithRay(r y3d.Ray, fl float32) (bool, EntityId, y3
 		if b {
 			if dist < fl {
 				fl = dist
-				b = true
+				br = true
 				e = p
 				hit = h
 			}
 		}
 	}
-	return b, e, hit
+	return br, e, hit
 }
 
 func (o *Octree) InsectDownwardsRay(origin y3d.Vec3, f float32) bool {

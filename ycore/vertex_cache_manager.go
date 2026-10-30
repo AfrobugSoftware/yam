@@ -59,8 +59,8 @@ func NewVertexCacheManager(
 	}
 	vm.Strides[VPNT] = 32
 	vm.Strides[VPNTC] = 36
-	vm.Strides[VPNTWJ] = 56
 	vm.Strides[VPNTTB] = 56
+	vm.Strides[VPNTWJ] = 64
 
 	vm.Formats[VPNT] = []VertexFormat{
 		{
@@ -118,14 +118,14 @@ func NewVertexCacheManager(
 			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 6),
 		},
 		{
-			ComponentSize:  3,
+			ComponentSize:  4,
 			Type:           gl.FLOAT,
 			RelativeOffset: uint32(unsafe.Sizeof(uint32(0)) * 8),
 		},
 		{
-			ComponentSize:  3,
+			ComponentSize:  4,
 			Type:           gl.UNSIGNED_INT,
-			RelativeOffset: uint32(unsafe.Sizeof(uint32(0)) * 11),
+			RelativeOffset: uint32(unsafe.Sizeof(uint32(0)) * 12),
 		},
 	}
 	vm.Formats[VPNTTB] = []VertexFormat{
@@ -156,9 +156,6 @@ func NewVertexCacheManager(
 		},
 	}
 
-	vm.Caches[VPNT] = [MAX_CACHES]*VertexCache{}
-	vm.Caches[VPNTTB] = [MAX_CACHES]*VertexCache{}
-	vm.Caches[VPNTWJ] = [MAX_CACHES]*VertexCache{}
 	for i := range MAX_CACHES {
 		c := vm.Caches[VPNT]
 		c[i] = NewVertexCache(
@@ -279,7 +276,7 @@ func (vm *VertexCacheManager) LoadMatrix(vertexType string,
 	}
 	for i := range MAX_CACHES {
 		if vc[i].SkinId == skinId {
-			vc[i].LoadMatrix(
+			vc[i].AddMatrix(
 				baseInstance, world...)
 			return nil
 		}

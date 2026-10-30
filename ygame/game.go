@@ -67,6 +67,7 @@ func (g *Engine) SetApplication(app Application) {
 func (g *Engine) Update(dt float64) {
 	if g.InputManager.IsResized {
 		g.RenderManager.Resize()
+		g.InputManager.IsResized = false
 	}
 	if g.App != nil {
 		g.App.Update(dt)

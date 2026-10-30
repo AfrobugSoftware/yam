@@ -813,10 +813,10 @@ func (r *RenderManager) RenderEntities(cull bool) {
 			renderable.DrawCmd.InstanceCount = uint32(len(imat))
 			v.AddInstances(&renderable.DrawCmd)
 			v.AddRenderState(int(renderable.DrawCmd.BaseInstance), ip...)
-			v.LoadMatrix(int(renderable.DrawCmd.BaseInstance), imat...)
+			v.AddMatrix(int(renderable.DrawCmd.BaseInstance), imat...)
 		} else {
 			v.AddInstances(&renderable.DrawCmd)
-			v.LoadMatrix(int(renderable.DrawCmd.BaseInstance), transform.World) //this needs to be world
+			v.AddMatrix(int(renderable.DrawCmd.BaseInstance), transform.World) //this needs to be world
 			v.AddRenderState(int(renderable.DrawCmd.BaseInstance), renderable.RenderParams)
 		}
 		v.AddDrawCommand(renderable.DrawCmd)

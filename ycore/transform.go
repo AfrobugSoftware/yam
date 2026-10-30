@@ -12,54 +12,19 @@ var (
 )
 
 type Transform struct {
-	Position y3d.Vec3
-	Rotation y3d.Quaternion
-	Scale    y3d.Vec3
-	Local    y3d.Mat4
-	World    y3d.Mat4
+	Local y3d.Mat4
+	World y3d.Mat4
 }
 
 func NewTransform() *Transform {
 	return &Transform{
-		Position: y3d.Vec3{},
-		Rotation: y3d.IdenQuat(),
-		Scale:    y3d.Vec3{X: 1.0, Y: 1.0, Z: 1.0},
-		Local:    y3d.Identity,
-		World:    y3d.Identity,
+		Local: y3d.Identity,
+		World: y3d.Identity,
 	}
-}
-
-func (trans *Transform) SetScale(factor float32) {
-	trans.Scale = y3d.Vec3{
-		X: factor,
-		Y: factor,
-		Z: factor,
-	}
-	trans.Recalulate()
-}
-
-func (trans *Transform) SetPositionOrientation(pos y3d.Vec3, orient y3d.Quaternion) {
-	trans.Position = pos
-	trans.Rotation = orient
-	trans.Recalulate()
 }
 
 func (trans *Transform) UpdateWorld(parent *Transform) {
 	trans.World = parent.World.Mul(trans.Local)
-}
-
-func (trans *Transform) Recalulate() {
-	trans.Local = y3d.TRS(trans.Position, trans.Rotation, trans.Scale)
-}
-
-func (trans *Transform) RecalulateNoScale() {
-	m := trans.Rotation.RotMat()
-	trans.Local = y3d.Mat4{
-		m[0], m[1], m[2], 0,
-		m[3], m[4], m[5], 0,
-		m[6], m[7], m[8], 0,
-		trans.Position.X, trans.Position.Y, trans.Position.Z, 1,
-	}
 }
 
 func (t *Transform) TransformAABB(b y3d.AABB) y3d.AABB {
@@ -80,17 +45,18 @@ func (t *Transform) TransformOBB(b y3d.OBB) y3d.OBB {
 	return b.DeTransform(t.World)
 }
 
-func (t *Transform) RotateToFoward(forward y3d.Vec3) {
+func RotateToFoward(forward y3d.Vec3) y3d.Quaternion {
 	dot := y3d.Dot(FORWARD, forward)
 	angle := math.Acos(float64(dot))
+	var rot y3d.Quaternion
 	if dot > 0.9999 {
-		t.Rotation = y3d.IdenQuat()
+		rot = y3d.IdenQuat()
 	} else if dot < -0.9999 {
-		t.Rotation = y3d.FromAngleAxis(UP, math.Pi)
+		rot = y3d.FromAngleAxis(UP, math.Pi)
 	} else {
 		axis := y3d.Cross(FORWARD, forward)
 		axis = y3d.Normalize(axis)
-		t.Rotation = y3d.FromAngleAxis(axis, angle)
+		rot = y3d.FromAngleAxis(axis, float32(angle))
 	}
-	t.Recalulate()
+	return rot
 }

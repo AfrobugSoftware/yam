@@ -15,11 +15,12 @@ const (
 	EntityTagComponent
 	InputComponent
 	RenderableComponent
-	SkeletalAnimatorComponent
+	SkeletonComponent
 	MatInstanceComponent
 	RenderParamsInstanceComponent
 	HierarchyComponent
 	FlagComponent
+	AnimationComponent
 )
 
 func AddEntityRenderableData(

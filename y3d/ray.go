@@ -1,6 +1,9 @@
 package y3d
 
-import "math"
+import (
+	"math"
+	"unsafe"
+)
 
 type Ray struct {
 	O Vec3
@@ -81,7 +84,7 @@ func (r Ray) IntersectsAABB(aabb AABB, fl float32) (i bool, hit Vec3) {
 	}
 	//find maximum value for maxT
 	plane := 0
-	maxTArray := maxT.ToSlice()
+	maxTArray := unsafe.Slice((*float32)(unsafe.Pointer(&maxT)), 3)
 	if maxT.Y > maxTArray[plane] {
 		plane = 1
 	}
@@ -94,14 +97,14 @@ func (r Ray) IntersectsAABB(aabb AABB, fl float32) (i bool, hit Vec3) {
 	}
 	if plane != 0 {
 		hit.X = r.O.X + maxT.X*r.D.X
-		if hit.X < aabb.Min.X-0.00001 || hit.X < aabb.Max.X+0.00001 {
+		if hit.X < aabb.Min.X-0.00001 || hit.X > aabb.Max.X+0.00001 {
 			i = false
 			return
 		}
 	}
 	if plane != 1 {
 		hit.Y = r.O.Y + maxT.Y*r.D.Y
-		if hit.Y < aabb.Min.Y-0.00001 || hit.Y < aabb.Max.Y+0.00001 {
+		if hit.Y < aabb.Min.Y-0.00001 || hit.Y > aabb.Max.Y+0.00001 {
 			i = false
 			return
 		}
@@ -120,15 +123,15 @@ func (r Ray) IntersectsAABB(aabb AABB, fl float32) (i bool, hit Vec3) {
 func (r Ray) IntersectsPlane(plane Plane, cull bool) (bool, Vec3) {
 	vd := Dot(plane.N, r.D)
 	if math.Abs(float64(vd)) < 0.000001 {
-		return false, ZEROV
+		return false, ZEROV3
 	}
 	if cull && (vd > 0.0) {
-		return false, ZEROV
+		return false, ZEROV3
 	}
 	vo := -(Dot(plane.N, r.O) + plane.D)
 	t := vo / vd
 	if t < 0.0 {
-		return false, ZEROV
+		return false, ZEROV3
 	}
 	hit := Add(r.O, Smul(r.D, t))
 	return true, hit

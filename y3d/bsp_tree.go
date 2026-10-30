@@ -184,7 +184,7 @@ func (bs *BSPTree) TestCollision(r Ray, fl float32) (bool, float32, Vec3) {
 				return b, t, p.Plane.N
 			}
 		}
-		return false, 0, ZEROV
+		return false, 0, ZEROV3
 	}
 	class := bs.Plane.Classify(r.O)
 	rf, rb, b := bs.Plane.ClipRay(r, fl)
@@ -213,7 +213,7 @@ func (bs *BSPTree) TestCollision(r Ray, fl float32) (bool, float32, Vec3) {
 			return bs.Front.TestCollision(r, fl)
 		}
 	}
-	return false, 0, ZEROV
+	return false, 0, ZEROV3
 }
 
 func (bs *BSPTree) Clear() {

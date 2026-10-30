@@ -324,10 +324,10 @@ func ProcessNode(world *World, node *gltf.Node,
 			Z: float32(node.Translation[2]),
 		}
 		rotation := y3d.Quaternion{
-			W: node.Rotation[3],
-			Z: node.Rotation[2],
-			Y: node.Rotation[1],
-			X: node.Rotation[0],
+			W: float32(node.Rotation[3]),
+			Z: float32(node.Rotation[2]),
+			Y: float32(node.Rotation[1]),
+			X: float32(node.Rotation[0]),
 		}
 		err := AddEntityRenderableData(
 			world,
@@ -371,17 +371,17 @@ func ProcessNode(world *World, node *gltf.Node,
 						Z: float32(node.Scale[2]),
 					}
 					rotation := y3d.Quaternion{
-						W: node.Rotation[3],
-						Z: node.Rotation[2],
-						Y: node.Rotation[1],
-						X: node.Rotation[0],
+						W: float32(node.Rotation[3]),
+						Z: float32(node.Rotation[2]),
+						Y: float32(node.Rotation[1]),
+						X: float32(node.Rotation[0]),
 					}
 					var um y3d.Mat4
 					for i := range um {
 						um[i] = float32(node.Matrix[i])
 					}
 					nj := NewJoint(j, -1, node.Name, position, rotation, scale,
-						um, mats[i], true)
+						um, mats[i])
 					joints = append(joints, nj)
 					jointsMap[j] = len(joints) - 1
 				}
@@ -403,18 +403,122 @@ func ProcessNode(world *World, node *gltf.Node,
 						q = append(q, childNode{parent: n.node, node: k})
 					}
 				}
+				skeleton := NewSkeleton(int(ynode), joints)
+				world.AddComponent(ynode, SkeletonComponent, skeleton)
+
 				//load the animations
 				for _, a := range doc.Animations {
 					if a == nil {
 						continue
 					}
+					anim := NewAnimation()
 					for _, c := range a.Channels {
 						switch c.Target.Path.String() {
 						case "rotation":
+							sampler := a.Samplers[c.Sampler]
+							acc := doc.Accessors[sampler.Input]
+							attib, err := accessorAttrib(doc, acc, data)
+							if err != nil {
+								return err
+							}
+							addr := unsafe.Pointer(reflect.ValueOf(attib.src).Index(0).UnsafeAddr())
+							timestamps := unsafe.Slice((*float32)(addr), acc.Count)
+
+							acc = doc.Accessors[sampler.Output]
+							attib, err = accessorAttrib(doc, acc, data)
+							if err != nil {
+								return err
+							}
+							addr = unsafe.Pointer(reflect.ValueOf(attib.src).Index(0).UnsafeAddr())
+							rotations := unsafe.Slice((*y3d.Quaternion)(addr), acc.Count)
+							if s, exists := anim.Samplers[*c.Target.Node]; exists {
+								s.rotation = make([]y3d.Quaternion, acc.Count)
+								s.Flag |= SAMPLER_ROTATION
+								copy(s.rotation, rotations)
+							} else {
+								s := &Sampler{
+									OutRotation:    y3d.IdenQuat(),
+									OutTranslation: y3d.Vec3{},
+									OutScale:       y3d.UnitV3,
+								}
+								s.rotation = make([]y3d.Quaternion, acc.Count)
+								s.TimeStamps = make([]float32, len(timestamps))
+								s.Flag |= SAMPLER_ROTATION
+								copy(s.rotation, rotations)
+								copy(s.TimeStamps, timestamps)
+								anim.Samplers[*c.Target.Node] = s
+							}
 						case "translation":
+							sampler := a.Samplers[c.Sampler]
+							acc := doc.Accessors[sampler.Input]
+							attib, err := accessorAttrib(doc, acc, data)
+							if err != nil {
+								return err
+							}
+							addr := unsafe.Pointer(reflect.ValueOf(attib.src).Index(0).UnsafeAddr())
+							timestamps := unsafe.Slice((*float32)(addr), acc.Count)
+
+							acc2 := doc.Accessors[sampler.Output]
+							attib2, err := accessorAttrib(doc, acc2, data)
+							if err != nil {
+								return err
+							}
+							addr = unsafe.Pointer(reflect.ValueOf(attib2.src).Index(0).UnsafeAddr())
+							translations := unsafe.Slice((*y3d.Vec3)(addr), acc2.Count)
+							if s, exists := anim.Samplers[*c.Target.Node]; exists {
+								s.translation = make([]y3d.Vec3, acc.Count)
+								s.Flag |= SAMPLER_TRANSLATION
+								copy(s.translation, translations)
+							} else {
+								s := &Sampler{
+									OutRotation:    y3d.IdenQuat(),
+									OutTranslation: y3d.Vec3{},
+									OutScale:       y3d.UnitV3,
+								}
+								s.translation = make([]y3d.Vec3, acc.Count)
+								s.TimeStamps = make([]float32, len(timestamps))
+								s.Flag |= SAMPLER_TRANSLATION
+								copy(s.translation, translations)
+								copy(s.TimeStamps, timestamps)
+								anim.Samplers[*c.Target.Node] = s
+							}
 						case "scale":
+							sampler := a.Samplers[c.Sampler]
+							acc := doc.Accessors[sampler.Input]
+							attib, err := accessorAttrib(doc, acc, data)
+							if err != nil {
+								return err
+							}
+							addr := unsafe.Pointer(reflect.ValueOf(attib.src).Index(0).UnsafeAddr())
+							timestamps := unsafe.Slice((*float32)(addr), acc.Count)
+
+							acc = doc.Accessors[sampler.Output]
+							attib, err = accessorAttrib(doc, acc, data)
+							if err != nil {
+								return err
+							}
+							addr = unsafe.Pointer(reflect.ValueOf(attib.src).Index(0).UnsafeAddr())
+							scale := unsafe.Slice((*y3d.Vec3)(addr), acc.Count)
+							if s, exists := anim.Samplers[*c.Target.Node]; exists {
+								s.scale = make([]y3d.Vec3, acc.Count)
+								s.Flag |= SAMPLER_SCALE
+								copy(s.scale, scale)
+							} else {
+								s := &Sampler{
+									OutRotation:    y3d.IdenQuat(),
+									OutTranslation: y3d.Vec3{},
+									OutScale:       y3d.UnitV3,
+								}
+								s.scale = make([]y3d.Vec3, acc.Count)
+								s.TimeStamps = make([]float32, len(timestamps))
+								s.Flag |= SAMPLER_SCALE
+								copy(s.scale, scale)
+								copy(s.TimeStamps, timestamps)
+								anim.Samplers[*c.Target.Node] = s
+							}
 						}
 					}
+					world.AddComponent(ynode, AnimationComponent, anim)
 				}
 
 			}

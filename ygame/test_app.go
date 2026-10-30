@@ -41,7 +41,6 @@ func (t *TestApplication) Startup(e *Engine) {
 		panic(err)
 	}
 
-	t.engine.InputManager.IsRelative = true
 	t.camPostiion.Y = 1
 	t.yaw = float32(y3d.ToRadians(90))
 	t.camFront = y3d.Normalize(y3d.Vec3{
@@ -175,7 +174,7 @@ func (t *TestApplication) LevelTest() {
 		},
 	)
 	tranform := t.engine.Level.World.GetComponent(ent3, ycore.TransformComponent).(ycore.Transform)
-	(&tranform).SetScale(35)
+	tranform.Local = tranform.Local.Mul(y3d.Scale(y3d.Vec3{X: 35, Y: 35, Z: 35}))
 	t.engine.Level.World.SetComponent(ent3, ycore.TransformComponent, tranform)
 
 	v, i := ygl.CreateSphere(64, 36, 5.0)
@@ -216,7 +215,7 @@ func (t *TestApplication) ProcessInput(deltaTime float32) {
 	camSpeed := 5 * deltaTime
 	im := t.engine.InputManager
 
-	if im.GetMouseButtonState(sdl.BUTTON_LEFT) == sdl.PRESSED {
+	if im.GetMouseButtonState(sdl.BUTTON_LEFT) == ycore.BUTTON_HELD {
 		if math.Abs(float64(im.MousePosition.X)) > y3d.NearZero ||
 			math.Abs(float64(im.MousePosition.Y)) > y3d.NearZero {
 			t.yaw += float32(y3d.ToRadians(float64(im.MousePosition.X))) * 0.5
@@ -232,6 +231,11 @@ func (t *TestApplication) ProcessInput(deltaTime float32) {
 				Z: float32(math.Sin(float64(t.yaw)) * math.Cos(float64(t.pitch))),
 			})
 		}
+	}
+	if im.GetMouseButtonState(sdl.BUTTON_LEFT) == ycore.BUTTON_PRESSED {
+		caged := t.engine.InputManager.BoundToCage(t.engine.InputManager.AbsolutePosition)
+		ray := t.engine.RenderManager.GetPickRay(caged)
+		t.engine.Level.Select(ray)
 	}
 	if im.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_HELD {
 		t.camPostiion = y3d.Add(t.camPostiion, y3d.Smul(t.camFront, float32(camSpeed)))

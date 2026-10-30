@@ -49,7 +49,7 @@ func (m *MovementController) RecalAxes() {
 	} else if m.RotZ < -y3d.TwoPI {
 		m.RotZ += y3d.TwoPI
 	}
-	frame := y3d.FromEuler(float64(m.RotX), float64(m.RotY), float64(m.RotZ))
+	frame := y3d.FromEuler(m.RotX, m.RotY, m.RotZ)
 	m.Orientation = y3d.ProdQuaternion(m.Orientation, frame)
 	mR := m.Orientation.RotMat()
 

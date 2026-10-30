@@ -3,7 +3,10 @@ package ygame
 import (
 	"encoding/gob"
 	"errors"
+	"fmt"
 	"os"
+	"sync"
+	"yam/y3d"
 	"yam/ycontroller"
 	"yam/ycore"
 )
@@ -40,6 +43,7 @@ type Level struct {
 	Meshes  []*Polymesh
 
 	levelParametersUBO uint32
+	LastSelected       ycore.EntityId
 }
 
 func NewLevel() *Level {
@@ -55,21 +59,37 @@ func (l *Level) UpdateEntitesMovement(deltaTime float32) {
 		ycore.TransformComponent,
 		ycore.BoundingBoxComponent,
 		ycore.MoveControllerComponent)
+	var wg sync.WaitGroup
 	for _, e := range entites {
-		movement := l.World.GetComponent(e, ycore.MoveControllerComponent).(*ycontroller.MovementController)
-		transform := l.World.GetComponent(e, ycore.TransformComponent).(ycore.Transform)
-		box := l.World.GetComponent(e, ycore.BoundingBoxComponent).(ycore.Box)
-		movement.Update(deltaTime)
-		transform.SetPositionOrientation(movement.Position, movement.Orientation)
+		wg.Go(
+			func() {
+				movement := l.World.GetComponent(e, ycore.MoveControllerComponent).(*ycontroller.MovementController)
+				transform := l.World.GetComponent(e, ycore.TransformComponent).(ycore.Transform)
+				box := l.World.GetComponent(e, ycore.BoundingBoxComponent).(ycore.Box)
+				movement.Update(deltaTime)
+				transform.Local = y3d.TRS(movement.Position, movement.Orientation, y3d.UnitV3)
 
-		//this should be handled by the scene hierarchy updating method
-		transform.World = transform.Local
+				//this should be handled by the scene hierarchy updating method
+				transform.World = transform.Local
 
-		box.World = transform.TransformAABB(box.Local)
-		l.World.SetComponent(e, ycore.TransformComponent, transform)
-		l.World.SetComponent(e, ycore.BoundingBoxComponent, box)
+				box.World = transform.TransformAABB(box.Local)
+				l.World.SetComponent(e, ycore.TransformComponent, transform)
+				l.World.SetComponent(e, ycore.BoundingBoxComponent, box)
+			})
 	}
+	wg.Wait()
+	ycore.UpdateEntityAnimation(l.World, deltaTime)
 	l.OctTree.BuildTree(entites)
+}
+
+func (l *Level) Select(pickRay y3d.Ray) {
+	//fmt.Println(pickRay.O)
+	//fmt.Println(pickRay.D)
+	b, e, h := l.OctTree.TestCollisionWithRay(pickRay, 99999.0)
+	if b {
+		fmt.Print(h)
+		l.LastSelected = e
+	}
 }
 
 func (l *Level) ProcessEntityInput(input *ycore.InputManager) {

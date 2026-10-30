@@ -9,7 +9,8 @@ var (
 	UNIT_X = Vec3{X: 1.0, Y: 0.0, Z: 0.0}
 	UNIT_Y = Vec3{X: 0.0, Y: 1.0, Z: 0.0}
 	UNIT_Z = Vec3{X: 0.0, Y: 0.0, Z: 1.0}
-	ZEROV  = Vec3{}
+	ZEROV3 = Vec3{}
+	UnitV3 = Vec3{X: 1, Y: 1, Z: 1}
 )
 
 type Vec2 struct {

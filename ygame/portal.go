@@ -78,7 +78,7 @@ func (p *Portal) Render(vm *ycore.VertexCacheManager) {
 	}
 	v.AddInstances(&p.DrawCommand)
 	v.AddRenderState(int(p.DrawCommand.BaseInstance), p.RenderFlag)
-	v.LoadMatrix(int(p.DrawCommand.BaseInstance),
+	v.AddMatrix(int(p.DrawCommand.BaseInstance),
 		p.Transform.World)
 	v.AddDrawCommand(p.DrawCommand)
 }

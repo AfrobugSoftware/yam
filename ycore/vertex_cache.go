@@ -12,13 +12,18 @@ import (
 	"github.com/go-gl/gl/v4.3-core/gl"
 )
 
+const (
+	ENTITY_SELECTED = 1 << iota
+)
+
 type PerObjectRenderState struct {
-	Alpha float32
-	Flag  uint32
-	Tex1  uint32
-	Tex2  uint32
-	Tex3  uint32
-	Tex4  uint32
+	Alpha        float32
+	Flag         uint32
+	Tex1         uint32
+	Tex2         uint32
+	Tex3         uint32
+	Tex4         uint32
+	BaseJointIdx uint32
 }
 
 type VertexFormat struct {
@@ -121,6 +126,12 @@ func NewVertexCache(
 	gl.CreateBuffers(1, &jssbo)
 	gl.NamedBufferStorage(jssbo, int(unsafe.Sizeof(y3d.Mat4{}))*int(maxJoints),
 		nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
+
+	err := CheckError()
+	if err != nil {
+		panic(err)
+	}
+
 	return &VertexCache{
 		Vao:             vao,
 		VertexVbo:       vvbo,
@@ -281,7 +292,7 @@ func (v *VertexCache) AddRenderState(baseInstance int, flag ...PerObjectRenderSt
 	return CheckError()
 }
 
-func (v *VertexCache) LoadMatrix(baseInstance int, world ...y3d.Mat4) error {
+func (v *VertexCache) AddMatrix(baseInstance int, world ...y3d.Mat4) error {
 	if baseInstance+len(world) >= int(v.MaxInstances) {
 		return errors.New("invalid matrix instance range")
 	}

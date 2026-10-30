@@ -15,42 +15,42 @@ func CreateCube() (dataV, dataI *bytes.Buffer) {
 	verties = append(verties,
 		y3d.PVertex{
 			Pos: y3d.Vec3{
-				X: -0.25, Y: -0.25, Z: -0.25,
+				X: -1, Y: -1, Z: -1,
 			},
 		},
 		y3d.PVertex{
 			Pos: y3d.Vec3{
-				X: -0.25, Y: 0.25, Z: -0.25,
+				X: -1, Y: 1, Z: -1,
 			},
 		},
 		y3d.PVertex{
 			Pos: y3d.Vec3{
-				X: 0.25, Y: -0.25, Z: -0.25,
+				X: 1, Y: -1, Z: -1,
 			},
 		},
 		y3d.PVertex{
 			Pos: y3d.Vec3{
-				X: 0.25, Y: 0.25, Z: -0.25,
+				X: 1, Y: 1, Z: -1,
 			},
 		},
 		y3d.PVertex{
 			Pos: y3d.Vec3{
-				X: 0.25, Y: -0.25, Z: 0.25,
+				X: 1, Y: -1, Z: 1,
 			},
 		},
 		y3d.PVertex{
 			Pos: y3d.Vec3{
-				X: 0.25, Y: 0.25, Z: 0.25,
+				X: 1, Y: 1, Z: 1,
 			},
 		},
 		y3d.PVertex{
 			Pos: y3d.Vec3{
-				X: -0.25, Y: -0.25, Z: 0.25,
+				X: -1, Y: -1, Z: 1,
 			},
 		},
 		y3d.PVertex{
 			Pos: y3d.Vec3{
-				X: -0.25, Y: 0.25, Z: 0.25,
+				X: -1, Y: 1, Z: 1,
 			},
 		},
 	)

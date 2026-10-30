@@ -5,7 +5,7 @@ import (
 )
 
 // New returns a new quaternion
-func NewQuaternion(w, x, y, z float64) Quaternion {
+func NewQuaternion(w, x, y, z float32) Quaternion {
 	return Quaternion{W: w, X: x, Y: y, Z: z}
 }
 
@@ -13,13 +13,13 @@ func IdenQuat() Quaternion {
 	return Quaternion{W: 1}
 }
 
-func Pure(x, y, z float64) Quaternion {
+func Pure(x, y, z float32) Quaternion {
 	return Quaternion{X: x, Y: y, Z: z}
 }
 
 // A quternion
 type Quaternion struct {
-	W, X, Y, Z float64
+	W, X, Y, Z float32
 }
 
 func (qin Quaternion) Conj() Quaternion {
@@ -29,7 +29,7 @@ func (qin Quaternion) Conj() Quaternion {
 	return qin
 }
 
-func (qin Quaternion) Norm2() float64 {
+func (qin Quaternion) Norm2() float32 {
 	return qin.W*qin.W + qin.X*qin.X + qin.Y*qin.Y + qin.Z*qin.Z
 }
 
@@ -41,11 +41,11 @@ func (qin Quaternion) Neg() Quaternion {
 	return qin
 }
 
-func (qin Quaternion) Norm() float64 {
-	return math.Sqrt(qin.Norm2())
+func (qin Quaternion) Norm() float32 {
+	return float32(math.Sqrt(float64(qin.Norm2())))
 }
 
-func Scalar(w float64) Quaternion {
+func Scalar(w float32) Quaternion {
 	return Quaternion{W: w}
 }
 
@@ -61,19 +61,19 @@ func SumQuaternion(qin ...Quaternion) Quaternion {
 }
 
 // a must be in radians
-func FromAngleAxis(axis Vec3, a float64) Quaternion {
+func FromAngleAxis(axis Vec3, a float32) Quaternion {
 	axis = Normalize(axis)
-	s := math.Sin(a / 2)
-	w := math.Cos(a / 2)
-	x := float64(axis.X) * s
-	y := float64(axis.Y) * s
-	z := float64(axis.Z) * s
+	s := float32(math.Sin(float64(a / 2)))
+	w := float32(math.Cos(float64(a / 2)))
+	x := axis.X * s
+	y := axis.Y * s
+	z := axis.Z * s
 	return NewQuaternion(w, x, y, z)
 }
 
 func ProdQuaternion(qin ...Quaternion) Quaternion {
 	qout := Quaternion{1, 0, 0, 0}
-	var w, x, y, z float64
+	var w, x, y, z float32
 	for _, q := range qin {
 		w = qout.W*q.W - qout.X*q.X - qout.Y*q.Y - qout.Z*q.Z
 		x = qout.W*q.X + qout.X*q.W + qout.Y*q.Z - qout.Z*q.Y
@@ -85,7 +85,7 @@ func ProdQuaternion(qin ...Quaternion) Quaternion {
 }
 
 func (q Quaternion) Unit() Quaternion {
-	mag := math.Sqrt(float64(q.W*q.W + q.X*q.X + q.Y*q.Y + q.Z*q.Z))
+	mag := float32(math.Sqrt(float64(q.W*q.W + q.X*q.X + q.Y*q.Y + q.Z*q.Z)))
 	if mag == 0 {
 		return Quaternion{W: 1} // identity, avoid divide by zero
 	}
@@ -114,23 +114,23 @@ func (qin Quaternion) Rotate(vec Vec3) Vec3 {
 	return Add(Add(term2, term1), term3)
 }
 
-func (q Quaternion) Euler() (float64, float64, float64) {
+func (q Quaternion) Euler() (float32, float32, float32) {
 	r := q.Unit()
-	phi := math.Atan2(2*(r.W*r.X+r.Y*r.Z), 1-2*(r.X*r.X+r.Y*r.Y))
-	theta := math.Asin(2 * (r.W*r.Y - r.Z*r.X))
-	psi := math.Atan2(2*(r.X*r.Y+r.W*r.Z), 1-2*(r.Y*r.Y+r.Z*r.Z))
-	return phi, theta, psi
+	phi := math.Atan2(float64(2*(r.W*r.X+r.Y*r.Z)), float64(1-2*(r.X*r.X+r.Y*r.Y)))
+	theta := math.Asin(float64(2 * (r.W*r.Y - r.Z*r.X)))
+	psi := math.Atan2(float64(2*(r.X*r.Y+r.W*r.Z)), float64(1-2*(r.Y*r.Y+r.Z*r.Z)))
+	return float32(phi), float32(theta), float32(psi)
 }
 
-func FromEuler(phi, theta, psi float64) Quaternion {
-	cp, sp := math.Cos(phi/2), math.Sin(phi/2)
-	ct, st := math.Cos(theta/2), math.Sin(theta/2)
-	cs, ss := math.Cos(psi/2), math.Sin(psi/2)
+func FromEuler(phi, theta, psi float32) Quaternion {
+	cp, sp := math.Cos(float64(phi/2)), math.Sin(float64(phi/2))
+	ct, st := math.Cos(float64(theta/2)), math.Sin(float64(theta/2))
+	cs, ss := math.Cos(float64(psi/2)), math.Sin(float64(psi/2))
 	return Quaternion{
-		W: cp*ct*cs + sp*st*ss,
-		X: sp*ct*cs - cp*st*ss,
-		Y: cp*st*cs + sp*ct*ss,
-		Z: cp*ct*ss - sp*st*cs,
+		W: float32(cp*ct*cs + sp*st*ss),
+		X: float32(sp*ct*cs - cp*st*ss),
+		Y: float32(cp*st*cs + sp*ct*ss),
+		Z: float32(cp*ct*ss - sp*st*cs),
 	}
 }
 
@@ -156,10 +156,10 @@ func (qin Quaternion) ToMat4() Mat4 {
 	}
 }
 
-func Slerp(a, b Quaternion, t float64) Quaternion {
+func Slerp(a, b Quaternion, t float32) Quaternion {
 	dot := a.W*b.W + a.X*b.X + a.Y*b.Y + a.Z*b.Z
 	const threshold = 0.9995
-	if math.Abs(dot) > threshold {
+	if math.Abs(float64(dot)) > threshold {
 		q := Quaternion{
 			X: a.X*(1-t) + b.X*t,
 			Y: a.Y*(1-t) + b.Y*t,
@@ -168,11 +168,11 @@ func Slerp(a, b Quaternion, t float64) Quaternion {
 		}
 		return q.Unit()
 	}
-	d := math.Acos(dot)
+	d := math.Acos(float64(dot))
 	sinD := math.Sin(d)
 	ooSinD := 1 / sinD
-	t1 := math.Sin(d*(1-t)) * ooSinD
-	t2 := math.Sin(d*t) * ooSinD
+	t1 := float32(math.Sin(float64(float32(d)*(1-t))) * ooSinD)
+	t2 := float32(math.Sin(d*float64(t)) * ooSinD)
 
 	return Quaternion{
 		X: a.X*t1 + b.X*t2,
