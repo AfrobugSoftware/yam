@@ -308,4 +308,53 @@ void main() {
 
 }
 `
+
+	boundingBoxVert = `
+#version 430
+const vec3 positions[4] = vec3[4](
+	vec3(-1.0, -1.0, -1.0),
+	vec3(-1.0, 1.0, -1.0),
+	vec3(1.0, -1.0,  -1.0),
+	vec3(1.0, -1.0,  -1.0),
+	vec3(1.0, -1.0,  1.0),
+	vec3(1.0, 1.0,  1.0),
+	vec3(-1.0, -1.0,  1.0),
+	vec3(-1.0, 1.0, 1.0));
+	
+const int indices[36] = int[36](0, 1, 2,
+		2, 1, 3,
+		2, 3, 4,
+		4, 3, 5,
+		4, 5, 6,
+		6, 5, 7,
+		6, 7, 0,
+		0, 7, 1,
+		6, 0, 2,
+		2, 4, 6,
+		7, 5, 3,
+		7, 3, 1);
+
+layout(std140, binding = 4) uniform vp {
+	mat4 view_proj;
+};
+
+layout(std430, binding = 0) buffer matrix_ssbo {
+    mat4 world[];
+};
+
+void main() {
+	vec3 position = positions[indices[gl_VertexID]];
+	gl_Position = view_proj * world[gl_InstanceID] * vec4(position, 1.0);
+}
+
+`
+
+	boundingBoxFrag = `
+layout(location = 0) out vec4 out_color;
+layout(location = 1) uniform vec4 box_color;
+
+void main() {
+	out_color = box_color;
+}
+`
 )

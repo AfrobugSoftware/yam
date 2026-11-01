@@ -46,11 +46,12 @@ const (
 )
 
 const (
-	MAX_LIGHTS       = 127
-	MAX_VERTICES     = 100000
-	MAX_INSTANCES    = 100000
-	MAX_DRAW_COMMAND = 10000
-	MAX_JOINTS       = 10000
+	MAX_LIGHTS                    = 127
+	MAX_VERTICES                  = 100000
+	MAX_INSTANCES                 = 100000
+	MAX_DRAW_COMMAND              = 10000
+	MAX_JOINTS                    = 10000
+	MAX_BOUDNINGBOX_RENDER_MATRIX = 1000
 )
 
 // SHADOW RESOLUTION
@@ -119,6 +120,7 @@ type RenderManager struct {
 	renderParamsSSBO uint32
 	gridVao          uint32
 	gridProgram      uint32
+	boindingboxssbo  uint32
 	RenderParams     RenderParameters
 	lightSphere      int
 	numLight         int
@@ -270,6 +272,10 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 		Z: -1.0}, y3d.Vec3{}, y3d.UNIT_Y)
 	rm.AddLight(l)
 	rm.SetupGrid()
+
+	gl.CreateBuffers(1, &ssbo)
+	gl.NamedBufferStorage(ssbo, int(unsafe.Sizeof(y3d.Mat4{}))*MAX_BOUDNINGBOX_RENDER_MATRIX, nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
+	rm.boindingboxssbo = ssbo
 	return rm
 }
 
@@ -784,6 +790,28 @@ func (r *RenderManager) Resize() {
 	if r.RootUI != nil {
 		r.RootUI.BaseSize = y3d.Vec2{X: float32(fbW), Y: float32(fbH)}
 	}
+}
+
+func (r *RenderManager) RenderBoundingBoxes() {
+	if r.World == nil {
+		return
+	}
+	entities := r.World.Query(BoundingBoxComponent)
+	for i, e := range entities {
+		box := r.World.GetComponent(e, BoundingBoxComponent).(Box)
+		matrix := box.RenderBoxMatrix()
+		matrixBytes := unsafe.Slice((*byte)(unsafe.Pointer(&matrix)), 64)
+		gl.NamedBufferSubData(r.boindingboxssbo, i*64, 64, gl.Ptr(matrixBytes))
+	}
+
+	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, 0, r.boindingboxssbo)
+
+	c := [4]float32{1.0, 0.0, 0.0, 1.0}
+	gl.Uniform4fv(0, 1, &c[0])
+
+	//SET UP RENDER STATE
+	gl.DrawArraysInstanced(gl.TRIANGLES, 0, 36, int32(len(entities)))
+
 }
 
 func (r *RenderManager) RenderEntities(cull bool) {
