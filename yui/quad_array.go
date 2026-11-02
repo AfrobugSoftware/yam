@@ -16,8 +16,6 @@ const (
 
 var (
 	vertShader = `#version 430 core
-
-#define MAX_QUADS 10000
 const vec2 positions[6] = vec2[6](
 	    vec2(0.0, 0.0),
 		vec2(0.0, 1.0),
@@ -26,14 +24,17 @@ const vec2 positions[6] = vec2[6](
 		vec2(1.0, 1.0),
 		vec2(1.0, 0.0));
 
+struct quad_info {
+	vec4 pos_width_height;
+	vec4 texcoord_width_height;
+	vec4 color;
+	float radius;
+	uint flag;
+	uint tex;
+};
 
 layout (std430, binding = 15) buffer QuadInfo {
-    vec4  BasePosWidthHeight[MAX_QUADS];
-    vec4  TexCoordsWidthHeight[MAX_QUADS];
-    vec4  Color[MAX_QUADS];
-	float Radius[MAX_QUADS];
-	uint  Flag[MAX_QUADS];
-	uint  Tex[MAX_QUADS];
+   quad_info info[];
 };
 
 out Frag {
@@ -49,23 +50,22 @@ out Frag {
 layout(location = 1) uniform mat4 proj;
 
 void main() {
-    vec3 basePos = vec3(BasePosWidthHeight[gl_InstanceID].xy, 0.5);
-    vec2 widthHeight = positions[gl_VertexID] * BasePosWidthHeight[gl_InstanceID].zw;
+    vec3 basePos = vec3(info[gl_InstanceID].pos_width_height.xy, 0.5);
+    vec2 widthHeight = positions[gl_VertexID] * info[gl_InstanceID].pos_width_height.zw;
     vec3 newPosition = basePos +  vec3(widthHeight, 0.0);
     gl_Position = proj * vec4(newPosition, 1.0);
 
-    vec2 baseTexCoords = TexCoordsWidthHeight[gl_InstanceID].xy;
-    vec2 texWidthHeight = positions[gl_VertexID] * TexCoordsWidthHeight[gl_InstanceID].zw;
+    vec2 baseTexCoords = info[gl_InstanceID].texcoord.width_height.xy;
+    vec2 texWidthHeight = positions[gl_VertexID] * info[gl_InstanceID].texcoord.width_height.zw;
     vec2 aTexCoord = baseTexCoords + texWidthHeight;
     
     vs_out.TexCoords = vec2(aTexCoord.x, aTexCoord.y);
-    vs_out.Color = Color[gl_InstanceID];
-	vs_out.Flag = Flag[gl_InstanceID];
-	vs_out.Idx = Color[gl_InstanceID].a;
-	vs_out.Radius = Radius[gl_InstanceID];
+    vs_out.Color = info[gl_InstanceID].color;
+	vs_out.Flag = info[gl_InstanceID].flag;
+	vs_out.Idx = info[gl_InstanceID].color.a;
+	vs_out.Radius = info[gl_InstanceID].radius;
 	vs_out.Pos = positions[gl_VertexID];
-	vs_out.Extents = BasePosWidthHeight[gl_InstanceID].zw;
-
+	vs_out.Extents = info[gl_InstanceID].pos_width_height.zw;
 }`
 	fragShader = `#version 430 core 
 
@@ -125,10 +125,20 @@ void main () {
 `
 )
 
+type QuadInfo struct {
+	PosWidthHeight      y3d.Vec4
+	TexCoordWidthHeight y3d.Vec4
+	Color               y3d.Vec4
+	Radius              float32
+	Flag                uint32
+	Tex                 uint32
+}
+
 type QuadArray struct {
 	vbo                        uint32
 	ssbo                       uint32
 	blockSize                  int32
+	maxQuads                   int32
 	basePosWidthHeightOffset   int32
 	texCoordsWidthHeightOffset int32
 	colorOffset                int32
