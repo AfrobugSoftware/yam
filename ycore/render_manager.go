@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"reflect"
 	"strings"
 	"unsafe"
 	"yam/y3d"
@@ -75,59 +76,64 @@ type Renderable struct {
 }
 
 type RenderManager struct {
-	Context        sdl.GLContext
-	Window         *sdl.Window
-	ClearColor     y3d.Vec4
-	PixelDepth     uint8
-	PixelPerInch   float32
-	DoubleBuffer   bool
-	MinorVersion   int
-	MajorVersion   int
-	ViewPort       [4]y3d.Rect
-	View2D         y3d.Mat4
-	Proj2D         y3d.Mat4
-	View3D         [4]y3d.Mat4
-	ProjP          [4]y3d.Mat4
-	ProjO          [4]y3d.Mat4
-	ViewProj       y3d.Mat4
-	Near           float32
-	Far            float32
-	Width          int
-	Height         int
-	Fov            [4]float32
-	AspectRatio    [4]float32
-	Stage          int
-	Mode           int
-	SkinManager    *SkinManager
-	VertextManager *VertexCacheManager
-	ShaderManager  *ShaderManager
-	InputManager   *InputManager
+	Context           sdl.GLContext
+	Window            *sdl.Window
+	ClearColor        y3d.Vec4
+	PixelDepth        uint8
+	PixelPerInch      float32
+	DoubleBuffer      bool
+	MinorVersion      int
+	MajorVersion      int
+	ViewPort          [4]y3d.Rect
+	View2D            y3d.Mat4
+	Proj2D            y3d.Mat4
+	View3D            [4]y3d.Mat4
+	ProjP             [4]y3d.Mat4
+	ProjO             [4]y3d.Mat4
+	ViewProj          y3d.Mat4
+	Near              float32
+	Far               float32
+	Width             int
+	Height            int
+	Fov               [4]float32
+	AspectRatio       [4]float32
+	Stage             int
+	Mode              int
+	SkinManager       *SkinManager
+	VertextManager    *VertexCacheManager
+	ShaderManager     *ShaderManager
+	InputManager      *InputManager
+	DrawBoundingBoxes bool
+	DrawBoundingTree  bool
+	BoundingTree      *Octree
 
-	World            *World
-	DrawMode         uint32
-	ActiveProgram    uint32
-	screenVao        uint32
-	screenVbo        uint32
-	screenEbo        uint32
-	gBuffer          uint32
-	gNormal          uint32
-	gPosition        uint32
-	gAlbedoSpec      uint32
-	gDepth           uint32
-	shadowMap        uint32
-	shadowbuffer     uint32
-	shadowProgram    uint32
-	renderParamsSSBO uint32
-	gridVao          uint32
-	gridProgram      uint32
-	boindingboxssbo  uint32
-	RenderParams     RenderParameters
-	lightSphere      int
-	numLight         int
-	viewubo          uint32
-	FpCamera         *FPCamera
-	FollowCamera     *FollowCamera
-	RootUI           *yui.UIElement
+	World              *World
+	DrawMode           uint32
+	ActiveProgram      uint32
+	screenVao          uint32
+	screenVbo          uint32
+	screenEbo          uint32
+	gBuffer            uint32
+	gNormal            uint32
+	gPosition          uint32
+	gAlbedoSpec        uint32
+	gDepth             uint32
+	shadowMap          uint32
+	shadowbuffer       uint32
+	shadowProgram      uint32
+	renderParamsSSBO   uint32
+	gridVao            uint32
+	gridProgram        uint32
+	boundingboxssbo    uint32
+	boundingboxssbocap int
+	boundingboxprogram uint32
+	RenderParams       RenderParameters
+	lightSphere        int
+	numLight           int
+	viewubo            uint32
+	FpCamera           *FPCamera
+	FollowCamera       *FollowCamera
+	RootUI             *yui.UIElement
 }
 
 func CheckError() error {
@@ -274,8 +280,9 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 	rm.SetupGrid()
 
 	gl.CreateBuffers(1, &ssbo)
-	gl.NamedBufferStorage(ssbo, int(unsafe.Sizeof(y3d.Mat4{}))*MAX_BOUDNINGBOX_RENDER_MATRIX, nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
-	rm.boindingboxssbo = ssbo
+	rm.boundingboxssbocap = int(unsafe.Sizeof(y3d.Mat4{})) * MAX_BOUDNINGBOX_RENDER_MATRIX
+	gl.NamedBufferStorage(ssbo, rm.boundingboxssbocap, nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
+	rm.boundingboxssbo = ssbo
 	return rm
 }
 
@@ -672,6 +679,12 @@ func (r *RenderManager) CreateDefaultShader() {
 		panic(err)
 	}
 	r.gridProgram = g
+	f, err := r.ShaderManager.Add("bounding-box", []string{boundingBoxVert, boundingBoxFrag},
+		[]uint32{gl.VERTEX_SHADER, gl.FRAGMENT_SHADER})
+	if err != nil {
+		panic(err)
+	}
+	r.boundingboxprogram = f
 }
 
 func (r *RenderManager) Draw() {
@@ -698,6 +711,7 @@ func (r *RenderManager) Draw() {
 	gl.UseProgram(r.ActiveProgram)
 	gl.BindTextureUnit(0, r.shadowMap)
 	r.Render()
+
 	r.Window.GLSwap()
 }
 
@@ -715,7 +729,12 @@ func (r *RenderManager) Render() {
 	if err != nil {
 		log.Println(err)
 	}
-
+	if r.DrawBoundingBoxes {
+		r.RenderBoundingBoxes()
+	}
+	if r.DrawBoundingTree {
+		r.RenderBoundingTree()
+	}
 	if r.RootUI != nil {
 		yui.Layout(r.RootUI)
 		p := r.Proj2D.Mul(r.View2D)
@@ -797,21 +816,76 @@ func (r *RenderManager) RenderBoundingBoxes() {
 		return
 	}
 	entities := r.World.Query(BoundingBoxComponent)
+	var total int
 	for i, e := range entities {
 		box := r.World.GetComponent(e, BoundingBoxComponent).(Box)
 		matrix := box.RenderBoxMatrix()
 		matrixBytes := unsafe.Slice((*byte)(unsafe.Pointer(&matrix)), 64)
-		gl.NamedBufferSubData(r.boindingboxssbo, i*64, 64, gl.Ptr(matrixBytes))
+		if total+len(matrixBytes) >= r.boundingboxssbocap {
+			blockSize := r.boundingboxssbocap * 2
+			var s uint32
+			gl.CreateBuffers(1, &s)
+			gl.NamedBufferStorage(s, int(blockSize), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
+			gl.NamedCopyBufferSubDataEXT(r.boundingboxssbo, s, 0, 0, int(blockSize))
+			gl.DeleteBuffers(1, &r.boundingboxssbo)
+			r.boundingboxssbo = s
+			r.boundingboxssbocap = blockSize
+			err := CheckError()
+			if err != nil {
+				panic(err)
+			}
+		}
+		gl.NamedBufferSubData(r.boundingboxssbo, i*64, 64, gl.Ptr(matrixBytes))
+		total += len(matrixBytes)
 	}
 
-	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, 0, r.boindingboxssbo)
+	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, 0, r.boundingboxssbo)
 
 	c := [4]float32{1.0, 0.0, 0.0, 1.0}
-	gl.Uniform4fv(0, 1, &c[0])
 
 	//SET UP RENDER STATE
+	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
+	gl.UseProgram(r.boundingboxprogram)
+	gl.Uniform4fv(0, 1, &c[0])
 	gl.DrawArraysInstanced(gl.TRIANGLES, 0, 36, int32(len(entities)))
+	gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
+}
+func (r *RenderManager) RenderBoundingTree() {
+	if r.World == nil {
+		return
+	}
+	matrix := make([]y3d.Mat4, 0, 1000)
+	r.BoundingTree.Traverse(&matrix)
+	if len(matrix) == 0 {
+		return //no bounds to draw
+	}
+	matrixBytes := unsafe.Slice((*byte)(unsafe.Pointer(reflect.ValueOf(matrix).Index(0).UnsafeAddr())),
+		int(unsafe.Sizeof(y3d.Mat4{}))*len(matrix))
+	if len(matrixBytes) >= r.boundingboxssbocap {
+		blockSize := r.boundingboxssbocap * 2
+		var s uint32
+		gl.CreateBuffers(1, &s)
+		gl.NamedBufferStorage(s, int(blockSize), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
+		gl.NamedCopyBufferSubDataEXT(r.boundingboxssbo, s, 0, 0, int(blockSize))
+		gl.DeleteBuffers(1, &r.boundingboxssbo)
+		r.boundingboxssbo = s
+		r.boundingboxssbocap = blockSize
+		err := CheckError()
+		if err != nil {
+			panic(err)
+		}
+	}
+	gl.NamedBufferSubData(r.boundingboxssbo, 0, len(matrixBytes), gl.Ptr(matrixBytes))
+	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, 0, r.boundingboxssbo)
 
+	c := [4]float32{0.0, 1.0, 0.0, 1.0}
+
+	//SET UP RENDER STATE
+	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
+	gl.UseProgram(r.boundingboxprogram)
+	gl.Uniform4fv(0, 1, &c[0])
+	gl.DrawArraysInstanced(gl.TRIANGLES, 0, 36, int32(len(matrix)))
+	gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
 }
 
 func (r *RenderManager) RenderEntities(cull bool) {
@@ -835,13 +909,18 @@ func (r *RenderManager) RenderEntities(cull bool) {
 			continue //no cache for this entity
 		}
 		transform := r.World.GetComponent(e, TransformComponent).(Transform)
-		if r.World.HasComponent(e, MatInstanceComponent, RenderParamsInstanceComponent) {
-			imat := r.World.GetComponent(e, MatInstanceComponent).([]y3d.Mat4)
-			ip := r.World.GetComponent(e, RenderParamsInstanceComponent).([]PerObjectRenderState)
-			renderable.DrawCmd.InstanceCount = uint32(len(imat))
+		if r.World.HasComponent(e, InstanceComponent) {
+			instances := r.World.GetComponent(e, InstanceComponent).([]EntityId)
+			renderable.DrawCmd.InstanceCount = uint32(len(instances))
 			v.AddInstances(&renderable.DrawCmd)
-			v.AddRenderState(int(renderable.DrawCmd.BaseInstance), ip...)
-			v.AddMatrix(int(renderable.DrawCmd.BaseInstance), imat...)
+			mats := make([]y3d.Mat4, len(instances))
+			rs := make([]PerObjectRenderState, len(instances))
+			for i, ie := range instances {
+				mats[i] = r.World.GetComponent(ie, TransformComponent).(Transform).World
+				rs[i] = renderable.RenderParams
+			}
+			v.AddRenderState(int(renderable.DrawCmd.BaseInstance), rs...)
+			v.AddMatrix(int(renderable.DrawCmd.BaseInstance), mats...)
 		} else {
 			v.AddInstances(&renderable.DrawCmd)
 			v.AddMatrix(int(renderable.DrawCmd.BaseInstance), transform.World) //this needs to be world

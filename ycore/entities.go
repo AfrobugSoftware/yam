@@ -21,6 +21,7 @@ const (
 	HierarchyComponent
 	FlagComponent
 	AnimationComponent
+	InstanceComponent
 )
 
 func AddEntityRenderableData(
@@ -57,11 +58,27 @@ func AddEntityMoveData(
 	ent EntityId,
 	pos y3d.Vec3,
 	orientation y3d.Quaternion,
-) {
+) *ycontroller.MovementController {
 	move := ycontroller.NewMovementController(pos, orientation)
-	transform := *NewTransform()
-	world.AddComponent(ent, TransformComponent, transform)
+	world.AddComponent(ent, TransformComponent, NewTransform())
 	world.AddComponent(ent, MoveControllerComponent, move)
+	return move
+}
+
+func AddEntityAsInstance(w *World, holder EntityId, instance EntityId) {
+	if !w.HasComponent(holder, InstanceComponent) {
+		instances := make([]EntityId, 0)
+		instances = append(instances, instance)
+		box := w.GetComponent(holder, BoundingBoxComponent).(Box)
+		w.AddComponent(instance, BoundingBoxComponent, box)
+		w.AddComponent(holder, InstanceComponent, instances)
+		return
+	}
+	instances := w.GetComponent(holder, InstanceComponent).([]EntityId)
+	instances = append(instances, instance)
+	box := w.GetComponent(holder, BoundingBoxComponent).(Box)
+	w.AddComponent(instance, BoundingBoxComponent, box)
+	w.SetComponent(holder, InstanceComponent, instances)
 }
 
 func AddEntityTransformData(
@@ -76,18 +93,4 @@ func AddEntityInputData(
 	ent EntityId,
 	input InputFunc) {
 	world.AddComponent(ent, InputComponent, input)
-}
-
-// make the instance an entity, so entites can be instances
-func AddEntityMatInstnaces(world *World, e EntityId, mats ...y3d.Mat4) {
-	imat := make([]y3d.Mat4, 0, len(mats))
-	imat = append(imat, mats...)
-
-	world.AddComponent(e, MatInstanceComponent, imat)
-}
-
-func AddEnityRenderParamsInstance(world *World, e EntityId, p ...PerObjectRenderState) {
-	ip := make([]PerObjectRenderState, 0, len(p))
-	ip = append(ip, p...)
-	world.AddComponent(e, RenderParamsInstanceComponent, ip)
 }

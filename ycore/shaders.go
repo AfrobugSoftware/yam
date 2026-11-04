@@ -311,11 +311,11 @@ void main() {
 
 	boundingBoxVert = `
 #version 430
-const vec3 positions[4] = vec3[4](
+const vec3 positions[8] = vec3[8](
 	vec3(-1.0, -1.0, -1.0),
 	vec3(-1.0, 1.0, -1.0),
 	vec3(1.0, -1.0,  -1.0),
-	vec3(1.0, -1.0,  -1.0),
+	vec3(1.0, 1.0,  -1.0),
 	vec3(1.0, -1.0,  1.0),
 	vec3(1.0, 1.0,  1.0),
 	vec3(-1.0, -1.0,  1.0),
@@ -350,8 +350,9 @@ void main() {
 `
 
 	boundingBoxFrag = `
+#version 430
 layout(location = 0) out vec4 out_color;
-layout(location = 1) uniform vec4 box_color;
+layout(location = 0) uniform vec4 box_color;
 
 void main() {
 	out_color = box_color;

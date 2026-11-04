@@ -16,8 +16,8 @@ type Transform struct {
 	World y3d.Mat4
 }
 
-func NewTransform() *Transform {
-	return &Transform{
+func NewTransform() Transform {
+	return Transform{
 		Local: y3d.Identity,
 		World: y3d.Identity,
 	}

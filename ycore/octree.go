@@ -308,3 +308,21 @@ func (o *Octree) GetFloor(origin y3d.Vec3, from EntityId) (bool, y3d.Vec3) {
 	}
 	return bhit, hit
 }
+
+func (o *Octree) Traverse(mat *[]y3d.Mat4) {
+	if o.IsLeaf() {
+		c := o.BoundingBox.GetCenter()
+		s := o.BoundingBox.GetHalfSize()
+		m := y3d.Mat4{
+			s.X, 0, 0, 0,
+			0, s.Y, 0, 0,
+			0, 0, s.Z, 0,
+			c.X, c.Y, c.Z, 1.0,
+		}
+		*mat = append(*mat, m)
+	} else {
+		for _, ch := range o.Children {
+			ch.Traverse(mat)
+		}
+	}
+}

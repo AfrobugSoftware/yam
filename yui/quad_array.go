@@ -2,7 +2,6 @@ package yui
 
 import (
 	"errors"
-	"fmt"
 	"unsafe"
 	"yam/y3d"
 
@@ -10,7 +9,6 @@ import (
 )
 
 const (
-	MAX_QUADS      = 10000
 	BUFFER_BINDING = 15
 )
 
@@ -55,8 +53,8 @@ void main() {
     vec3 newPosition = basePos +  vec3(widthHeight, 0.0);
     gl_Position = proj * vec4(newPosition, 1.0);
 
-    vec2 baseTexCoords = info[gl_InstanceID].texcoord.width_height.xy;
-    vec2 texWidthHeight = positions[gl_VertexID] * info[gl_InstanceID].texcoord.width_height.zw;
+    vec2 baseTexCoords = info[gl_InstanceID].texcoord_width_height.xy;
+    vec2 texWidthHeight = positions[gl_VertexID] * info[gl_InstanceID].texcoord_width_height.zw;
     vec2 aTexCoord = baseTexCoords + texWidthHeight;
     
     vs_out.TexCoords = vec2(aTexCoord.x, aTexCoord.y);
@@ -132,20 +130,14 @@ type QuadInfo struct {
 	Radius              float32
 	Flag                uint32
 	Tex                 uint32
+	padding             uint32
 }
 
 type QuadArray struct {
-	vbo                        uint32
-	ssbo                       uint32
-	blockSize                  int32
-	maxQuads                   int32
-	basePosWidthHeightOffset   int32
-	texCoordsWidthHeightOffset int32
-	colorOffset                int32
-	flagOffset                 int32
-	radiusOffset               int32
-	texOffset                  int32
-	blockPtr                   unsafe.Pointer
+	vbo       uint32
+	ssbo      uint32
+	blockSize int32
+	blockPtr  unsafe.Pointer
 }
 
 func CreateQuadArray(shader uint32) *QuadArray {
@@ -155,24 +147,18 @@ func CreateQuadArray(shader uint32) *QuadArray {
 	q := &QuadArray{
 		vbo: vbo,
 	}
-	q.basePosWidthHeightOffset = 0
-	q.texCoordsWidthHeightOffset = int32(unsafe.Sizeof(y3d.Vec4{})) * MAX_QUADS
-	q.colorOffset = (int32(unsafe.Sizeof(y3d.Vec4{})) * MAX_QUADS) * 2
-	q.radiusOffset = (int32(unsafe.Sizeof(y3d.Vec4{})) * MAX_QUADS) * 3
-	q.flagOffset = (int32(unsafe.Sizeof(y3d.Vec4{})*MAX_QUADS))*3 + (int32(unsafe.Sizeof(float32(0))) * MAX_QUADS)
-	q.texOffset = (int32(unsafe.Sizeof(y3d.Vec4{})*MAX_QUADS))*3 + (int32(unsafe.Sizeof(float32(0))) * MAX_QUADS) + int32(unsafe.Sizeof(uint32(0))*MAX_QUADS)
-	q.blockSize = (int32(unsafe.Sizeof(y3d.Vec4{})*MAX_QUADS))*3 +
-		(int32(unsafe.Sizeof(uint32(0))*3) * MAX_QUADS)
+	q.blockSize = 1000 * int32(unsafe.Sizeof(QuadInfo{}))
 	gl.CreateBuffers(1, &q.ssbo)
 	gl.NamedBufferStorage(q.ssbo, int(q.blockSize), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
 	return q
 }
 
 func (q *QuadArray) Draw(numQuads int, font *Font) {
+	count := q.blockSize / int32(unsafe.Sizeof(QuadInfo{}))
 	if numQuads <= 0 {
 		return
-	} else if numQuads >= MAX_QUADS {
-		numQuads = MAX_QUADS - 1
+	} else if numQuads >= int(count) {
+		numQuads = int(count) - 1
 	}
 	if font != nil {
 		gl.BindTextureUnit(1, font.TextureID)
@@ -218,63 +204,47 @@ func (q *QuadArray) SetQuad(idx int, x, y,
 	width, height,
 	UBase, VBase,
 	texUSize, texVSize, r, g, b, a, radius float32, flag, tex uint32) {
-	if idx >= MAX_QUADS {
-		return
+	count := q.blockSize / int32(unsafe.Sizeof(QuadInfo{}))
+	if idx >= int(count) {
+		q.CloseArray()
+		blockSize := q.blockSize * 2
+		var s uint32
+		gl.CreateBuffers(1, &s)
+		gl.NamedBufferStorage(s, int(blockSize), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
+		gl.NamedCopyBufferSubDataEXT(q.ssbo, s, 0, 0, int(blockSize))
+		gl.DeleteBuffers(1, &q.ssbo)
+		q.ssbo = s
+		q.blockSize = blockSize
+		count = q.blockSize / int32(unsafe.Sizeof(QuadInfo{}))
+		q.OpenArray()
 	}
 	if q.blockPtr == nil {
 		return
 	}
 
-	block := unsafe.Slice((*byte)(q.blockPtr), q.blockSize)
-	basePos := ViewAsVec4(block, int(q.basePosWidthHeightOffset), MAX_QUADS)
-	texCoords := ViewAsVec4(block, int(q.texCoordsWidthHeightOffset), MAX_QUADS)
-	color := ViewAsVec4(block, int(q.colorOffset), MAX_QUADS)
-	rad := ViewAsFloat32(block, int(q.radiusOffset), MAX_QUADS)
-	flagb := ViewAsUint32(block, int(q.flagOffset), MAX_QUADS)
-	texb := ViewAsUint32(block, int(q.texOffset), MAX_QUADS)
-
-	basePos[idx][0] = x
-	basePos[idx][1] = y
-	basePos[idx][2] = width
-	basePos[idx][3] = height
-	texCoords[idx][0] = UBase
-	texCoords[idx][1] = VBase
-	texCoords[idx][2] = texUSize
-	texCoords[idx][3] = texVSize
-	color[idx][0] = r
-	color[idx][1] = g
-	color[idx][2] = b
-	color[idx][3] = a
-	rad[idx] = radius
-	flagb[idx] = flag
-	texb[idx] = tex
-}
-
-func ViewAsVec4(buf []byte, byteOffset, count int) [][4]float32 {
-	const pairSize = int(unsafe.Sizeof([4]float32{}))
-	required := byteOffset + count*pairSize
-	if required > len(buf) {
-		panic(fmt.Errorf("ViewAsFloat32Pairs: slice out of bounds, req: %d, len : %d\n", required, len(buf)))
+	quadinfo := QuadInfo{
+		PosWidthHeight: y3d.Vec4{
+			X: x,
+			Y: y,
+			Z: width,
+			W: height,
+		},
+		TexCoordWidthHeight: y3d.Vec4{
+			X: UBase,
+			Y: VBase,
+			Z: texUSize,
+			W: texVSize,
+		},
+		Color: y3d.Vec4{
+			X: r,
+			Y: g,
+			Z: b,
+			W: a,
+		},
+		Radius: radius,
+		Flag:   flag,
+		Tex:    tex,
 	}
-	ptr := unsafe.Pointer(&buf[byteOffset])
-	return unsafe.Slice((*[4]float32)(ptr), count)
-}
-func ViewAsUint32(buf []byte, byteOffset, count int) []uint32 {
-	const pairSize = int(unsafe.Sizeof(uint32(0)))
-	required := byteOffset + count*pairSize
-	if required > len(buf) {
-		panic(fmt.Errorf("ViewAsFloat32Pairs: slice out of bounds, req: %d, len : %d\n", required, len(buf)))
-	}
-	ptr := unsafe.Pointer(&buf[byteOffset])
-	return unsafe.Slice((*uint32)(ptr), count)
-}
-
-func ViewAsFloat32(buf []byte, byteOffset, count int) []float32 {
-	const pairSize = int(unsafe.Sizeof(float32(0)))
-	required := byteOffset + count*pairSize
-	if required > len(buf) {
-		panic(fmt.Errorf("ViewAsFloat32Pairs: slice out of bounds, req: %d, len : %d\n", required, len(buf)))
-	}
-	ptr := unsafe.Pointer(&buf[byteOffset])
-	return unsafe.Slice((*float32)(ptr), count)
+	block := unsafe.Slice((*QuadInfo)(q.blockPtr), count)
+	block[idx] = quadinfo
 }

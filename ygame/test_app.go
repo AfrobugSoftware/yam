@@ -40,7 +40,7 @@ func (t *TestApplication) Startup(e *Engine) {
 	if err != nil {
 		panic(err)
 	}
-
+	t.engine.RenderManager.DrawBoundingBoxes = true
 	t.camPostiion.Y = 1
 	t.yaw = float32(y3d.ToRadians(90))
 	t.camFront = y3d.Normalize(y3d.Vec3{
@@ -48,9 +48,9 @@ func (t *TestApplication) Startup(e *Engine) {
 		Y: float32(math.Sin(float64(t.pitch))),
 		Z: float32(math.Sin(float64(t.yaw)) * math.Cos(float64(t.pitch))),
 	})
-	//t.TestUI()    // test ui
-	t.LevelTest() //level test
+	//t.TestUI() // test ui
 	t.TestAbsolutePositioning()
+	t.LevelTest() //level test
 }
 func (t *TestApplication) TestAbsolutePositioning() {
 	root := &yui.UIElement{
@@ -151,28 +151,13 @@ func (t *TestApplication) LevelTest() {
 	ent3 := t.engine.Level.World.NewEntity()
 	ent4 := t.engine.Level.World.NewEntity()
 	skin := t.engine.RenderManager.SkinManager.AddSkin(ycore.IdentityMaterial)
-
-	ycore.AddEntityMoveData(t.engine.Level.World, ent, y3d.Vec3{Z: -20, Y: 5}, y3d.IdenQuat())
+	w := t.engine.Level.World
+	m := ycore.AddEntityMoveData(t.engine.Level.World, ent, y3d.Vec3{Z: -20, Y: 5}, y3d.IdenQuat())
+	m.Thrust = 0
 	ycore.AddEntityMoveData(t.engine.Level.World, ent2, y3d.Vec3{Z: -50, Y: 5.0}, y3d.IdenQuat())
 	ycore.AddEntityMoveData(t.engine.Level.World, ent3, y3d.Vec3{Z: 100, Y: 5.0}, y3d.IdenQuat())
 	ycore.AddEntityMoveData(t.engine.Level.World, ent4, y3d.Vec3{X: 5, Z: 10, Y: 5.0}, y3d.IdenQuat())
-	ycore.AddEntityMatInstnaces(t.engine.Level.World, ent3,
-		y3d.Translation(y3d.Vec3{X: 5, Z: 0, Y: 2.0}),
-		y3d.Translation(y3d.Vec3{X: 10, Z: 0, Y: 2.0}),
-		y3d.Translation(y3d.Vec3{X: -5, Z: 0, Y: 2.0}),
-	)
-	ycore.AddEnityRenderParamsInstance(t.engine.Level.World,
-		ent3,
-		ycore.PerObjectRenderState{
-			Alpha: 1.0,
-		},
-		ycore.PerObjectRenderState{
-			Alpha: 1.0,
-		},
-		ycore.PerObjectRenderState{
-			Alpha: 1.0,
-		},
-	)
+
 	tranform := t.engine.Level.World.GetComponent(ent3, ycore.TransformComponent).(ycore.Transform)
 	tranform.Local = tranform.Local.Mul(y3d.Scale(y3d.Vec3{X: 35, Y: 35, Z: 35}))
 	t.engine.Level.World.SetComponent(ent3, ycore.TransformComponent, tranform)
@@ -201,6 +186,16 @@ func (t *TestApplication) LevelTest() {
 		panic(err)
 	}
 
+	ie1 := w.NewEntity()
+	ie2 := w.NewEntity()
+	ie3 := w.NewEntity()
+	ycore.AddEntityMoveData(w, ie1, y3d.Vec3{X: 5, Z: 0, Y: 2.0}, y3d.IdenQuat())
+	ycore.AddEntityMoveData(w, ie2, y3d.Vec3{X: 10, Z: 0, Y: 2.0}, y3d.IdenQuat())
+	ycore.AddEntityMoveData(w, ie3, y3d.Vec3{X: -5, Z: 0, Y: 2.0}, y3d.IdenQuat())
+
+	ycore.AddEntityAsInstance(w, ent3, ie1)
+	ycore.AddEntityAsInstance(w, ent3, ie2)
+	ycore.AddEntityAsInstance(w, ent3, ie3)
 }
 
 func (t *TestApplication) Update(deltaTime float64) {
@@ -251,6 +246,13 @@ func (t *TestApplication) ProcessInput(deltaTime float32) {
 		right := y3d.Normalize(y3d.Cross(t.camFront, t.camUp))
 		t.camPostiion = y3d.Sub(t.camPostiion, y3d.Smul(right, float32(camSpeed)))
 	}
+	if im.GetKeyState(sdl.SCANCODE_B) == ycore.BUTTON_PRESSED {
+		t.engine.RenderManager.DrawBoundingBoxes = !t.engine.RenderManager.DrawBoundingBoxes
+	}
+	if im.GetKeyState(sdl.SCANCODE_T) == ycore.BUTTON_PRESSED {
+		t.engine.RenderManager.DrawBoundingTree = !t.engine.RenderManager.DrawBoundingTree
+	}
+
 }
 
 func (t *TestApplication) UpdateCamera() {

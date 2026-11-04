@@ -80,7 +80,7 @@ func (font *Font) LoadFont(filename string) error {
 	}
 	font.height = m.Descent.Floor() + m.Ascent.Floor()
 	font.VerticalSpacing = float32(m.Height.Ceil())
-	gi, err := f.GlyphIndex(b, 'X')
+	gi, err := f.GlyphIndex(b, 'W')
 	if err != nil {
 		return err
 	}
@@ -174,25 +174,23 @@ func (font *Font) DrawRune(t rune) error {
 	r.Draw(dst, dst.Bounds(), image.Opaque, image.Point{})
 
 	//used for debugging
-	// const asciiArt = ".++8"
-	// buf := make([]byte, 0, h*(w+1))
-	// for y := range h {
-	// 	for x := range w {
-	// 		a := dst.AlphaAt(x, y).A
-	// 		buf = append(buf, asciiArt[a>>6])
-	// 	}
-	// 	buf = append(buf, '\n')
-	// }
-	// os.Stdout.Write(buf)
+	const asciiArt = ".++8"
+	buf := make([]byte, 0, h*(w+1))
+	for y := range h {
+		for x := range w {
+			a := dst.AlphaAt(x, y).A
+			buf = append(buf, asciiArt[a>>6])
+		}
+		buf = append(buf, '\n')
+	}
+	os.Stdout.Write(buf)
 
 	if len(dst.Pix) > 0 {
-		gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
 		gl.TextureSubImage3D(font.TextureID, 0, 0, 0,
 			int32(gIdx),
 			int32(w),
 			int32(h), 1, gl.RED, gl.UNSIGNED_BYTE,
 			gl.Ptr(dst.Pix))
-		gl.PixelStorei(gl.UNPACK_ALIGNMENT, 4)
 	}
 	font.gmap[t] = Character{
 		Idx:     gIdx,

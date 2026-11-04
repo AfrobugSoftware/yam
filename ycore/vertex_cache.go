@@ -197,10 +197,35 @@ func (v *VertexCache) Add(command *DrawCommand,
 	if dataV == nil || dataI == nil {
 		return errors.New("cannot load empty vertex or index buffer")
 	}
-	if int32(dataV.Len()) >= (v.Stride*v.MaxVertices) ||
-		int32(dataI.Len()) >= (v.MaxIndices*4) {
-		return errors.New("cannot add data, please check parameters")
+	if int32(dataV.Len()) >= (v.Stride * v.MaxVertices) {
+		blockSize := v.Stride * v.MaxVertices * 2
+		var s uint32
+		gl.CreateBuffers(1, &s)
+		gl.NamedBufferStorage(s, int(blockSize), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
+		gl.NamedCopyBufferSubDataEXT(v.VertexVbo, s, 0, 0, int(blockSize))
+		gl.DeleteBuffers(1, &v.VertexVbo)
+		v.VertexVbo = s
+		v.MaxVertices = v.MaxVertices * 2
+		err := CheckError()
+		if err != nil {
+			return err
+		}
 	}
+	if int32(dataI.Len()) >= (4 * v.MaxIndices) {
+		blockSize := 4 * v.MaxIndices * 2
+		var s uint32
+		gl.CreateBuffers(1, &s)
+		gl.NamedBufferStorage(s, int(blockSize), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
+		gl.NamedCopyBufferSubDataEXT(v.IndexVbo, s, 0, 0, int(blockSize))
+		gl.DeleteBuffers(1, &v.IndexVbo)
+		v.IndexVbo = s
+		v.MaxIndices = v.MaxIndices * 2
+		err := CheckError()
+		if err != nil {
+			return err
+		}
+	}
+
 	gl.NamedBufferSubData(v.VertexVbo,
 		int(v.Stride*v.NumVertics),
 		dataV.Len(),
