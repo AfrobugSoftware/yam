@@ -94,7 +94,7 @@ func (p *Portal) SetColor(color [4]uint8) {
 }
 
 func (p *Portal) Picked(ray y3d.Ray, fl float32) (bool, float32) {
-	b, _ := ray.IntersectsAABB(p.BoundingBox, fl)
+	b, _ := ray.IntersectsAABB(p.BoundingBox)
 	if b {
 		for i := 0; i < len(p.indices); i += 3 {
 			i0 := p.indices[i]

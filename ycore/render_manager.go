@@ -76,37 +76,37 @@ type Renderable struct {
 }
 
 type RenderManager struct {
-	Context           sdl.GLContext
-	Window            *sdl.Window
-	ClearColor        y3d.Vec4
-	PixelDepth        uint8
-	PixelPerInch      float32
-	DoubleBuffer      bool
-	MinorVersion      int
-	MajorVersion      int
-	ViewPort          [4]y3d.Rect
-	View2D            y3d.Mat4
-	Proj2D            y3d.Mat4
-	View3D            [4]y3d.Mat4
-	ProjP             [4]y3d.Mat4
-	ProjO             [4]y3d.Mat4
-	ViewProj          y3d.Mat4
-	Near              float32
-	Far               float32
-	Width             int
-	Height            int
-	Fov               [4]float32
-	AspectRatio       [4]float32
-	Stage             int
-	Mode              int
-	SkinManager       *SkinManager
-	VertextManager    *VertexCacheManager
-	ShaderManager     *ShaderManager
-	InputManager      *InputManager
-	DrawBoundingBoxes bool
-	DrawBoundingTree  bool
-	BoundingTree      *Octree
-
+	Context            sdl.GLContext
+	Window             *sdl.Window
+	ClearColor         y3d.Vec4
+	PixelDepth         uint8
+	PixelPerInch       float32
+	DoubleBuffer       bool
+	MinorVersion       int
+	MajorVersion       int
+	ViewPort           [4]y3d.Rect
+	View2D             y3d.Mat4
+	Proj2D             y3d.Mat4
+	View3D             [4]y3d.Mat4
+	ProjP              [4]y3d.Mat4
+	ProjO              [4]y3d.Mat4
+	ViewProj           y3d.Mat4
+	Near               float32
+	Far                float32
+	Width              int
+	Height             int
+	Fov                [4]float32
+	AspectRatio        [4]float32
+	Stage              int
+	Mode               int
+	SkinManager        *SkinManager
+	VertextManager     *VertexCacheManager
+	ShaderManager      *ShaderManager
+	InputManager       *InputManager
+	DrawBoundingBoxes  bool
+	DrawBoundingTree   bool
+	BoundingTree       *Octree
+	PickRay            y3d.Vec3
 	World              *World
 	DrawMode           uint32
 	ActiveProgram      uint32
@@ -893,22 +893,20 @@ func (r *RenderManager) RenderEntities(cull bool) {
 		return
 	}
 	vm := r.VertextManager
-	frustum := r.GetFrustum()
+	//frustum := r.GetFrustum()
 	entities := r.World.Query(
 		RenderableComponent,
-		TransformComponent,
 		BoundingBoxComponent)
 	for _, e := range entities {
-		box := r.World.GetComponent(e, BoundingBoxComponent).(Box)
-		if cull && box.World.Cull(frustum[:]) {
-			continue
-		}
+		//box := r.World.GetComponent(e, BoundingBoxComponent).(Box)
+		// if cull && box.World.Cull(frustum[:]) {
+		// 	continue
+		// }
 		renderable := r.World.GetComponent(e, RenderableComponent).(Renderable)
 		v, err := vm.GetCache(renderable.VertexType, renderable.SkinId)
 		if err != nil {
 			continue //no cache for this entity
 		}
-		transform := r.World.GetComponent(e, TransformComponent).(Transform)
 		if r.World.HasComponent(e, InstanceComponent) {
 			instances := r.World.GetComponent(e, InstanceComponent).([]EntityId)
 			renderable.DrawCmd.InstanceCount = uint32(len(instances))
@@ -922,6 +920,7 @@ func (r *RenderManager) RenderEntities(cull bool) {
 			v.AddRenderState(int(renderable.DrawCmd.BaseInstance), rs...)
 			v.AddMatrix(int(renderable.DrawCmd.BaseInstance), mats...)
 		} else {
+			transform := r.World.GetComponent(e, TransformComponent).(Transform)
 			v.AddInstances(&renderable.DrawCmd)
 			v.AddMatrix(int(renderable.DrawCmd.BaseInstance), transform.World) //this needs to be world
 			v.AddRenderState(int(renderable.DrawCmd.BaseInstance), renderable.RenderParams)

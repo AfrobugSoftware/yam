@@ -22,6 +22,7 @@ const (
 	FlagComponent
 	AnimationComponent
 	InstanceComponent
+	ScaleComponent
 )
 
 func AddEntityRenderableData(
@@ -30,6 +31,7 @@ func AddEntityRenderableData(
 	entityTag uint32,
 	vertexType string,
 	skinId int,
+	scale float32,
 	v, i *bytes.Buffer, vm *VertexCacheManager) error {
 	cmd := DrawCommand{}
 	err := vm.LoadCache(vertexType, v, i, skinId, &cmd)
@@ -45,12 +47,18 @@ func AddEntityRenderableData(
 		},
 	}
 	box := NewBox()
-	_, localBox := vm.GetScalingAndBox(v, i, 1.0, vertexType)
+	_, localBox := vm.GetScalingAndBox(v, i, scale, vertexType)
 	box.Local = localBox
 	world.AddComponent(ent, EntityTagComponent, entityTag)
 	world.AddComponent(ent, BoundingBoxComponent, box)
 	world.AddComponent(ent, RenderableComponent, renderable)
+	world.AddComponent(ent, ScaleComponent, float32(1.0))
 	return nil
+}
+
+func AddScaleCompoment(world *World,
+	ent EntityId, scale float32) {
+	world.AddComponent(ent, ScaleComponent, scale)
 }
 
 func AddEntityMoveData(

@@ -157,7 +157,7 @@ func (bs *BSPTree) TestCollision(r y3d.Ray, fl float32) (bool, y3d.Vec3) {
 	if bs.IsLeaf() {
 		for _, p := range bs.Children {
 			pbox := bs.World.GetComponent(p, BoundingBoxComponent).(Box).World
-			b, h := r.IntersectsAABB(pbox, fl)
+			b, h := r.IntersectsAABB(pbox)
 			if b {
 				return b, h
 			}
@@ -220,7 +220,7 @@ func (bs *BSPTree) SelectFromPickRay(r y3d.Ray, fl float32) (EntityId, bool) {
 	if bs.IsLeaf() {
 		for _, p := range bs.Children {
 			pbox := bs.World.GetComponent(p, BoundingBoxComponent).(Box).World
-			b, h := r.IntersectsAABB(pbox, fl)
+			b, h := r.IntersectsAABB(pbox)
 			if b {
 				dist := y3d.Sub(h, r.O).Length()
 				if dist < float32(smallest) {

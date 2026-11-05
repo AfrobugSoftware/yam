@@ -216,3 +216,11 @@ func SDiv(v Vec3, s float32) Vec3 {
 		Z: v.Z / s,
 	}
 }
+
+func InvertVec3(v Vec3) Vec3 {
+	return Vec3{
+		X: 1 / v.X,
+		Y: 1 / v.Y,
+		Z: 1 / v.Z,
+	}
+}

@@ -155,33 +155,28 @@ func (t *TestApplication) LevelTest() {
 	m := ycore.AddEntityMoveData(t.engine.Level.World, ent, y3d.Vec3{Z: -20, Y: 5}, y3d.IdenQuat())
 	m.Thrust = 0
 	ycore.AddEntityMoveData(t.engine.Level.World, ent2, y3d.Vec3{Z: -50, Y: 5.0}, y3d.IdenQuat())
-	ycore.AddEntityMoveData(t.engine.Level.World, ent3, y3d.Vec3{Z: 100, Y: 5.0}, y3d.IdenQuat())
 	ycore.AddEntityMoveData(t.engine.Level.World, ent4, y3d.Vec3{X: 5, Z: 10, Y: 5.0}, y3d.IdenQuat())
-
-	tranform := t.engine.Level.World.GetComponent(ent3, ycore.TransformComponent).(ycore.Transform)
-	tranform.Local = tranform.Local.Mul(y3d.Scale(y3d.Vec3{X: 35, Y: 35, Z: 35}))
-	t.engine.Level.World.SetComponent(ent3, ycore.TransformComponent, tranform)
 
 	v, i := ygl.CreateSphere(64, 36, 5.0)
 	err := ycore.AddEntityRenderableData(t.engine.Level.World, ent, 0x01,
-		ycore.VPNTC, skin, v, i, t.engine.RenderManager.VertextManager)
+		ycore.VPNTC, skin, 1.0, v, i, t.engine.RenderManager.VertextManager)
 	if err != nil {
 		panic(err)
 	}
 	v2, i2 := ygl.CreateCube()
 	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent3, 80,
-		ycore.VPNTC, skin, v2, i2, t.engine.RenderManager.VertextManager)
+		ycore.VPNTC, skin, 35, v2, i2, t.engine.RenderManager.VertextManager)
 	if err != nil {
 		panic(err)
 	}
 	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent2, 0x02,
-		ycore.VPNTC, skin, v, i, t.engine.RenderManager.VertextManager)
+		ycore.VPNTC, skin, 1.0, v, i, t.engine.RenderManager.VertextManager)
 	if err != nil {
 		panic(err)
 	}
 	v, i = ygl.CreateQuad()
 	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent4, 0x03,
-		ycore.VPNTC, skin, v, i, t.engine.RenderManager.VertextManager)
+		ycore.VPNTC, skin, 1.0, v, i, t.engine.RenderManager.VertextManager)
 	if err != nil {
 		panic(err)
 	}
@@ -192,7 +187,9 @@ func (t *TestApplication) LevelTest() {
 	ycore.AddEntityMoveData(w, ie1, y3d.Vec3{X: 5, Z: 0, Y: 2.0}, y3d.IdenQuat())
 	ycore.AddEntityMoveData(w, ie2, y3d.Vec3{X: 10, Z: 0, Y: 2.0}, y3d.IdenQuat())
 	ycore.AddEntityMoveData(w, ie3, y3d.Vec3{X: -5, Z: 0, Y: 2.0}, y3d.IdenQuat())
-
+	w.AddComponent(ie1, ycore.ScaleComponent, float32(35.0))
+	w.AddComponent(ie2, ycore.ScaleComponent, float32(50.0))
+	w.AddComponent(ie3, ycore.ScaleComponent, float32(20.0))
 	ycore.AddEntityAsInstance(w, ent3, ie1)
 	ycore.AddEntityAsInstance(w, ent3, ie2)
 	ycore.AddEntityAsInstance(w, ent3, ie3)
@@ -209,7 +206,8 @@ func (t *TestApplication) Update(deltaTime float64) {
 func (t *TestApplication) ProcessInput(deltaTime float32) {
 	camSpeed := 5 * deltaTime
 	im := t.engine.InputManager
-
+	caged := t.engine.InputManager.AbsolutePosition
+	ray := t.engine.RenderManager.GetPickRay(caged)
 	if im.GetMouseButtonState(sdl.BUTTON_LEFT) == ycore.BUTTON_HELD {
 		if math.Abs(float64(im.MousePosition.X)) > y3d.NearZero ||
 			math.Abs(float64(im.MousePosition.Y)) > y3d.NearZero {
@@ -228,8 +226,7 @@ func (t *TestApplication) ProcessInput(deltaTime float32) {
 		}
 	}
 	if im.GetMouseButtonState(sdl.BUTTON_LEFT) == ycore.BUTTON_PRESSED {
-		caged := t.engine.InputManager.BoundToCage(t.engine.InputManager.AbsolutePosition)
-		ray := t.engine.RenderManager.GetPickRay(caged)
+
 		t.engine.Level.Select(ray)
 	}
 	if im.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_HELD {

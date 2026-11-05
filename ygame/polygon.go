@@ -124,8 +124,8 @@ func (p *Polygon) InsideOut() {
 		p.Vertices[p.Indices[i+2]].Norm = n
 	}
 }
-func (p *Polygon) Picked(ray y3d.Ray, fl float32) (bool, float32) {
-	b, _ := ray.IntersectsAABB(p.BoundingBox, fl)
+func (p *Polygon) Picked(ray y3d.Ray) (bool, float32) {
+	b, _ := ray.IntersectsAABB(p.BoundingBox)
 	if b {
 		for i := 0; i < len(p.Indices); i += 3 {
 			i0 := p.Indices[i]

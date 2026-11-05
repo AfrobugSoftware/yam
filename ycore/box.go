@@ -13,8 +13,8 @@ func NewBox() Box {
 		World: y3d.UnitAABB,
 	}
 }
-func (b Box) Pick(ray y3d.Ray, fl float32) (bool, y3d.Vec3) {
-	return ray.IntersectsAABB(b.World, fl)
+func (b Box) Pick(ray y3d.Ray) (bool, y3d.Vec3) {
+	return ray.IntersectsAABB(b.World)
 }
 
 func (b Box) RenderBoxMatrix() y3d.Mat4 {

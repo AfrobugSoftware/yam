@@ -206,9 +206,9 @@ func (o *Octree) TestCollision(b y3d.AABB) (bool, EntityId) {
 	return false, NullEntity
 }
 
-func (o *Octree) TestCollisionWithRay(r y3d.Ray, fl float32) (bool, EntityId, y3d.Vec3) {
+func (o *Octree) TestCollisionWithRay(r y3d.Ray) (bool, EntityId, y3d.Vec3) {
 	if o != o.Root {
-		b, _ := r.IntersectsAABB(o.BoundingBox, fl)
+		b, _ := r.IntersectsAABB(o.BoundingBox)
 		if !b {
 			return false, NullEntity, y3d.Vec3{}
 		}
@@ -216,7 +216,7 @@ func (o *Octree) TestCollisionWithRay(r y3d.Ray, fl float32) (bool, EntityId, y3
 	if !o.IsLeaf() {
 		for i := range 8 {
 			if o.Children[i] != nil {
-				collides, e, h := o.Children[i].TestCollisionWithRay(r, fl)
+				collides, e, h := o.Children[i].TestCollisionWithRay(r)
 				if collides {
 					return true, e, h
 				}
@@ -229,8 +229,9 @@ func (o *Octree) TestCollisionWithRay(r y3d.Ray, fl float32) (bool, EntityId, y3
 	var e EntityId
 	for _, p := range o.Entites {
 		pbox := o.World.GetComponent(p, BoundingBoxComponent).(Box).World
-		b, h := r.IntersectsAABB(pbox, fl)
+		b, h := r.IntersectsAABB(pbox)
 		dist := y3d.Sub(h, r.O).Length()
+		fl := float32(math.MaxFloat32)
 		if b {
 			if dist < fl {
 				fl = dist
@@ -296,7 +297,7 @@ func (o *Octree) GetFloor(origin y3d.Vec3, from EntityId) (bool, y3d.Vec3) {
 			r.O.Z > box.Max.Z {
 			continue
 		}
-		b, h := r.IntersectsAABB(box, pf)
+		b, h := r.IntersectsAABB(box)
 		dist := y3d.Sub(h, r.O).Length()
 		if b {
 			if dist < float32(smallest) {

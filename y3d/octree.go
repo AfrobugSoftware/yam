@@ -194,9 +194,9 @@ func (o *Octree) TestCollision(b AABB) (bool, Plane) {
 	return false, Plane{}
 }
 
-func (o *Octree) TestCollisionWithRay(r Ray, fl float32) (bool, float32) {
+func (o *Octree) TestCollisionWithRay(r Ray) (bool, float32) {
 	if o != o.Root {
-		b, _ := r.IntersectsAABB(o.BoundingBox, fl)
+		b, _ := r.IntersectsAABB(o.BoundingBox)
 		if !b {
 			return false, 0
 		}
@@ -204,21 +204,20 @@ func (o *Octree) TestCollisionWithRay(r Ray, fl float32) (bool, float32) {
 	if !o.IsLeaf() {
 		for i := range 8 {
 			if o.Children[i] != nil {
-				collides, t := o.Children[i].TestCollisionWithRay(r, fl)
-				if collides && t < fl {
+				collides, t := o.Children[i].TestCollisionWithRay(r)
+				if collides {
 					return true, t
 				}
 			}
 		}
 		return false, 0
 	}
-	var fd float32 = 0
+	var fd float32 = math.MaxFloat32
 	var b bool
 	for _, p := range o.Polys {
 		h, b := p.IntersectsRay(r, false)
 		if b {
-			if h < fl {
-				fl = h
+			if h < fd {
 				fd = h
 				b = true
 			}

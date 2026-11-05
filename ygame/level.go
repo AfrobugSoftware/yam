@@ -40,7 +40,6 @@ type LevelParameters struct {
 type Level struct {
 	World   *ycore.World
 	OctTree *ycore.Octree
-	Meshes  []*Polymesh
 
 	levelParametersUBO uint32
 	LastSelected       ycore.EntityId
@@ -57,6 +56,7 @@ func NewLevel() *Level {
 func (l *Level) UpdateEntitesMovement(deltaTime float32) {
 	entites := l.World.Query(
 		ycore.TransformComponent,
+		ycore.ScaleComponent,
 		ycore.BoundingBoxComponent,
 		ycore.MoveControllerComponent)
 	var wg sync.WaitGroup
@@ -67,7 +67,12 @@ func (l *Level) UpdateEntitesMovement(deltaTime float32) {
 				transform := l.World.GetComponent(e, ycore.TransformComponent).(ycore.Transform)
 				box := l.World.GetComponent(e, ycore.BoundingBoxComponent).(ycore.Box)
 				movement.Update(deltaTime)
-				transform.Local = y3d.TRS(movement.Position, movement.Orientation, y3d.UnitV3)
+				scaleFactor := float32(1.0) //l.World.GetComponent(e, ycore.ScaleComponent).(float32)
+				transform.Local = y3d.TRS(movement.Position, movement.Orientation, y3d.Vec3{
+					X: scaleFactor,
+					Y: scaleFactor,
+					Z: scaleFactor,
+				})
 
 				//this should be handled by the scene hierarchy updating method
 				transform.World = transform.Local
@@ -83,9 +88,7 @@ func (l *Level) UpdateEntitesMovement(deltaTime float32) {
 }
 
 func (l *Level) Select(pickRay y3d.Ray) {
-	//fmt.Println(pickRay.O)
-	//fmt.Println(pickRay.D)
-	b, e, h := l.OctTree.TestCollisionWithRay(pickRay, 99999.0)
+	b, e, h := l.OctTree.TestCollisionWithRay(pickRay)
 	if b {
 		fmt.Print(h)
 		l.LastSelected = e

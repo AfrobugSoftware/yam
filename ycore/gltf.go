@@ -335,6 +335,7 @@ func ProcessNode(world *World, node *gltf.Node,
 			tag,
 			vertexType,
 			skin,
+			1.0,
 			v, i,
 			r.VertextManager,
 		)
