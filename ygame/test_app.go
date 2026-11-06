@@ -1,6 +1,7 @@
 package ygame
 
 import (
+	"fmt"
 	"math"
 	"yam/y3d"
 	"yam/ycore"
@@ -211,6 +212,10 @@ func (t *TestApplication) ProcessInput(deltaTime float32) {
 	im := t.engine.InputManager
 	caged := t.engine.InputManager.AbsolutePosition
 	ray := t.engine.RenderManager.GetPickRay(caged)
+
+	pixels := t.engine.RenderManager.GetPickInfo(int32(caged.X), int32(caged.Y))
+	fmt.Println(caged)
+	fmt.Println(pixels)
 	if im.GetMouseButtonState(sdl.BUTTON_LEFT) == ycore.BUTTON_HELD {
 		if math.Abs(float64(im.MousePosition.X)) > y3d.NearZero ||
 			math.Abs(float64(im.MousePosition.Y)) > y3d.NearZero {

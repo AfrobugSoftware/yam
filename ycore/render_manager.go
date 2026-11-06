@@ -652,9 +652,15 @@ func (r *RenderManager) Transfrom3Dto2D(pos y3d.Vec3) y3d.Vec2 {
 	}
 }
 
-func (r *RenderManager) GetPickInfo(x, y int) (uint32, uint32) {
-
-	return 0, 0 //tag and primitive id
+func (r *RenderManager) GetPickInfo(x, y int32) [3]uint32 {
+	gl.BindFramebuffer(gl.READ_FRAMEBUFFER, r.pickBuffer)
+	gl.ReadBuffer(gl.COLOR_ATTACHMENT0)
+	pixels := [3]uint32{}
+	flipped := int32(r.ViewPort[r.Stage].Height) - y
+	gl.ReadPixels(x, flipped, 1, 1, gl.RGB_INTEGER, gl.UNSIGNED_INT, unsafe.Pointer(&pixels[0]))
+	gl.ReadBuffer(gl.NONE)
+	gl.BindFramebuffer(gl.READ_FRAMEBUFFER, 0)
+	return pixels
 }
 
 func (r *RenderManager) GetPickRay(pos y3d.Vec2) y3d.Ray {
@@ -797,6 +803,12 @@ func (r *RenderManager) EntitiesRenderPhase() {
 
 	gl.UseProgram(r.ActiveProgram)
 	gl.BindTextureUnit(0, r.shadowMap)
+	gl.Enable(gl.DEPTH_TEST)
+	gl.DepthFunc(gl.LESS)
+	gl.Enable(gl.CULL_FACE)
+	gl.CullFace(gl.BACK)
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 	r.Render()
 }
 
@@ -818,6 +830,11 @@ func (r *RenderManager) PickPhase() {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
 
 	gl.UseProgram(r.pickProgram)
+	gl.Enable(gl.DEPTH_TEST)
+	gl.DepthFunc(gl.LESS)
+	gl.Enable(gl.CULL_FACE)
+	gl.CullFace(gl.BACK)
+	gl.Disable(gl.BLEND)
 	r.Render()
 
 	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
@@ -825,12 +842,6 @@ func (r *RenderManager) PickPhase() {
 
 // hmmm
 func (r *RenderManager) Render() {
-	gl.Enable(gl.DEPTH_TEST)
-	gl.DepthFunc(gl.LESS)
-	gl.Enable(gl.CULL_FACE)
-	gl.CullFace(gl.BACK)
-	gl.Enable(gl.BLEND)
-	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
 	r.RenderEntities(true)
 	err := r.VertextManager.ForceRenderAll()
