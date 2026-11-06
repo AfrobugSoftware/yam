@@ -105,6 +105,7 @@ type RenderManager struct {
 	InputManager       *InputManager
 	DrawBoundingBoxes  bool
 	DrawBoundingTree   bool
+	DrawDebugLines     bool
 	BoundingTree       *Octree
 	PickRay            y3d.Vec3
 	World              *World
@@ -127,6 +128,10 @@ type RenderManager struct {
 	boundingboxssbo    uint32
 	boundingboxssbocap int
 	boundingboxprogram uint32
+	linevao            uint32
+	debugLineBuffer    uint32
+	lineCount          int
+	lineprogram        uint32
 	RenderParams       RenderParameters
 	lightSphere        int
 	numLight           int
@@ -283,6 +288,23 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 	rm.boundingboxssbocap = int(unsafe.Sizeof(y3d.Mat4{})) * MAX_BOUDNINGBOX_RENDER_MATRIX
 	gl.NamedBufferStorage(ssbo, rm.boundingboxssbocap, nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
 	rm.boundingboxssbo = ssbo
+
+	gl.CreateVertexArrays(1, &rm.linevao)
+	gl.CreateBuffers(1, &rm.debugLineBuffer)
+	gl.NamedBufferStorage(rm.debugLineBuffer, 2*1000*int(unsafe.Sizeof(y3d.PVertex{})), nil, gl.DYNAMIC_STORAGE_BIT)
+	format := rm.VertextManager.Formats[VPNTC]
+	stride := rm.VertextManager.Strides[VPNTC]
+	for i, f := range format {
+		gl.VertexArrayAttribBinding(rm.linevao, uint32(i), VERTEX_ATTRIBUTE_BINDING)
+		switch f.Type {
+		case gl.UNSIGNED_INT, gl.UNSIGNED_BYTE, gl.UNSIGNED_SHORT:
+			gl.VertexArrayAttribIFormat(rm.linevao, uint32(i), f.ComponentSize, f.Type, f.RelativeOffset)
+		default:
+			gl.VertexArrayAttribFormat(rm.linevao, uint32(i), f.ComponentSize, f.Type, f.Normalized, f.RelativeOffset)
+		}
+		gl.EnableVertexArrayAttrib(rm.linevao, uint32(i))
+	}
+	gl.VertexArrayVertexBuffer(rm.linevao, VERTEX_ATTRIBUTE_BINDING, rm.debugLineBuffer, 0, stride)
 	return rm
 }
 
@@ -631,6 +653,8 @@ func (r *RenderManager) Destroy() {
 	gl.DeleteTextures(1, &r.gDepth)
 	gl.DeleteBuffers(1, &r.viewubo)
 	gl.DeleteBuffers(1, &r.renderParamsSSBO)
+	gl.DeleteVertexArrays(1, &r.linevao)
+	gl.DeleteBuffers(1, &r.debugLineBuffer)
 	sdl.GLDeleteContext(r.Context)
 }
 
@@ -685,6 +709,12 @@ func (r *RenderManager) CreateDefaultShader() {
 		panic(err)
 	}
 	r.boundingboxprogram = f
+	l, err := r.ShaderManager.Add("lines", []string{linevert, linefrag},
+		[]uint32{gl.VERTEX_SHADER, gl.FRAGMENT_SHADER})
+	if err != nil {
+		panic(err)
+	}
+	r.lineprogram = l
 }
 
 func (r *RenderManager) Draw() {
@@ -735,6 +765,9 @@ func (r *RenderManager) Render() {
 	if r.DrawBoundingTree {
 		r.RenderBoundingTree()
 	}
+	if r.DrawDebugLines {
+		r.RenderLines()
+	}
 	if r.RootUI != nil {
 		yui.Layout(r.RootUI)
 		p := r.Proj2D.Mul(r.View2D)
@@ -752,6 +785,23 @@ func (r *RenderManager) RenderGrid() {
 	gl.UseProgram(r.gridProgram)
 	gl.BindVertexArray(r.gridVao)
 	gl.DrawArrays(gl.TRIANGLES, 0, 6)
+}
+
+func (r *RenderManager) RenderLines() {
+	gl.BindVertexArray(r.linevao)
+	gl.UseProgram(r.lineprogram)
+
+	gl.DrawArrays(gl.LINE, 0, int32(2*r.lineCount))
+	r.lineCount = 0
+}
+
+func (r *RenderManager) AddLine(line [2]y3d.PVertex) error {
+	//line should be in world space already
+	bytes := unsafe.Slice((*byte)(unsafe.Pointer(&line[0])), 2*int(unsafe.Sizeof(y3d.PVertex{})))
+	gl.NamedBufferSubData(r.debugLineBuffer, r.lineCount*int(unsafe.Sizeof(y3d.PVertex{})),
+		2*int(unsafe.Sizeof(y3d.PVertex{})), gl.Ptr(bytes))
+	r.lineCount++
+	return CheckError()
 }
 
 func (r *RenderManager) CopyDepthToDefault() {

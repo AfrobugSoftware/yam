@@ -226,8 +226,13 @@ func (t *TestApplication) ProcessInput(deltaTime float32) {
 		}
 	}
 	if im.GetMouseButtonState(sdl.BUTTON_LEFT) == ycore.BUTTON_PRESSED {
-
-		t.engine.Level.Select(ray)
+		b, lines := t.engine.Level.Select(ray)
+		if b {
+			err := t.engine.RenderManager.AddLine(lines)
+			if err != nil {
+				panic(err)
+			}
+		}
 	}
 	if im.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_HELD {
 		t.camPostiion = y3d.Add(t.camPostiion, y3d.Smul(t.camFront, float32(camSpeed)))
@@ -248,6 +253,9 @@ func (t *TestApplication) ProcessInput(deltaTime float32) {
 	}
 	if im.GetKeyState(sdl.SCANCODE_T) == ycore.BUTTON_PRESSED {
 		t.engine.RenderManager.DrawBoundingTree = !t.engine.RenderManager.DrawBoundingTree
+	}
+	if im.GetKeyState(sdl.SCANCODE_L) == ycore.BUTTON_PRESSED {
+		t.engine.RenderManager.DrawDebugLines = !t.engine.RenderManager.DrawDebugLines
 	}
 
 }

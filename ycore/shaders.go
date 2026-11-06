@@ -358,4 +358,34 @@ void main() {
 	out_color = box_color;
 }
 `
+
+	linevert = `
+#version 430
+layout(location = 0) in vec3 pos;
+layout(location = 1) in vec3 norm;
+layout(location = 2) in vec2 tc;
+layout(location = 3) in vec4 color;
+layout(std140, binding = 4) uniform vp {
+	mat4 view_proj;
+};
+out data {
+	vec4 color;
+}vs_out;
+
+void main() {
+	vs_out.color = color;
+	gl_Position = view_proj * vec4(pos, 1.0);
+}
+`
+	linefrag = `
+#version 430
+layout(location =0) out vec4 out_color;
+in data {
+	vec4 color;
+}fs_in;
+
+void main() {
+	out_color = fs_in.color;
+}
+`
 )

@@ -3,7 +3,6 @@ package ygame
 import (
 	"encoding/gob"
 	"errors"
-	"fmt"
 	"os"
 	"sync"
 	"yam/y3d"
@@ -87,12 +86,23 @@ func (l *Level) UpdateEntitesMovement(deltaTime float32) {
 	l.OctTree.BuildTree(entites)
 }
 
-func (l *Level) Select(pickRay y3d.Ray) {
+func (l *Level) Select(pickRay y3d.Ray) (bool, [2]y3d.PVertex) {
 	b, e, h := l.OctTree.TestCollisionWithRay(pickRay)
 	if b {
-		fmt.Print(h)
+		lines := [2]y3d.PVertex{
+			{
+				Pos:   pickRay.O,
+				Color: [4]uint8{0.0, 0.0, 1.0, 1.0},
+			},
+			{
+				Pos:   h,
+				Color: [4]uint8{1.0, 0.0, 0.0, 1.0},
+			},
+		}
 		l.LastSelected = e
+		return true, lines
 	}
+	return false, [2]y3d.PVertex{}
 }
 
 func (l *Level) ProcessEntityInput(input *ycore.InputManager) {
