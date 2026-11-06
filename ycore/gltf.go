@@ -324,10 +324,10 @@ func ProcessNode(world *World, node *gltf.Node,
 			Z: float32(node.Translation[2]),
 		}
 		rotation := y3d.Quaternion{
-			W: float32(node.Rotation[3]),
-			Z: float32(node.Rotation[2]),
-			Y: float32(node.Rotation[1]),
 			X: float32(node.Rotation[0]),
+			Y: float32(node.Rotation[1]),
+			Z: float32(node.Rotation[2]),
+			W: float32(node.Rotation[3]),
 		}
 		err := AddEntityRenderableData(
 			world,

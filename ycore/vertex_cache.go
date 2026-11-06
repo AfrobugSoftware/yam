@@ -50,16 +50,19 @@ type VertexCache struct {
 	WorldMatrixSSBO uint32
 	RenderStateSSBO uint32
 	JointSSBO       uint32
+	TagSSBO         uint32
 	MaxVertices     int32
 	MaxIndices      int32
 	MaxDrawCommands int32
 	MaxInstances    int32
 	MaxJoints       int32
+	MaxTags         int32
 	NumVertics      int32
 	NumIndices      int32
 	NumDrawCommands int32
 	NumOfInstances  int32
 	NumOfJoints     int32
+	NumOfTags       int32
 	Stride          int32
 	DrawMode        uint32
 	SkinId          int
@@ -79,7 +82,7 @@ func NewVertexCache(
 	id int,
 	format []VertexFormat,
 ) *VertexCache {
-	var vao, vvbo, ivbo, dcbo, divbo, mssbo, rfssobo, jssbo uint32
+	var vao, vvbo, ivbo, dcbo, divbo, mssbo, rfssobo, jssbo, pickSSBO uint32
 	gl.CreateVertexArrays(1, &vao)
 	gl.BindVertexArray(vao)
 
@@ -127,6 +130,9 @@ func NewVertexCache(
 	gl.NamedBufferStorage(jssbo, int(unsafe.Sizeof(y3d.Mat4{}))*int(maxJoints),
 		nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
 
+	gl.CreateBuffers(1, &pickSSBO)
+	gl.NamedBufferStorage(pickSSBO, int(4*maxInstances), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
+
 	err := CheckError()
 	if err != nil {
 		panic(err)
@@ -140,11 +146,13 @@ func NewVertexCache(
 		DrawIndexVbo:    divbo,
 		WorldMatrixSSBO: mssbo,
 		JointSSBO:       jssbo,
+		TagSSBO:         pickSSBO,
 		RenderStateSSBO: rfssobo,
 		MaxVertices:     maxVertex,
 		MaxIndices:      maxIndex,
 		MaxDrawCommands: maxDraws,
 		MaxInstances:    maxInstances,
+		MaxTags:         maxInstances,
 		MaxJoints:       maxJoints,
 		Stride:          stride,
 		Id:              id,
@@ -258,6 +266,33 @@ func (v *VertexCache) AddSkeleton(s *Skeleton) (int, error) {
 	return int(baseJoint), CheckError()
 }
 
+func (v *VertexCache) AddTag(baseInstance int, tag ...uint32) error {
+	if v.NumOfTags >= v.MaxTags {
+		return errors.New("cannot add more tags") //we should make this growable
+	}
+	if baseInstance+len(tag) >= int(v.MaxTags) {
+		return errors.New("invalid tag range")
+	}
+	ptr := gl.MapNamedBufferRange(
+		v.TagSSBO,
+		int(unsafe.Sizeof(uint32(0)))*int(baseInstance),
+		int(len(tag)*int(unsafe.Sizeof(uint32(0)))),
+		gl.MAP_WRITE_BIT|gl.MAP_INVALIDATE_RANGE_BIT,
+	)
+	if ptr == nil {
+		CheckError()
+		return errors.New("cannot load world matrix")
+	}
+	slice := unsafe.Slice((*uint32)(ptr), len(tag))
+	copy(slice, tag)
+	if !gl.UnmapNamedBuffer(v.TagSSBO) {
+		CheckError()
+		return errors.New("cannot release tag buffer")
+	}
+	v.NumOfTags += int32(len(tag))
+	return CheckError()
+}
+
 func (v *VertexCache) AddInstances(command *DrawCommand) error {
 	if v.NumOfInstances >= v.MaxInstances {
 		return errors.New("no space for new instances")
@@ -361,8 +396,9 @@ func (v *VertexCache) Render() {
 		//how to handle framebuffer operations ???
 		gl.BindVertexArray(v.Vao)
 		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, WORLD_MATRIX_BINDING, v.WorldMatrixSSBO)
-		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, RENDER_FLAG_BINDING, v.RenderStateSSBO)
 		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, JOINTS_SSBO_BINDING, v.JointSSBO)
+		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, RENDER_FLAG_BINDING, v.RenderStateSSBO)
+		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, TAG_BUFFER_BINDING, v.TagSSBO)
 		gl.BindBuffer(gl.DRAW_INDIRECT_BUFFER, v.DrawCommandBo)
 		switch v.DrawMode {
 		case gl.TRIANGLES, gl.LINES, gl.LINE_STRIP:
@@ -373,6 +409,7 @@ func (v *VertexCache) Render() {
 				int32(unsafe.Sizeof(DrawCommand{})))
 		}
 		//reset draw command buffer
+		v.NumOfTags = 0
 		v.NumDrawCommands = 0
 		v.NumOfJoints = 0
 		v.NumOfInstances = 0
@@ -384,6 +421,7 @@ func (v *VertexCache) Reset() {
 	v.NumVertics = 0
 	v.NumDrawCommands = 0
 	v.NumOfInstances = 0
+	v.NumOfTags = 0
 }
 
 func (v *VertexCache) SetSkin(skin int) {
@@ -402,6 +440,7 @@ func (v *VertexCache) Destroy() {
 	gl.DeleteBuffers(1, &v.WorldMatrixSSBO)
 	gl.DeleteBuffers(1, &v.RenderStateSSBO)
 	gl.DeleteBuffers(1, &v.JointSSBO)
+	gl.DeleteBuffers(1, &v.TagSSBO)
 	gl.DeleteVertexArrays(1, &v.Vao)
 }
 

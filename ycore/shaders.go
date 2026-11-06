@@ -76,7 +76,7 @@ layout(std140, binding= 2) uniform material_s {
     vec4 emissive_shineness;
 } material;
 
-layout(std430,binding = 3) buffer render_parameters {
+layout(std430,binding = 4) buffer render_parameters {
 	vec3 view_pos;
 	float game_time;
 	mat4 shadow_matrix;
@@ -220,7 +220,7 @@ struct light {
 	float inner_radius;
 	uint flag;
 };
-layout(std430,binding = 3) buffer render_parameters {
+layout(std430,binding = 4) buffer render_parameters {
 	vec3 view_pos;
 	float game_time;
 	mat4 shadow_matrix;
@@ -387,5 +387,40 @@ in data {
 void main() {
 	out_color = fs_in.color;
 }
+`
+	pickVert = `
+#version 430 core
+layout(location = 0) in vec3 pos;
+layout(location = 10) in uint dInx;
+
+layout(std140, binding = 4) uniform vp {
+	mat4 view_proj;
+};
+struct per_object_transform {
+	mat4 world;
+	mat4 normal;
+};
+
+layout(std430, binding = 0) buffer matrix_ssbo {
+    per_object_transform world[];
+};
+flat out uint draw_index;
+void main() {
+	draw_index = dInx;
+	gl_Position =  view_proj * world[dInx].world * vec4(pos, 1.0);
+}
+`
+	pickFrag = `
+#version 430 core
+out uvec3 frag_color;
+flat in uint draw_index;
+layout(std430, binding= 3) buffer object_index {
+	uint tag[];
+};
+
+void main() {
+	frag_color = uvec3(tag[draw_index], draw_index, gl_PrimitiveID);
+}
+
 `
 )

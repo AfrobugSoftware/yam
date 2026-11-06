@@ -33,10 +33,10 @@ const (
 
 // UBO
 const (
-	MATERIAL_UBO_BINDING  = 2
-	RENDER_PARAMS_BINDING = 3
-	VIEW_PROJ_BINDING     = 4
-	LEVEL_PARAMETERS_UBO  = 5
+	MATERIAL_UBO_BINDING = 2
+
+	VIEW_PROJ_BINDING    = 4
+	LEVEL_PARAMETERS_UBO = 5
 )
 
 // SSBO
@@ -44,6 +44,8 @@ const (
 	WORLD_MATRIX_BINDING = iota
 	JOINTS_SSBO_BINDING
 	RENDER_FLAG_BINDING
+	TAG_BUFFER_BINDING
+	RENDER_PARAMS_BINDING
 )
 
 const (
@@ -106,6 +108,7 @@ type RenderManager struct {
 	DrawBoundingBoxes  bool
 	DrawBoundingTree   bool
 	DrawDebugLines     bool
+	EnablePicking      bool
 	BoundingTree       *Octree
 	PickRay            y3d.Vec3
 	World              *World
@@ -130,6 +133,10 @@ type RenderManager struct {
 	boundingboxprogram uint32
 	linevao            uint32
 	debugLineBuffer    uint32
+	pickBuffer         uint32
+	pickTexture        uint32
+	pickDepth          uint32
+	pickProgram        uint32
 	lineCount          int
 	lineprogram        uint32
 	RenderParams       RenderParameters
@@ -264,6 +271,10 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 	if err != nil {
 		panic(err)
 	}
+	err = rm.CreatePickBuffer()
+	if err != nil {
+		panic(err)
+	}
 	l := y3d.Light{
 		Pos: y3d.Vec4{
 			X: -2.0,
@@ -306,6 +317,35 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 	}
 	gl.VertexArrayVertexBuffer(rm.linevao, VERTEX_ATTRIBUTE_BINDING, rm.debugLineBuffer, 0, stride)
 	return rm
+}
+
+func (r *RenderManager) CreatePickBuffer() error {
+	gl.GenFramebuffers(1, &r.pickBuffer)
+	gl.BindFramebuffer(gl.FRAMEBUFFER, r.pickBuffer)
+	gl.CreateTextures(gl.TEXTURE_2D, 1, &r.pickTexture)
+	gl.TextureStorage2D(r.pickTexture, 1, gl.RGB32UI,
+		int32(r.ViewPort[r.Stage].Width), int32(r.ViewPort[r.Stage].Height))
+	gl.TextureParameteri(r.pickTexture, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TextureParameteri(r.pickTexture, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, r.pickTexture, 0)
+
+	//depth texture
+	gl.CreateTextures(gl.TEXTURE_2D, 1, &r.pickDepth)
+	gl.TextureStorage2D(r.pickDepth, 1, gl.DEPTH24_STENCIL8, int32(r.ViewPort[r.Stage].Width), int32(r.ViewPort[r.Stage].Height))
+	gl.TextureParameteri(r.pickDepth, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TextureParameteri(r.pickDepth, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.TEXTURE_2D, r.pickDepth, 0)
+
+	attachments := [3]uint32{
+		gl.COLOR_ATTACHMENT0,
+	}
+	gl.DrawBuffers(1, &attachments[0])
+	status := gl.CheckFramebufferStatus(gl.FRAMEBUFFER)
+	if status != gl.FRAMEBUFFER_COMPLETE {
+		return errors.New("failed to create pick buffer")
+	}
+	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+	return CheckError()
 }
 
 func (r *RenderManager) CreateFrameBuffer() error {
@@ -612,6 +652,11 @@ func (r *RenderManager) Transfrom3Dto2D(pos y3d.Vec3) y3d.Vec2 {
 	}
 }
 
+func (r *RenderManager) GetPickInfo(x, y int) (uint32, uint32) {
+
+	return 0, 0 //tag and primitive id
+}
+
 func (r *RenderManager) GetPickRay(pos y3d.Vec2) y3d.Ray {
 	width, height := float32(r.ViewPort[r.Stage].Width), float32(r.ViewPort[r.Stage].Height)
 	vcS := y3d.Vec3{
@@ -643,6 +688,7 @@ func (r *RenderManager) Destroy() {
 	if r.VertextManager != nil {
 		r.VertextManager.Destory()
 	}
+	r.DestroyFrameBuffer()
 	gl.DeleteVertexArrays(1, &r.screenVao)
 	gl.DeleteBuffers(1, &r.screenVbo)
 	gl.DeleteBuffers(1, &r.screenVbo)
@@ -655,6 +701,9 @@ func (r *RenderManager) Destroy() {
 	gl.DeleteBuffers(1, &r.renderParamsSSBO)
 	gl.DeleteVertexArrays(1, &r.linevao)
 	gl.DeleteBuffers(1, &r.debugLineBuffer)
+	gl.DeleteTextures(1, &r.pickTexture)
+	gl.DeleteTextures(1, &r.pickDepth)
+	gl.DeleteFramebuffers(1, &r.pickBuffer)
 	sdl.GLDeleteContext(r.Context)
 }
 
@@ -715,9 +764,15 @@ func (r *RenderManager) CreateDefaultShader() {
 		panic(err)
 	}
 	r.lineprogram = l
+	p, err = r.ShaderManager.Add("pick", []string{pickVert, pickFrag},
+		[]uint32{gl.VERTEX_SHADER, gl.FRAGMENT_SHADER})
+	if err != nil {
+		panic(err)
+	}
+	r.pickProgram = p
 }
 
-func (r *RenderManager) Draw() {
+func (r *RenderManager) ShadowPhase() {
 	r.SkinManager.OverrideLocalPrograms = true
 	r.SetStage(MODE_3D_ORTHO, SHADOW_STAGE)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.shadowbuffer)
@@ -727,7 +782,9 @@ func (r *RenderManager) Draw() {
 	r.Render()
 	r.SkinManager.OverrideLocalPrograms = false
 	r.RenderParams.shadowMatrix = r.ViewProj
+}
 
+func (r *RenderManager) EntitiesRenderPhase() {
 	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 	r.SetStage(MODE_3D_PERSPECTIVE, DEFAULT_STAGE)
 	r.LoadRenderParameters()
@@ -741,8 +798,29 @@ func (r *RenderManager) Draw() {
 	gl.UseProgram(r.ActiveProgram)
 	gl.BindTextureUnit(0, r.shadowMap)
 	r.Render()
+}
 
+func (r *RenderManager) Draw() {
+	r.ShadowPhase()
+	if r.EnablePicking {
+		r.PickPhase()
+	}
+	r.EntitiesRenderPhase()
 	r.Window.GLSwap()
+}
+
+func (r *RenderManager) PickPhase() {
+	gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, r.pickBuffer)
+	r.SetStage(MODE_3D_PERSPECTIVE, DEFAULT_STAGE)
+	r.LoadRenderParameters()
+	gl.BindBufferBase(gl.UNIFORM_BUFFER, VIEW_PROJ_BINDING, r.viewubo)
+	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, RENDER_PARAMS_BINDING, r.renderParamsSSBO)
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
+
+	gl.UseProgram(r.pickProgram)
+	r.Render()
+
+	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 }
 
 // hmmm
@@ -963,17 +1041,26 @@ func (r *RenderManager) RenderEntities(cull bool) {
 			v.AddInstances(&renderable.DrawCmd)
 			mats := make([]y3d.Mat4, len(instances))
 			rs := make([]PerObjectRenderState, len(instances))
+			tags := make([]uint32, len(instances))
 			for i, ie := range instances {
 				mats[i] = r.World.GetComponent(ie, TransformComponent).(Transform).World
 				rs[i] = renderable.RenderParams
+				if r.World.HasComponent(ie, TagComponent) {
+					tags[i] = r.World.GetComponent(ie, TagComponent).(uint32)
+				}
 			}
 			v.AddRenderState(int(renderable.DrawCmd.BaseInstance), rs...)
 			v.AddMatrix(int(renderable.DrawCmd.BaseInstance), mats...)
+			v.AddTag(int(renderable.DrawCmd.BaseInstance), tags...)
 		} else {
 			transform := r.World.GetComponent(e, TransformComponent).(Transform)
 			v.AddInstances(&renderable.DrawCmd)
 			v.AddMatrix(int(renderable.DrawCmd.BaseInstance), transform.World) //this needs to be world
 			v.AddRenderState(int(renderable.DrawCmd.BaseInstance), renderable.RenderParams)
+			if r.World.HasComponent(e, TagComponent) {
+				v.AddTag(int(renderable.DrawCmd.BaseInstance),
+					r.World.GetComponent(e, TagComponent).(uint32))
+			}
 		}
 		v.AddDrawCommand(renderable.DrawCmd)
 	}

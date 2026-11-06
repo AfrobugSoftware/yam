@@ -81,8 +81,8 @@ func mipLevels(minFilter, w, h int32) int32 {
 	return 1
 }
 
-func generateRandomId() int {
-	return rand.Intn(math.MaxInt)
+func GenerateRandomId() int {
+	return rand.Intn(math.MaxInt-1) + 1 //never generates 0
 }
 
 func (s *SkinManager) AddSkin(mat Material) int {
@@ -91,8 +91,8 @@ func (s *SkinManager) AddSkin(mat Material) int {
 	for i := range skin.Texture {
 		skin.Texture[i] = EmptyTexture
 	}
-	id := generateRandomId()
-	skinId := generateRandomId()
+	id := GenerateRandomId()
+	skinId := GenerateRandomId()
 	s.Materials[id] = mat
 	skin.Material = id
 	s.Skins[skinId] = skin
@@ -173,7 +173,7 @@ func (s *SkinManager) AddTexture(skin int, filename string,
 		LastAccessed: time.Now(),
 		FileOnDisc:   filename,
 	}
-	id = generateRandomId()
+	id = GenerateRandomId()
 	s.Textures[id] = td
 	sk := s.Skins[skin]
 	for slot := range sk.Texture {
@@ -226,7 +226,7 @@ func (s *SkinManager) AddCubeMap(skin int, filename [6]string) error {
 		gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
 		converted.Free()
 	}
-	id := generateRandomId()
+	id := GenerateRandomId()
 	td := TextureData{
 		Handle:       texId,
 		LastAccessed: time.Now(),
@@ -250,7 +250,7 @@ func (s *SkinManager) AddTextureHandle(skin int, texId uint32, size uint32) erro
 		LastAccessed: time.Now(),
 		FileOnDisc:   "",
 	}
-	id := generateRandomId()
+	id := GenerateRandomId()
 	s.Textures[id] = td
 	sk, ok := s.Skins[skin]
 	if !ok {
@@ -388,7 +388,7 @@ func (s *SkinManager) AddSpriteSheet(skin int, filename string, spriteHeight, sp
 		LastAccessed: time.Now(),
 		FileOnDisc:   filename,
 	}
-	id = generateRandomId()
+	id = GenerateRandomId()
 	s.Textures[id] = td
 	sk := s.Skins[skin]
 	for slot := range sk.Texture {

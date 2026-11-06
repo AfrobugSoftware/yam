@@ -28,14 +28,14 @@ func (t *TestApplication) Startup(e *Engine) {
 
 	err := ycore.LoadGLTF("assets/gltf/BrainStem.glb",
 		t.engine.RenderManager,
-		50, //tag
+		uint32(ycore.GenerateRandomId()), //tag
 		t.engine.Level.World)
 	if err != nil {
 		panic(err)
 	}
 	err = ycore.LoadGLTF("assets/gltf/SheenChair.glb",
 		t.engine.RenderManager,
-		51, //tag
+		uint32(ycore.GenerateRandomId()), //tag
 		t.engine.Level.World)
 	if err != nil {
 		panic(err)
@@ -158,24 +158,24 @@ func (t *TestApplication) LevelTest() {
 	ycore.AddEntityMoveData(t.engine.Level.World, ent4, y3d.Vec3{X: 5, Z: 10, Y: 5.0}, y3d.IdenQuat())
 
 	v, i := ygl.CreateSphere(64, 36, 5.0)
-	err := ycore.AddEntityRenderableData(t.engine.Level.World, ent, 0x01,
+	err := ycore.AddEntityRenderableData(t.engine.Level.World, ent, uint32(ycore.GenerateRandomId()),
 		ycore.VPNTC, skin, 1.0, v, i, t.engine.RenderManager.VertextManager)
 	if err != nil {
 		panic(err)
 	}
 	v2, i2 := ygl.CreateCube()
-	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent3, 80,
+	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent3, uint32(ycore.GenerateRandomId()),
 		ycore.VPNTC, skin, 35, v2, i2, t.engine.RenderManager.VertextManager)
 	if err != nil {
 		panic(err)
 	}
-	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent2, 0x02,
+	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent2, uint32(ycore.GenerateRandomId()),
 		ycore.VPNTC, skin, 1.0, v, i, t.engine.RenderManager.VertextManager)
 	if err != nil {
 		panic(err)
 	}
 	v, i = ygl.CreateQuad()
-	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent4, 0x03,
+	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent4, uint32(ycore.GenerateRandomId()),
 		ycore.VPNTC, skin, 1.0, v, i, t.engine.RenderManager.VertextManager)
 	if err != nil {
 		panic(err)
@@ -187,6 +187,9 @@ func (t *TestApplication) LevelTest() {
 	ycore.AddEntityMoveData(w, ie1, y3d.Vec3{X: 5, Z: 0, Y: 2.0}, y3d.IdenQuat())
 	ycore.AddEntityMoveData(w, ie2, y3d.Vec3{X: 10, Z: 0, Y: 2.0}, y3d.IdenQuat())
 	ycore.AddEntityMoveData(w, ie3, y3d.Vec3{X: -5, Z: 0, Y: 2.0}, y3d.IdenQuat())
+	w.AddComponent(ie1, ycore.TagComponent, uint32(ycore.GenerateRandomId()))
+	w.AddComponent(ie2, ycore.TagComponent, uint32(ycore.GenerateRandomId()))
+	w.AddComponent(ie3, ycore.TagComponent, uint32(ycore.GenerateRandomId()))
 	w.AddComponent(ie1, ycore.ScaleComponent, float32(35.0))
 	w.AddComponent(ie2, ycore.ScaleComponent, float32(50.0))
 	w.AddComponent(ie3, ycore.ScaleComponent, float32(20.0))
@@ -256,6 +259,9 @@ func (t *TestApplication) ProcessInput(deltaTime float32) {
 	}
 	if im.GetKeyState(sdl.SCANCODE_L) == ycore.BUTTON_PRESSED {
 		t.engine.RenderManager.DrawDebugLines = !t.engine.RenderManager.DrawDebugLines
+	}
+	if im.GetKeyState(sdl.SCANCODE_O) == ycore.BUTTON_PRESSED {
+		t.engine.RenderManager.EnablePicking = !t.engine.RenderManager.EnablePicking
 	}
 
 }

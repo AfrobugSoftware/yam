@@ -198,7 +198,7 @@ func (w *World) NewEntity() EntityId {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	id := EntityId(generateRandomId())
+	id := EntityId(GenerateRandomId())
 	w.entities[id] = nil
 	return id
 }
@@ -229,7 +229,7 @@ func (w *World) getOrCreateArchetype(key archetypeKey) *Archetype {
 	if arch, ok := w.archetypes[k]; ok {
 		return arch
 	}
-	arch := newArchetype(ArchetypeId(generateRandomId()), key)
+	arch := newArchetype(ArchetypeId(GenerateRandomId()), key)
 	w.archetypes[k] = arch
 	return arch
 }
@@ -341,8 +341,8 @@ func (w *World) FindTag(tag uint32) (EntityId, bool) {
 	defer w.mu.RUnlock()
 
 	for _, arch := range w.archetypes {
-		if arch.key.contains(EntityTagComponent) {
-			store := reflect.ValueOf(arch.storageBuffer[EntityTagComponent]).Elem()
+		if arch.key.contains(TagComponent) {
+			store := reflect.ValueOf(arch.storageBuffer[TagComponent]).Elem()
 			slc := store.Field(0)
 			for _, e := range arch.entities {
 				ent, ok := w.entities[e]

@@ -12,7 +12,7 @@ const (
 	MoveControllerComponent ComponentId = iota
 	TransformComponent
 	BoundingBoxComponent
-	EntityTagComponent
+	TagComponent
 	InputComponent
 	RenderableComponent
 	SkeletonComponent
@@ -49,7 +49,7 @@ func AddEntityRenderableData(
 	box := NewBox()
 	_, localBox := vm.GetScalingAndBox(v, i, scale, vertexType)
 	box.Local = localBox
-	world.AddComponent(ent, EntityTagComponent, entityTag)
+	world.AddComponent(ent, TagComponent, entityTag)
 	world.AddComponent(ent, BoundingBoxComponent, box)
 	world.AddComponent(ent, RenderableComponent, renderable)
 	world.AddComponent(ent, ScaleComponent, float32(1.0))
