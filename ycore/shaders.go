@@ -412,14 +412,14 @@ void main() {
 `
 	pickFrag = `
 #version 430 core
-out uvec3 frag_color;
+layout(location = 0) out uvec4 frag_color;
 flat in uint draw_index;
 layout(std430, binding= 3) buffer object_index {
 	uint tag[];
 };
 
 void main() {
-	frag_color = uvec3(tag[draw_index], draw_index, gl_PrimitiveID);
+	frag_color = uvec4(tag[draw_index], draw_index, gl_PrimitiveID, 1);
 }
 
 `

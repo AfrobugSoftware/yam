@@ -323,7 +323,7 @@ func (r *RenderManager) CreatePickBuffer() error {
 	gl.GenFramebuffers(1, &r.pickBuffer)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.pickBuffer)
 	gl.CreateTextures(gl.TEXTURE_2D, 1, &r.pickTexture)
-	gl.TextureStorage2D(r.pickTexture, 1, gl.RGB32UI,
+	gl.TextureStorage2D(r.pickTexture, 1, gl.RGBA32UI,
 		int32(r.ViewPort[r.Stage].Width), int32(r.ViewPort[r.Stage].Height))
 	gl.TextureParameteri(r.pickTexture, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	gl.TextureParameteri(r.pickTexture, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
@@ -652,15 +652,25 @@ func (r *RenderManager) Transfrom3Dto2D(pos y3d.Vec3) y3d.Vec2 {
 	}
 }
 
-func (r *RenderManager) GetPickInfo(x, y int32) [3]uint32 {
+func (r *RenderManager) GetPickInfo(x, y int32) [4]uint32 {
 	gl.BindFramebuffer(gl.READ_FRAMEBUFFER, r.pickBuffer)
 	gl.ReadBuffer(gl.COLOR_ATTACHMENT0)
-	pixels := [3]uint32{}
-	flipped := int32(r.ViewPort[r.Stage].Height) - y
-	gl.ReadPixels(x, flipped, 1, 1, gl.RGB_INTEGER, gl.UNSIGNED_INT, unsafe.Pointer(&pixels[0]))
+	pixels := [4]uint32{1, 1, 1, 1}
+	flipped := int32(r.ViewPort[r.Stage].Height) - y - 1
+	gl.BindBuffer(gl.PIXEL_PACK_BUFFER, 0)
+	gl.ReadPixels(x, flipped, 1, 1, gl.RGBA_INTEGER, gl.UNSIGNED_INT, unsafe.Pointer(&pixels[0]))
 	gl.ReadBuffer(gl.NONE)
 	gl.BindFramebuffer(gl.READ_FRAMEBUFFER, 0)
 	return pixels
+	// gl.BindFramebuffer(gl.FRAMEBUFFER, r.pickBuffer)
+	// v := [4]uint32{7, 7, 7, 7}
+	// gl.ClearBufferuiv(gl.COLOR, 0, &v[0])
+	// gl.ReadBuffer(gl.COLOR_ATTACHMENT0)
+	// var px [4]uint32
+	// gl.ReadPixels(0, 0, 1, 1, gl.RGBA_INTEGER, gl.UNSIGNED_INT, unsafe.Pointer(&px[0]))
+	// log.Println(px, "err:", gl.GetError(),
+	// 	"status:", gl.CheckFramebufferStatus(gl.FRAMEBUFFER))
+	// return px
 }
 
 func (r *RenderManager) GetPickRay(pos y3d.Vec2) y3d.Ray {
@@ -827,6 +837,8 @@ func (r *RenderManager) PickPhase() {
 	r.LoadRenderParameters()
 	gl.BindBufferBase(gl.UNIFORM_BUFFER, VIEW_PROJ_BINDING, r.viewubo)
 	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, RENDER_PARAMS_BINDING, r.renderParamsSSBO)
+	zero := [4]uint32{}
+	gl.ClearBufferuiv(gl.COLOR, 0, &zero[0])
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
 
 	gl.UseProgram(r.pickProgram)
@@ -836,8 +848,6 @@ func (r *RenderManager) PickPhase() {
 	gl.CullFace(gl.BACK)
 	gl.Disable(gl.BLEND)
 	r.Render()
-
-	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 }
 
 // hmmm

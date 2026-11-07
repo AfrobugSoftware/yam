@@ -214,8 +214,10 @@ func (t *TestApplication) ProcessInput(deltaTime float32) {
 	ray := t.engine.RenderManager.GetPickRay(caged)
 
 	pixels := t.engine.RenderManager.GetPickInfo(int32(caged.X), int32(caged.Y))
-	fmt.Println(caged)
-	fmt.Println(pixels)
+	ent, b := t.engine.Level.World.FindTag(pixels[0])
+	if b {
+		fmt.Println(ent)
+	}
 	if im.GetMouseButtonState(sdl.BUTTON_LEFT) == ycore.BUTTON_HELD {
 		if math.Abs(float64(im.MousePosition.X)) > y3d.NearZero ||
 			math.Abs(float64(im.MousePosition.Y)) > y3d.NearZero {
