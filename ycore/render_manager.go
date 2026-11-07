@@ -660,6 +660,9 @@ func (r *RenderManager) GetPickInfo(x, y int32) [4]uint32 {
 	pixels := [4]uint32{}
 	flipped := int32(r.ViewPort[r.Stage].Height) - y - 1
 	gl.BindBuffer(gl.PIXEL_PACK_BUFFER, 0)
+
+	//this is a problem, the pick buffer uses too much memory, but gl.RED as a format does not work,
+	//need to investigate why
 	gl.ReadPixels(x, flipped, 1, 1, gl.RGBA_INTEGER, gl.UNSIGNED_INT, unsafe.Pointer(&pixels[0]))
 	gl.ReadBuffer(gl.NONE)
 	gl.BindFramebuffer(gl.READ_FRAMEBUFFER, 0)
