@@ -681,7 +681,6 @@ func (r *RenderManager) GetPickRay(pos y3d.Vec2) y3d.Ray {
 	(&InvProj).Invert()
 	ray_eye := InvProj.MulVec4(ray_clip)
 
-	var dir, origin y3d.Vec3
 	view3d := r.View3D[r.Stage]
 	tx, ty, tz := view3d[12], view3d[13], view3d[14]
 	camX := -(view3d[0]*tx + view3d[1]*ty + view3d[2]*tz)
@@ -692,12 +691,12 @@ func (r *RenderManager) GetPickRay(pos y3d.Vec2) y3d.Ray {
 	dirY := (view3d[4]*ray_eye.X + view3d[5]*ray_eye.Y + view3d[6]*ray_eye.Z)
 	dirZ := (view3d[8]*ray_eye.X + view3d[9]*ray_eye.Y + view3d[10]*ray_eye.Z)
 
-	origin = y3d.Vec3{
+	origin := y3d.Vec3{
 		X: camX,
 		Y: camY,
 		Z: camZ,
 	}
-	dir = y3d.Normalize(y3d.Vec3{
+	dir := y3d.Normalize(y3d.Vec3{
 		X: dirX,
 		Y: dirY,
 		Z: dirZ,
