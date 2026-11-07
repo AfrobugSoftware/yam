@@ -1,6 +1,7 @@
 package ygame
 
 import (
+	"fmt"
 	"math"
 	"yam/y3d"
 	"yam/ycontroller"
@@ -18,6 +19,7 @@ type TestApplication struct {
 	camUp        y3d.Vec3
 	yaw, pitch   float32
 	pickedEntity ycore.EntityId
+	boxEnt       ycore.EntityId
 }
 
 func (t *TestApplication) Startup(e *Engine) {
@@ -193,6 +195,7 @@ func (t *TestApplication) LevelTest() {
 	ycore.AddEntityAsInstance(w, ent3, ie1)
 	ycore.AddEntityAsInstance(w, ent3, ie2)
 	ycore.AddEntityAsInstance(w, ent3, ie3)
+	t.boxEnt = ent3
 }
 
 func (t *TestApplication) Update(deltaTime float64) {
@@ -264,6 +267,21 @@ func (t *TestApplication) ProcessInput(deltaTime float32) {
 	}
 
 	t.UpdatePickedEntity()
+	t.AddBox()
+}
+
+func (t *TestApplication) AddBox() {
+	im := t.engine.InputManager
+	w := t.engine.Level.World
+	caged := t.engine.InputManager.AbsolutePosition
+	if im.GetMouseButtonState(sdl.BUTTON_RIGHT) == ycore.BUTTON_PRESSED {
+		o := t.engine.RenderManager.GetPickRay(caged)
+		ie1 := w.NewEntity()
+		w.AddComponent(ie1, ycore.ScaleComponent, float32(35.0))
+		fmt.Println(o.O)
+		ycore.AddEntityMoveData(w, ie1, y3d.Add(o.O, y3d.Smul(o.D, 5.0)), y3d.IdenQuat())
+		ycore.AddEntityAsInstance(w, t.boxEnt, ie1)
+	}
 }
 
 func (t *TestApplication) UpdatePickedEntity() {

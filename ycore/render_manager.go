@@ -671,22 +671,37 @@ func (r *RenderManager) GetPickInfo(x, y int32) [4]uint32 {
 
 func (r *RenderManager) GetPickRay(pos y3d.Vec2) y3d.Ray {
 	width, height := float32(r.ViewPort[r.Stage].Width), float32(r.ViewPort[r.Stage].Height)
-	vcS := y3d.Vec3{
-		X: (((pos.X * 2.0) / width) - 1.0) / r.ProjP[r.Stage][0],
-		Y: (((pos.Y * 2.0) / height) - 1.0) / r.ProjP[r.Stage][5],
-		Z: 1.0,
+	ray_clip := y3d.Vec4{
+		X: (2.0*pos.X)/width - 1.0,
+		Y: 1.0 - (2.0*pos.Y)/height,
+		Z: -1.0,
+		W: 1.0,
 	}
-	vcS.Y = -vcS.Y
-	InvView := r.View3D[r.Stage]
-	(&InvView).Invert()
+	InvProj := r.ProjP[r.Stage]
+	(&InvProj).Invert()
+	ray_eye := InvProj.MulVec4(ray_clip)
+
 	var dir, origin y3d.Vec3
-	dir = InvView.MulVec3(vcS)
+	view3d := r.View3D[r.Stage]
+	tx, ty, tz := view3d[12], view3d[13], view3d[14]
+	camX := -(view3d[0]*tx + view3d[1]*ty + view3d[2]*tz)
+	camY := -(view3d[4]*tx + view3d[5]*ty + view3d[6]*tz)
+	camZ := -(view3d[8]*tx + view3d[9]*ty + view3d[10]*tz)
+
+	dirX := (view3d[0]*ray_eye.X + view3d[1]*ray_eye.Y + view3d[2]*ray_eye.Z)
+	dirY := (view3d[4]*ray_eye.X + view3d[5]*ray_eye.Y + view3d[6]*ray_eye.Z)
+	dirZ := (view3d[8]*ray_eye.X + view3d[9]*ray_eye.Y + view3d[10]*ray_eye.Z)
+
 	origin = y3d.Vec3{
-		X: InvView[12],
-		Y: InvView[13],
-		Z: InvView[14],
+		X: camX,
+		Y: camY,
+		Z: camZ,
 	}
-	dir = y3d.Normalize(dir)
+	dir = y3d.Normalize(y3d.Vec3{
+		X: dirX,
+		Y: dirY,
+		Z: dirZ,
+	})
 	return y3d.Ray{
 		O: origin,
 		D: dir,
