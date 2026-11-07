@@ -60,7 +60,7 @@ var attribOrder = []string{
 	"WEIGHTS_0",
 }
 
-func LoadGLTF(filename string, r *RenderManager, tag uint32, world *World) error {
+func LoadGLTF(filename string, r *RenderManager, world *World) error {
 	doc, err := gltf.Open(filename)
 	if err != nil {
 		return err
@@ -75,7 +75,7 @@ func LoadGLTF(filename string, r *RenderManager, tag uint32, world *World) error
 	data := make(map[int][]byte)
 	skin := r.SkinManager.AddSkin(IdentityMaterial)
 	for _, n := range scene.Nodes {
-		err := ProcessNode(world, doc.Nodes[n], doc, r, tag, skin, data)
+		err := ProcessNode(world, doc.Nodes[n], doc, r, skin, data)
 		if err != nil {
 			return err
 		}
@@ -253,7 +253,6 @@ func accessorAttrib(doc *gltf.Document, acc *gltf.Accessor, data map[int][]byte)
 func ProcessNode(world *World, node *gltf.Node,
 	doc *gltf.Document,
 	r *RenderManager,
-	tag uint32,
 	skin int,
 	data map[int][]byte) error {
 	if node.Mesh != nil {
@@ -332,7 +331,6 @@ func ProcessNode(world *World, node *gltf.Node,
 		err := AddEntityRenderableData(
 			world,
 			ynode,
-			tag,
 			vertexType,
 			skin,
 			1.0,
@@ -528,7 +526,7 @@ func ProcessNode(world *World, node *gltf.Node,
 	}
 
 	for _, n := range node.Children {
-		err := ProcessNode(world, doc.Nodes[n], doc, r, tag, skin, data)
+		err := ProcessNode(world, doc.Nodes[n], doc, r, skin, data)
 		if err != nil {
 			return err
 		}

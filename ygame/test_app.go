@@ -1,9 +1,9 @@
 package ygame
 
 import (
-	"fmt"
 	"math"
 	"yam/y3d"
+	"yam/ycontroller"
 	"yam/ycore"
 	"yam/ygl"
 	"yam/yui"
@@ -12,11 +12,12 @@ import (
 )
 
 type TestApplication struct {
-	engine      *Engine
-	camFront    y3d.Vec3
-	camPostiion y3d.Vec3
-	camUp       y3d.Vec3
-	yaw, pitch  float32
+	engine       *Engine
+	camFront     y3d.Vec3
+	camPostiion  y3d.Vec3
+	camUp        y3d.Vec3
+	yaw, pitch   float32
+	pickedEntity ycore.EntityId
 }
 
 func (t *TestApplication) Startup(e *Engine) {
@@ -29,19 +30,16 @@ func (t *TestApplication) Startup(e *Engine) {
 
 	err := ycore.LoadGLTF("assets/gltf/BrainStem.glb",
 		t.engine.RenderManager,
-		uint32(ycore.GenerateRandomId()), //tag
 		t.engine.Level.World)
 	if err != nil {
 		panic(err)
 	}
 	err = ycore.LoadGLTF("assets/gltf/SheenChair.glb",
 		t.engine.RenderManager,
-		uint32(ycore.GenerateRandomId()), //tag
 		t.engine.Level.World)
 	if err != nil {
 		panic(err)
 	}
-	t.engine.RenderManager.DrawBoundingBoxes = true
 	t.camPostiion.Y = 1
 	t.yaw = float32(y3d.ToRadians(90))
 	t.camFront = y3d.Normalize(y3d.Vec3{
@@ -159,24 +157,24 @@ func (t *TestApplication) LevelTest() {
 	ycore.AddEntityMoveData(t.engine.Level.World, ent4, y3d.Vec3{X: 5, Z: 10, Y: 5.0}, y3d.IdenQuat())
 
 	v, i := ygl.CreateSphere(64, 36, 5.0)
-	err := ycore.AddEntityRenderableData(t.engine.Level.World, ent, uint32(ycore.GenerateRandomId()),
+	err := ycore.AddEntityRenderableData(t.engine.Level.World, ent,
 		ycore.VPNTC, skin, 1.0, v, i, t.engine.RenderManager.VertextManager)
 	if err != nil {
 		panic(err)
 	}
 	v2, i2 := ygl.CreateCube()
-	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent3, uint32(ycore.GenerateRandomId()),
+	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent3,
 		ycore.VPNTC, skin, 35, v2, i2, t.engine.RenderManager.VertextManager)
 	if err != nil {
 		panic(err)
 	}
-	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent2, uint32(ycore.GenerateRandomId()),
+	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent2,
 		ycore.VPNTC, skin, 1.0, v, i, t.engine.RenderManager.VertextManager)
 	if err != nil {
 		panic(err)
 	}
 	v, i = ygl.CreateQuad()
-	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent4, uint32(ycore.GenerateRandomId()),
+	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent4,
 		ycore.VPNTC, skin, 1.0, v, i, t.engine.RenderManager.VertextManager)
 	if err != nil {
 		panic(err)
@@ -188,9 +186,7 @@ func (t *TestApplication) LevelTest() {
 	ycore.AddEntityMoveData(w, ie1, y3d.Vec3{X: 5, Z: 0, Y: 2.0}, y3d.IdenQuat())
 	ycore.AddEntityMoveData(w, ie2, y3d.Vec3{X: 10, Z: 0, Y: 2.0}, y3d.IdenQuat())
 	ycore.AddEntityMoveData(w, ie3, y3d.Vec3{X: -5, Z: 0, Y: 2.0}, y3d.IdenQuat())
-	w.AddComponent(ie1, ycore.TagComponent, uint32(ycore.GenerateRandomId()))
-	w.AddComponent(ie2, ycore.TagComponent, uint32(ycore.GenerateRandomId()))
-	w.AddComponent(ie3, ycore.TagComponent, uint32(ycore.GenerateRandomId()))
+
 	w.AddComponent(ie1, ycore.ScaleComponent, float32(35.0))
 	w.AddComponent(ie2, ycore.ScaleComponent, float32(50.0))
 	w.AddComponent(ie3, ycore.ScaleComponent, float32(20.0))
@@ -208,16 +204,10 @@ func (t *TestApplication) Update(deltaTime float64) {
 }
 
 func (t *TestApplication) ProcessInput(deltaTime float32) {
-	camSpeed := 5 * deltaTime
+	camSpeed := 10 * deltaTime
 	im := t.engine.InputManager
 	caged := t.engine.InputManager.AbsolutePosition
-	ray := t.engine.RenderManager.GetPickRay(caged)
 
-	pixels := t.engine.RenderManager.GetPickInfo(int32(caged.X), int32(caged.Y))
-	ent, b := t.engine.Level.World.FindTag(pixels[0])
-	if b {
-		fmt.Println(ent)
-	}
 	if im.GetMouseButtonState(sdl.BUTTON_LEFT) == ycore.BUTTON_HELD {
 		if math.Abs(float64(im.MousePosition.X)) > y3d.NearZero ||
 			math.Abs(float64(im.MousePosition.Y)) > y3d.NearZero {
@@ -236,12 +226,14 @@ func (t *TestApplication) ProcessInput(deltaTime float32) {
 		}
 	}
 	if im.GetMouseButtonState(sdl.BUTTON_LEFT) == ycore.BUTTON_PRESSED {
-		b, lines := t.engine.Level.Select(ray)
+		pixels := t.engine.RenderManager.GetPickInfo(int32(caged.X), int32(caged.Y))
+		b := t.engine.Level.World.IsEntity(ycore.EntityId(pixels[0]))
 		if b {
-			err := t.engine.RenderManager.AddLine(lines)
-			if err != nil {
-				panic(err)
-			}
+			t.engine.RenderManager.PickedEntity = ycore.EntityId(pixels[0])
+			t.pickedEntity = ycore.EntityId(pixels[0])
+		} else {
+			t.engine.RenderManager.PickedEntity = ycore.NullEntity
+			t.pickedEntity = ycore.NullEntity
 		}
 	}
 	if im.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_HELD {
@@ -271,6 +263,45 @@ func (t *TestApplication) ProcessInput(deltaTime float32) {
 		t.engine.RenderManager.EnablePicking = !t.engine.RenderManager.EnablePicking
 	}
 
+	t.UpdatePickedEntity()
+}
+
+func (t *TestApplication) UpdatePickedEntity() {
+	if t.pickedEntity == ycore.NullEntity {
+		return
+	}
+	im := t.engine.InputManager
+	w := t.engine.Level.World
+	m := w.GetComponent(t.pickedEntity, ycore.MoveControllerComponent).(*ycontroller.MovementController)
+	speed := float32(10)
+	m.Thrust = 0
+	if im.GetKeyState(sdl.SCANCODE_W) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_W) == ycore.BUTTON_HELD {
+		m.Thrust = speed
+	}
+	if im.GetKeyState(sdl.SCANCODE_S) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_S) == ycore.BUTTON_HELD {
+		m.Thrust = -speed
+	}
+	m.RotSpeedPitch = 0
+	if im.GetKeyState(sdl.SCANCODE_A) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_A) == ycore.BUTTON_HELD {
+		m.RotSpeedPitch = speed
+	}
+	if im.GetKeyState(sdl.SCANCODE_D) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_D) == ycore.BUTTON_HELD {
+		m.RotSpeedPitch = -speed
+	}
+	m.RotSpeedRoll = 0
+	if im.GetKeyState(sdl.SCANCODE_Q) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_Q) == ycore.BUTTON_HELD {
+		m.RotSpeedRoll = speed
+	}
+	if im.GetKeyState(sdl.SCANCODE_E) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_E) == ycore.BUTTON_HELD {
+		m.RotSpeedRoll = -speed
+	}
+	m.RotSpeedYaw = 0
+	if im.GetKeyState(sdl.SCANCODE_Z) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_Z) == ycore.BUTTON_HELD {
+		m.RotSpeedYaw = speed
+	}
+	if im.GetKeyState(sdl.SCANCODE_X) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_X) == ycore.BUTTON_HELD {
+		m.RotSpeedYaw = -speed
+	}
 }
 
 func (t *TestApplication) UpdateCamera() {

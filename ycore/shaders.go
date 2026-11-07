@@ -93,7 +93,7 @@ vec4 calculate_bling_phong(int light_index) {
 
 	float diffuse_factor = max(dot(fs_in.normal, light_direction), 0.0);
 	vec4 diffuse = render_params.l[light_index].color * material.diffuse * diffuse_factor;
-	vec4 ambient = material.ambient * render_params.l[light_index].color * 0.1;
+	vec4 ambient = material.ambient * render_params.l[light_index].color * 0.5;
 	return (diffuse + specular + ambient);
 }
 

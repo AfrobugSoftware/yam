@@ -37,6 +37,7 @@ const (
 )
 
 type UIElement struct {
+	Id            uint32
 	Position      y3d.Vec2
 	Size          y3d.Vec2
 	BaseSize      y3d.Vec2

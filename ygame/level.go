@@ -60,6 +60,7 @@ func (l *Level) UpdateEntitesMovement(deltaTime float32) {
 		ycore.MoveControllerComponent)
 	var wg sync.WaitGroup
 	for _, e := range entites {
+		//change to go routine pool
 		wg.Go(
 			func() {
 				movement := l.World.GetComponent(e, ycore.MoveControllerComponent).(*ycontroller.MovementController)

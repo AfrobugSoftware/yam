@@ -25,7 +25,7 @@ var (
 
 type ArchetypeId uint64
 type ComponentId uint64
-type EntityId uint64
+type EntityId uint32
 type Component any
 
 type Storage[T any] struct {
@@ -202,7 +202,13 @@ func (w *World) NewEntity() EntityId {
 	w.entities[id] = nil
 	return id
 }
+func (w *World) IsEntity(e EntityId) bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
 
+	_, s := w.entities[e]
+	return s
+}
 func (w *World) DestroyEntity(entity EntityId) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -334,28 +340,6 @@ func (w *World) SetComponent(entity EntityId, cid ComponentId, comp Component) {
 	//assuming the the component we want to set is in this archetype
 	//possible bug here, if it does not have to component, it would create one
 	record.archetype.setComponent(record.row, cid, comp)
-}
-
-func (w *World) FindTag(tag uint32) (EntityId, bool) {
-	w.mu.RLock()
-	defer w.mu.RUnlock()
-
-	for _, arch := range w.archetypes {
-		if arch.key.contains(TagComponent) {
-			store := reflect.ValueOf(arch.storageBuffer[TagComponent]).Elem()
-			slc := store.Field(0)
-			for _, e := range arch.entities {
-				ent, ok := w.entities[e]
-				if ok {
-					t := slc.Index(ent.row).Interface().(uint32)
-					if t == tag {
-						return e, true
-					}
-				}
-			}
-		}
-	}
-	return NullEntity, false
 }
 
 func (w *World) UpdateComponent(entity EntityId, component ComponentId,

@@ -109,6 +109,7 @@ type RenderManager struct {
 	DrawBoundingTree   bool
 	DrawDebugLines     bool
 	EnablePicking      bool
+	PickedEntity       EntityId
 	BoundingTree       *Octree
 	PickRay            y3d.Vec3
 	World              *World
@@ -198,9 +199,10 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 			y3d.Identity,
 			y3d.Identity,
 		},
-		Mode:     MODE_3D_PERSPECTIVE,
-		DrawMode: gl.TRIANGLES,
-		Stage:    -1,
+		Mode:          MODE_3D_PERSPECTIVE,
+		DrawMode:      gl.TRIANGLES,
+		Stage:         -1,
+		EnablePicking: true,
 	}
 	context, err := window.GLCreateContext()
 	if err != nil {
@@ -655,22 +657,13 @@ func (r *RenderManager) Transfrom3Dto2D(pos y3d.Vec3) y3d.Vec2 {
 func (r *RenderManager) GetPickInfo(x, y int32) [4]uint32 {
 	gl.BindFramebuffer(gl.READ_FRAMEBUFFER, r.pickBuffer)
 	gl.ReadBuffer(gl.COLOR_ATTACHMENT0)
-	pixels := [4]uint32{1, 1, 1, 1}
+	pixels := [4]uint32{}
 	flipped := int32(r.ViewPort[r.Stage].Height) - y - 1
 	gl.BindBuffer(gl.PIXEL_PACK_BUFFER, 0)
 	gl.ReadPixels(x, flipped, 1, 1, gl.RGBA_INTEGER, gl.UNSIGNED_INT, unsafe.Pointer(&pixels[0]))
 	gl.ReadBuffer(gl.NONE)
 	gl.BindFramebuffer(gl.READ_FRAMEBUFFER, 0)
 	return pixels
-	// gl.BindFramebuffer(gl.FRAMEBUFFER, r.pickBuffer)
-	// v := [4]uint32{7, 7, 7, 7}
-	// gl.ClearBufferuiv(gl.COLOR, 0, &v[0])
-	// gl.ReadBuffer(gl.COLOR_ATTACHMENT0)
-	// var px [4]uint32
-	// gl.ReadPixels(0, 0, 1, 1, gl.RGBA_INTEGER, gl.UNSIGNED_INT, unsafe.Pointer(&px[0]))
-	// log.Println(px, "err:", gl.GetError(),
-	// 	"status:", gl.CheckFramebufferStatus(gl.FRAMEBUFFER))
-	// return px
 }
 
 func (r *RenderManager) GetPickRay(pos y3d.Vec2) y3d.Ray {
@@ -858,6 +851,8 @@ func (r *RenderManager) Render() {
 	if err != nil {
 		log.Println(err)
 	}
+	r.HighlightPickedEntity()
+
 	if r.DrawBoundingBoxes {
 		r.RenderBoundingBoxes()
 	}
@@ -958,6 +953,29 @@ func (r *RenderManager) Resize() {
 	if r.RootUI != nil {
 		r.RootUI.BaseSize = y3d.Vec2{X: float32(fbW), Y: float32(fbH)}
 	}
+}
+
+// might move from here
+func (r *RenderManager) HighlightPickedEntity() {
+	if r.PickedEntity == NullEntity {
+		return
+	}
+	e := r.PickedEntity
+	box := r.World.GetComponent(e, BoundingBoxComponent).(Box)
+	matrix := box.RenderBoxMatrix()
+	matrixBytes := unsafe.Slice((*byte)(unsafe.Pointer(&matrix)), 64)
+	gl.NamedBufferSubData(r.boundingboxssbo, 0, 64, gl.Ptr(matrixBytes))
+
+	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, 0, r.boundingboxssbo)
+
+	c := [4]float32{0.0, 0.0, 1.0, 1.0}
+
+	//SET UP RENDER STATE
+	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
+	gl.UseProgram(r.boundingboxprogram)
+	gl.Uniform4fv(0, 1, &c[0])
+	gl.DrawArraysInstanced(gl.TRIANGLES, 0, 36, 1)
+	gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
 }
 
 func (r *RenderManager) RenderBoundingBoxes() {
@@ -1066,9 +1084,7 @@ func (r *RenderManager) RenderEntities(cull bool) {
 			for i, ie := range instances {
 				mats[i] = r.World.GetComponent(ie, TransformComponent).(Transform).World
 				rs[i] = renderable.RenderParams
-				if r.World.HasComponent(ie, TagComponent) {
-					tags[i] = r.World.GetComponent(ie, TagComponent).(uint32)
-				}
+				tags[i] = uint32(ie)
 			}
 			v.AddRenderState(int(renderable.DrawCmd.BaseInstance), rs...)
 			v.AddMatrix(int(renderable.DrawCmd.BaseInstance), mats...)
@@ -1078,10 +1094,7 @@ func (r *RenderManager) RenderEntities(cull bool) {
 			v.AddInstances(&renderable.DrawCmd)
 			v.AddMatrix(int(renderable.DrawCmd.BaseInstance), transform.World) //this needs to be world
 			v.AddRenderState(int(renderable.DrawCmd.BaseInstance), renderable.RenderParams)
-			if r.World.HasComponent(e, TagComponent) {
-				v.AddTag(int(renderable.DrawCmd.BaseInstance),
-					r.World.GetComponent(e, TagComponent).(uint32))
-			}
+			v.AddTag(int(renderable.DrawCmd.BaseInstance), uint32(e))
 		}
 		v.AddDrawCommand(renderable.DrawCmd)
 	}
