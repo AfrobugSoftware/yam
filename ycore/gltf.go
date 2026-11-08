@@ -613,6 +613,7 @@ func ProcessNode(world *World, node *gltf.Node,
 			}
 
 		}
+
 	}
 
 	for _, n := range node.Children {
