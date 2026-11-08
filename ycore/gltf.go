@@ -6,7 +6,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"image"
 	"io"
+	"log"
 	"math"
 	"net/url"
 	"os"
@@ -15,6 +17,11 @@ import (
 	"strings"
 	"unsafe"
 	"yam/y3d"
+
+	"image/draw"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 
 	"github.com/go-gl/gl/v4.3-core/gl"
 	"github.com/qmuntal/gltf"
@@ -34,6 +41,23 @@ var (
 		gltf.ComponentUshort: 5123,
 		gltf.ComponentUint:   5125,
 		gltf.ComponentFloat:  5126,
+	}
+	minFilter = map[gltf.MinFilter]uint16{
+		gltf.MinNearest:              9728,
+		gltf.MinLinear:               9729,
+		gltf.MinNearestMipMapNearest: 9984,
+		gltf.MinLinearMipMapNearest:  9985,
+		gltf.MinNearestMipMapLinear:  9986,
+		gltf.MinLinearMipMapLinear:   9987,
+	}
+	magFilter = map[gltf.MagFilter]uint16{
+		gltf.MagNearest: 9728,
+		gltf.MagLinear:  9729,
+	}
+	wrapMode = map[gltf.WrappingMode]uint16{
+		gltf.WrapClampToEdge:    33071,
+		gltf.WrapMirroredRepeat: 33648,
+		gltf.WrapRepeat:         10497,
 	}
 )
 
@@ -74,6 +98,7 @@ func LoadGLTF(filename string, r *RenderManager, world *World) error {
 	scene := doc.Scenes[*doc.Scene]
 	data := make(map[int][]byte)
 	skin := r.SkinManager.AddSkin(IdentityMaterial)
+	loadTextureSkin(doc, skin, r.SkinManager)
 	for _, n := range scene.Nodes {
 		err := ProcessNode(world, doc.Nodes[n], doc, r, skin, data)
 		if err != nil {
@@ -81,6 +106,78 @@ func LoadGLTF(filename string, r *RenderManager, world *World) error {
 		}
 	}
 	return nil
+}
+
+func loadTextureSkin(doc *gltf.Document, skin int, skinManager *SkinManager) {
+	for _, t := range doc.Textures {
+		if t == nil {
+			continue
+		}
+		sampler := doc.Samplers[*t.Sampler]
+		img := doc.Images[*t.Source]
+		if img.URI != "" {
+			skinManager.AddTexture(skin,
+				img.URI, int32(sampler.MinFilter),
+				int32(sampler.MagFilter),
+				int32(sampler.WrapS),
+				int32(sampler.WrapT))
+		} else {
+			var texId uint32
+			gl.CreateTextures(gl.TEXTURE_2D, 1, &texId)
+			gl.TextureParameteri(texId, gl.TEXTURE_WRAP_S, int32(wrapMode[sampler.WrapS]))
+			gl.TextureParameteri(texId, gl.TEXTURE_WRAP_T, int32(wrapMode[sampler.WrapT]))
+			gl.TextureParameteri(texId, gl.TEXTURE_MIN_FILTER, int32(minFilter[sampler.MinFilter]))
+			gl.TextureParameteri(texId, gl.TEXTURE_MAG_FILTER, int32(magFilter[sampler.MagFilter]))
+
+			bv := doc.BufferViews[*img.BufferView]
+			buffer := doc.Buffers[bv.Buffer]
+			start := int(bv.ByteOffset)
+			end := int(bv.ByteOffset) + int(bv.ByteLength)
+			data := buffer.Data[start:end]
+
+			imgReader := bytes.NewReader(data)
+			_, _, err := image.DecodeConfig(imgReader)
+			if err != nil {
+				log.Printf("Could not decode image config: %v", err)
+				continue
+			}
+			imgReader.Seek(0, io.SeekStart)
+			imgData, _, err := image.Decode(imgReader)
+			if err != nil {
+				panic(err)
+			}
+			bounds := imgData.Bounds()
+			rgba := image.NewRGBA(bounds)
+			draw.Draw(rgba, bounds, imgData, bounds.Min, draw.Src)
+			levels := mipLevels(
+				int32(minFilter[sampler.MinFilter]),
+				int32(bounds.Max.X),
+				int32(bounds.Max.Y),
+			)
+			gl.TextureStorage2D(texId, levels, gl.RGBA8, int32(bounds.Max.X),
+				int32(bounds.Max.Y))
+			err = CheckError()
+			if err != nil {
+				panic(err)
+			}
+			gl.TextureSubImage2D(texId, 0, 0, 0, int32(bounds.Max.X),
+				int32(bounds.Max.Y), gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(rgba.Pix))
+			err = CheckError()
+			if err != nil {
+				panic(err)
+			}
+			if levels > 1 {
+				gl.BindTexture(gl.TEXTURE_2D, texId)
+				var v float32
+				gl.GetFloatv(gl.MAX_TEXTURE_MAX_ANISOTROPY, &v)
+				gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAX_ANISOTROPY, v)
+				gl.GenerateMipmap(gl.TEXTURE_2D)
+				gl.BindTexture(gl.TEXTURE_2D, 0)
+			}
+
+			skinManager.AddTextureHandle(skin, texId, 0)
+		}
+	}
 }
 
 func loadTimestamps(doc *gltf.Document, acc *gltf.Accessor, data map[int][]byte) ([]float32, error) {
