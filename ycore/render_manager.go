@@ -803,6 +803,7 @@ func (r *RenderManager) ShadowPhase() {
 	r.SetStage(MODE_3D_ORTHO, SHADOW_STAGE)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.shadowbuffer)
 	gl.Clear(gl.DEPTH_BUFFER_BIT)
+	r.LoadRenderParameters()
 	gl.BindBufferBase(gl.UNIFORM_BUFFER, VIEW_PROJ_BINDING, r.viewubo)
 	gl.UseProgram(r.shadowProgram)
 	r.Render()

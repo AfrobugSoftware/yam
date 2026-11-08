@@ -7,7 +7,7 @@ type Hierarchy struct {
 	Parent   EntityId
 }
 
-func UpdateGS(w *World, owner EntityId, hierarchy Hierarchy) {
+func (w *World) UpdateGS(owner EntityId, hierarchy Hierarchy) {
 	transform := w.GetComponent(owner, TransformComponent).(Transform)
 	box := w.GetComponent(owner, BoundingBoxComponent).(Box)
 	if hierarchy.Parent == NullEntity {
@@ -20,7 +20,7 @@ func UpdateGS(w *World, owner EntityId, hierarchy Hierarchy) {
 	w.SetComponent(owner, TransformComponent, transform)
 	for _, c := range hierarchy.Children {
 		h := w.GetComponent(c, HierarchyComponent).(Hierarchy)
-		UpdateGS(w, c, h)
+		w.UpdateGS(c, h)
 		b := w.GetComponent(c, BoundingBoxComponent).(Box)
 		box.World.Max = y3d.Max(box.World.Max, b.World.Max)
 		box.World.Min = y3d.Min(box.World.Min, b.World.Min)
@@ -28,7 +28,7 @@ func UpdateGS(w *World, owner EntityId, hierarchy Hierarchy) {
 	w.SetComponent(owner, BoundingBoxComponent, box)
 }
 
-func RenderScene(r *RenderManager, w *World, root EntityId) {
+func (w *World) RenderSceneGraph(r *RenderManager, root EntityId) {
 	vm := r.VertextManager
 	q := make([]EntityId, 0, 1000)
 	q = append(q, root)
@@ -40,8 +40,10 @@ func RenderScene(r *RenderManager, w *World, root EntityId) {
 		if box.World.Cull(c[:]) {
 			continue
 		}
-		hierarchy := w.GetComponent(f, HierarchyComponent).(Hierarchy)
-		q = append(q, hierarchy.Children...)
+		if w.HasComponent(f, HierarchyComponent) {
+			hierarchy := w.GetComponent(f, HierarchyComponent).(Hierarchy)
+			q = append(q, hierarchy.Children...)
+		}
 		if w.HasComponent(f, RenderableComponent, TransformComponent) {
 			renderable := w.GetComponent(f, RenderableComponent).(Renderable)
 			v, err := vm.GetCache(renderable.VertexType, renderable.SkinId)
@@ -49,17 +51,26 @@ func RenderScene(r *RenderManager, w *World, root EntityId) {
 				continue //no cache for this entity
 			}
 			transform := w.GetComponent(f, TransformComponent).(Transform)
-			if w.HasComponent(f, MatInstanceComponent, RenderParamsInstanceComponent) {
-				imat := w.GetComponent(f, MatInstanceComponent).([]y3d.Mat4)
-				ip := w.GetComponent(f, RenderParamsInstanceComponent).([]PerObjectRenderState)
-				renderable.DrawCmd.InstanceCount = uint32(len(imat))
+			if w.HasComponent(f, InstanceComponent) {
+				instances := r.World.GetComponent(f, InstanceComponent).([]EntityId)
+				renderable.DrawCmd.InstanceCount = uint32(len(instances))
+				mats := make([]y3d.Mat4, len(instances))
+				rs := make([]PerObjectRenderState, len(instances))
+				tags := make([]uint32, len(instances))
+				for i, ie := range instances {
+					mats[i] = r.World.GetComponent(ie, TransformComponent).(Transform).World
+					rs[i] = renderable.RenderParams
+					tags[i] = uint32(ie)
+				}
 				v.AddInstances(&renderable.DrawCmd)
-				v.AddRenderState(int(renderable.DrawCmd.BaseInstance), ip...)
-				v.AddMatrix(int(renderable.DrawCmd.BaseInstance), imat...)
+				v.AddRenderState(int(renderable.DrawCmd.BaseInstance), rs...)
+				v.AddMatrix(int(renderable.DrawCmd.BaseInstance), mats...)
+				v.AddTag(int(renderable.DrawCmd.BaseInstance), tags...)
 			} else {
 				v.AddInstances(&renderable.DrawCmd)
 				v.AddMatrix(int(renderable.DrawCmd.BaseInstance), transform.World) //this needs to be world
 				v.AddRenderState(int(renderable.DrawCmd.BaseInstance), renderable.RenderParams)
+				v.AddTag(int(renderable.DrawCmd.BaseInstance), uint32(f))
 			}
 			v.AddDrawCommand(renderable.DrawCmd)
 		}
