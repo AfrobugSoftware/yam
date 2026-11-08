@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"image"
 	"io"
-	"log"
 	"math"
 	"net/url"
 	"os"
@@ -136,12 +135,6 @@ func loadTextureSkin(doc *gltf.Document, skin int, skinManager *SkinManager) {
 			data := buffer.Data[start:end]
 
 			imgReader := bytes.NewReader(data)
-			_, _, err := image.DecodeConfig(imgReader)
-			if err != nil {
-				log.Printf("Could not decode image config: %v", err)
-				continue
-			}
-			imgReader.Seek(0, io.SeekStart)
 			imgData, _, err := image.Decode(imgReader)
 			if err != nil {
 				panic(err)
