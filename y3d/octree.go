@@ -265,7 +265,7 @@ func (o *Octree) GetFloor(origin Vec3) (bool, float32, Plane) {
 	}
 	r := Ray{
 		O: origin,
-		D: Vec3{0, -1, 0},
+		D: Vec3{X: 0, Y: -1, Z: 0},
 	}
 	for _, p := range o.Polys {
 		box := p.BoundingBox

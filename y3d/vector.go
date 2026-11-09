@@ -19,6 +19,7 @@ type Vec2 struct {
 
 type Vec3 struct {
 	X, Y, Z float32
+	//pad     float32
 }
 
 type Vec4 struct{ X, Y, Z, W float32 }
@@ -36,6 +37,7 @@ func (v Vec4) ToSlice() [4]float32 {
 
 type IVec3 struct {
 	X, Y, Z int
+	//pad     int
 }
 
 func Add(v ...Vec3) Vec3 {
@@ -127,7 +129,7 @@ func (v Vec3) LengthSq() float32 {
 }
 
 func Normalize(v Vec3) Vec3 {
-	m := float32(v.Length())
+	m := v.Length()
 	if m > 0 {
 		return Vec3{
 			X: v.X / m,
@@ -135,7 +137,7 @@ func Normalize(v Vec3) Vec3 {
 			Z: v.Z / m,
 		}
 	}
-	return Vec3{X: 0, Y: 0, Z: 0}
+	return Vec3{}
 }
 
 func Distance(v1, v2 Vec3) float32 {

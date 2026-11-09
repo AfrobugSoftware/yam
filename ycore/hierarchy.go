@@ -4,6 +4,7 @@ import (
 	"sync"
 	"yam/y3d"
 	"yam/ycontroller"
+	"yam/yphy"
 )
 
 type Hierarchy struct {
@@ -13,7 +14,7 @@ type Hierarchy struct {
 
 func (w *World) UpdateGS(owner EntityId, hierarchy Hierarchy) {
 	transform := w.GetComponent(owner, TransformComponent).(Transform)
-	box := w.GetComponent(owner, BoundingBoxComponent).(Box)
+	box := w.GetComponent(owner, BoundingBoxComponent).(yphy.Box)
 	if hierarchy.Parent == NullEntity {
 		transform.World = transform.Local
 	} else {
@@ -25,7 +26,7 @@ func (w *World) UpdateGS(owner EntityId, hierarchy Hierarchy) {
 	for _, c := range hierarchy.Children {
 		h := w.GetComponent(c, HierarchyComponent).(Hierarchy)
 		w.UpdateGS(c, h)
-		b := w.GetComponent(c, BoundingBoxComponent).(Box)
+		b := w.GetComponent(c, BoundingBoxComponent).(yphy.Box)
 		box.World.Max = y3d.Max(box.World.Max, b.World.Max)
 		box.World.Min = y3d.Min(box.World.Min, b.World.Min)
 	}
@@ -67,7 +68,7 @@ func (w *World) RenderSceneGraph(r *RenderManager, root EntityId) {
 	for len(q) > 0 {
 		f := q[0]
 		q = q[1:]
-		box := w.GetComponent(f, BoundingBoxComponent).(Box)
+		box := w.GetComponent(f, BoundingBoxComponent).(yphy.Box)
 		c := r.GetFrustum()
 		if box.World.Cull(c[:]) {
 			continue

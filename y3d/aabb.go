@@ -87,17 +87,17 @@ func (a AABB) Overlaps(b AABB) bool {
 
 func (box AABB) GetCenter() Vec3 {
 	return Vec3{
-		(box.Min.X + box.Max.X) * 0.5,
-		(box.Min.Y + box.Max.Y) * 0.5,
-		(box.Min.Z + box.Max.Z) * 0.5,
+		X: (box.Min.X + box.Max.X) * 0.5,
+		Y: (box.Min.Y + box.Max.Y) * 0.5,
+		Z: (box.Min.Z + box.Max.Z) * 0.5,
 	}
 }
 
 func (box AABB) GetHalfSize() Vec3 {
 	return Vec3{
-		(box.Max.X - box.Min.X) * 0.5,
-		(box.Max.Y - box.Min.Y) * 0.5,
-		(box.Max.Z - box.Min.Z) * 0.5,
+		X: (box.Max.X - box.Min.X) * 0.5,
+		Y: (box.Max.Y - box.Min.Y) * 0.5,
+		Z: (box.Max.Z - box.Min.Z) * 0.5,
 	}
 }
 

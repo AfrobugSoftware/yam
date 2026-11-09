@@ -50,7 +50,7 @@ func FromAxis(right, up, dir Vec3) Mat4 {
 
 func (m Mat4) MulVec3(v Vec3) Vec3 {
 	r := m.MulVec4(Vec4{v.X, v.Y, v.Z, 0})
-	return Vec3{r.X, r.Y, r.Z}
+	return Vec3{X: r.X, Y: r.Y, Z: r.Z}
 }
 
 func (a Mat4) Mul(b Mat4) Mat4 {

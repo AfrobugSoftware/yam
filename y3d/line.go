@@ -204,11 +204,11 @@ func (l LineSegment) GetHitNormal(box AABB, t float32) Vec3 {
 
 	switch {
 	case ax >= ay && ax >= az:
-		return Vec3{float32(nx), 0, 0}
+		return Vec3{X: float32(nx), Y: 0, Z: 0}
 	case ay >= ax && ay >= az:
-		return Vec3{0, float32(ny), 0}
+		return Vec3{X: 0, Y: float32(ny), Z: 0}
 	default:
-		return Vec3{0, 0, float32(nz)}
+		return Vec3{X: 0, Y: 0, Z: float32(nz)}
 	}
 
 }

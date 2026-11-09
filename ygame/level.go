@@ -8,6 +8,7 @@ import (
 	"yam/y3d"
 	"yam/ycontroller"
 	"yam/ycore"
+	"yam/yphy"
 )
 
 const (
@@ -65,7 +66,7 @@ func (l *Level) UpdateEntitesMovement(deltaTime float32) {
 			func() {
 				movement := l.World.GetComponent(e, ycore.MoveControllerComponent).(*ycontroller.MovementController)
 				transform := l.World.GetComponent(e, ycore.TransformComponent).(ycore.Transform)
-				box := l.World.GetComponent(e, ycore.BoundingBoxComponent).(ycore.Box)
+				box := l.World.GetComponent(e, ycore.BoundingBoxComponent).(yphy.Box)
 				movement.Update(deltaTime)
 				scaleFactor := float32(1.0) //l.World.GetComponent(e, ycore.ScaleComponent).(float32)
 				transform.Local = y3d.TRS(movement.Position, movement.Orientation, y3d.Vec3{

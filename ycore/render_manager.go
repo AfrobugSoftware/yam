@@ -8,6 +8,7 @@ import (
 	"strings"
 	"unsafe"
 	"yam/y3d"
+	"yam/yphy"
 	"yam/yui"
 
 	"github.com/go-gl/gl/v4.3-core/gl"
@@ -199,10 +200,11 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 			y3d.Identity,
 			y3d.Identity,
 		},
-		Mode:          MODE_3D_PERSPECTIVE,
-		DrawMode:      gl.TRIANGLES,
-		Stage:         -1,
-		EnablePicking: true,
+		Mode:           MODE_3D_PERSPECTIVE,
+		DrawMode:       gl.TRIANGLES,
+		Stage:          -1,
+		EnablePicking:  true,
+		DrawDebugLines: true,
 	}
 	context, err := window.GLCreateContext()
 	if err != nil {
@@ -871,9 +873,9 @@ func (r *RenderManager) Render() {
 	}
 	r.HighlightPickedEntity()
 
-	if r.DrawBoundingBoxes {
-		r.RenderBoundingBoxes()
-	}
+	// if r.DrawBoundingBoxes {
+	// 	r.RenderBoundingBoxes()
+	// }
 	if r.DrawBoundingTree {
 		r.RenderBoundingTree()
 	}
@@ -903,14 +905,53 @@ func (r *RenderManager) RenderLines() {
 	gl.BindVertexArray(r.linevao)
 	gl.UseProgram(r.lineprogram)
 
-	gl.DrawArrays(gl.LINE, 0, int32(2*r.lineCount))
+	gl.DrawArrays(gl.LINES, 0, int32(2*r.lineCount))
 	r.lineCount = 0
+}
+
+func (r *RenderManager) DrawGizmo(c y3d.Vec3, radius float32) {
+	r.AddLine(
+		[2]y3d.PVertex{
+			{
+				Pos:   c,
+				Color: [4]uint8{255, 0, 0, 255},
+			},
+			{
+				Pos:   y3d.Add(c, y3d.Smul(y3d.UNIT_X, radius)),
+				Color: [4]uint8{255, 0, 0, 255},
+			},
+		},
+	)
+	r.AddLine(
+		[2]y3d.PVertex{
+			{
+				Pos:   c,
+				Color: [4]uint8{0, 255, 0, 255},
+			},
+			{
+				Pos:   y3d.Add(c, y3d.Smul(y3d.UNIT_Y, radius)),
+				Color: [4]uint8{0, 255, 0, 255},
+			},
+		},
+	)
+	r.AddLine(
+		[2]y3d.PVertex{
+			{
+				Pos:   c,
+				Color: [4]uint8{0, 0, 255, 255},
+			},
+			{
+				Pos:   y3d.Add(c, y3d.Smul(y3d.UNIT_Z, radius)),
+				Color: [4]uint8{0, 0, 255, 255},
+			},
+		},
+	)
 }
 
 func (r *RenderManager) AddLine(line [2]y3d.PVertex) error {
 	//line should be in world space already
 	bytes := unsafe.Slice((*byte)(unsafe.Pointer(&line[0])), 2*int(unsafe.Sizeof(y3d.PVertex{})))
-	gl.NamedBufferSubData(r.debugLineBuffer, r.lineCount*int(unsafe.Sizeof(y3d.PVertex{})),
+	gl.NamedBufferSubData(r.debugLineBuffer, (2*r.lineCount)*int(unsafe.Sizeof(y3d.PVertex{})),
 		2*int(unsafe.Sizeof(y3d.PVertex{})), gl.Ptr(bytes))
 	r.lineCount++
 	return CheckError()
@@ -979,21 +1020,22 @@ func (r *RenderManager) HighlightPickedEntity() {
 		return
 	}
 	e := r.PickedEntity
-	box := r.World.GetComponent(e, BoundingBoxComponent).(Box)
-	matrix := box.RenderBoxMatrix()
-	matrixBytes := unsafe.Slice((*byte)(unsafe.Pointer(&matrix)), 64)
-	gl.NamedBufferSubData(r.boundingboxssbo, 0, 64, gl.Ptr(matrixBytes))
+	box := r.World.GetComponent(e, BoundingBoxComponent).(yphy.Box)
+	r.DrawGizmo(box.World.GetCenter(), box.World.GetHalfSize().X+2)
 
-	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, 0, r.boundingboxssbo)
-
-	c := [4]float32{0.0, 0.0, 1.0, 1.0}
-
-	//SET UP RENDER STATE
-	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
-	gl.UseProgram(r.boundingboxprogram)
-	gl.Uniform4fv(0, 1, &c[0])
-	gl.DrawArraysInstanced(gl.TRIANGLES, 0, 36, 1)
-	gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
+	if r.DrawBoundingBoxes {
+		matrix := box.RenderBoxMatrix()
+		matrixBytes := unsafe.Slice((*byte)(unsafe.Pointer(&matrix)), 64)
+		gl.NamedBufferSubData(r.boundingboxssbo, 0, 64, gl.Ptr(matrixBytes))
+		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, 0, r.boundingboxssbo)
+		c := [4]float32{0.0, 0.0, 1.0, 1.0}
+		//SET UP RENDER STATE
+		gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
+		gl.UseProgram(r.boundingboxprogram)
+		gl.Uniform4fv(0, 1, &c[0])
+		gl.DrawArraysInstanced(gl.TRIANGLES, 0, 36, 1)
+		gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
+	}
 }
 
 func (r *RenderManager) RenderBoundingBoxes() {
@@ -1003,7 +1045,7 @@ func (r *RenderManager) RenderBoundingBoxes() {
 	entities := r.World.Query(BoundingBoxComponent)
 	var total int
 	for i, e := range entities {
-		box := r.World.GetComponent(e, BoundingBoxComponent).(Box)
+		box := r.World.GetComponent(e, BoundingBoxComponent).(yphy.Box)
 		matrix := box.RenderBoxMatrix()
 		matrixBytes := unsafe.Slice((*byte)(unsafe.Pointer(&matrix)), 64)
 		if total+len(matrixBytes) >= r.boundingboxssbocap {
@@ -1078,15 +1120,11 @@ func (r *RenderManager) RenderEntities(cull bool) {
 		return
 	}
 	vm := r.VertextManager
-	//frustum := r.GetFrustum()
+	frustum := r.GetFrustum()
 	entities := r.World.Query(
 		RenderableComponent,
 		BoundingBoxComponent)
 	for _, e := range entities {
-		//box := r.World.GetComponent(e, BoundingBoxComponent).(Box)
-		// if cull && box.World.Cull(frustum[:]) {
-		// 	continue
-		// }
 		renderable := r.World.GetComponent(e, RenderableComponent).(Renderable)
 		v, err := vm.GetCache(renderable.VertexType, renderable.SkinId)
 		if err != nil {
@@ -1096,18 +1134,28 @@ func (r *RenderManager) RenderEntities(cull bool) {
 			instances := r.World.GetComponent(e, InstanceComponent).([]EntityId)
 			renderable.DrawCmd.InstanceCount = uint32(len(instances))
 			v.AddInstances(&renderable.DrawCmd)
-			mats := make([]y3d.Mat4, len(instances))
-			rs := make([]PerObjectRenderState, len(instances))
-			tags := make([]uint32, len(instances))
-			for i, ie := range instances {
-				mats[i] = r.World.GetComponent(ie, TransformComponent).(Transform).World
-				rs[i] = renderable.RenderParams
-				tags[i] = uint32(ie)
+			mats := make([]y3d.Mat4, 0, len(instances))
+			rs := make([]PerObjectRenderState, 0, len(instances))
+			tags := make([]uint32, 0, len(instances))
+			for _, ie := range instances {
+				box := r.World.GetComponent(ie, BoundingBoxComponent).(yphy.Box)
+				if cull && box.World.Cull(frustum[:]) {
+					continue
+				}
+				mats = append(mats, r.World.GetComponent(ie, TransformComponent).(Transform).World)
+				rs = append(rs, renderable.RenderParams)
+				tags = append(tags, uint32(ie))
 			}
+			renderable.DrawCmd.InstanceCount = uint32(len(mats))
+			v.AddInstances(&renderable.DrawCmd)
 			v.AddRenderState(int(renderable.DrawCmd.BaseInstance), rs...)
 			v.AddMatrix(int(renderable.DrawCmd.BaseInstance), mats...)
 			v.AddTag(int(renderable.DrawCmd.BaseInstance), tags...)
 		} else {
+			box := r.World.GetComponent(e, BoundingBoxComponent).(yphy.Box)
+			if cull && box.World.Cull(frustum[:]) {
+				continue
+			}
 			transform := r.World.GetComponent(e, TransformComponent).(Transform)
 			v.AddInstances(&renderable.DrawCmd)
 			v.AddMatrix(int(renderable.DrawCmd.BaseInstance), transform.World) //this needs to be world

@@ -99,6 +99,7 @@ func NewVertexCacheManager(
 			ComponentSize:  4,
 			Type:           gl.UNSIGNED_BYTE,
 			RelativeOffset: uint32(32),
+			Normalized:     true,
 		},
 	}
 	vm.Formats[VPNTWJ] = []VertexFormat{
@@ -526,54 +527,6 @@ func (vm *VertexCacheManager) CalculateTangentSpace(dataV, dataI *bytes.Buffer, 
 			unsafe.Slice((*float32)(unsafe.Pointer(&B[2])), 3), int(i3))
 	}
 	return dataV, nil
-}
-
-func (vm *VertexCacheManager) GetScalingAndBox(dataV, dataI *bytes.Buffer, scale float32, vertexType string) (float32, y3d.AABB) {
-	if scale == 0.0 {
-		return 0.0, y3d.UnitAABB
-	}
-	format := vm.Formats[vertexType]
-	stride := vm.Strides[vertexType]
-	b := dataV.Bytes()
-	getPos := func(i int) y3d.Vec3 {
-		off := (int(stride) * i) + int(format[0].RelativeOffset)
-		end := off + int(format[0].ComponentSize)*int(unsafe.Sizeof(float32(0)))
-		v := b[off:end]
-		vp := unsafe.Slice((*float32)(unsafe.Pointer(unsafe.SliceData(v))),
-			format[0].ComponentSize)
-		return y3d.Vec3{
-			X: vp[0],
-			Y: vp[1],
-			Z: vp[2],
-		}
-	}
-	box := y3d.AABB{
-		Min: y3d.Vec3{
-			X: 999999.99,
-			Y: 999999.99,
-			Z: 999999.99,
-		},
-		Max: y3d.Vec3{
-			X: -999999.99,
-			Y: -999999.99,
-			Z: -999999.99,
-		},
-	}
-	count := dataI.Len() / 4
-	i := dataI.Bytes()
-	indices := unsafe.Slice((*uint32)(unsafe.Pointer(unsafe.SliceData(i))), count)
-	for _, i := range indices {
-		vertex := getPos(int(i))
-		box.Max.X = max(vertex.X, box.Max.X)
-		box.Max.Y = max(vertex.Y, box.Max.Y)
-		box.Max.Z = max(vertex.Z, box.Max.Z)
-
-		box.Min.X = min(vertex.X, box.Min.X)
-		box.Min.Y = min(vertex.Y, box.Min.Y)
-		box.Min.Z = min(vertex.Z, box.Min.Z)
-	}
-	scaling := (box.Max.Y - box.Min.Y) / scale
-	return 1.0 / scaling, box
 }
 
 func (vm *VertexCacheManager) ResetCache() {

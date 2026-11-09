@@ -3,6 +3,7 @@ package ycore
 import (
 	"math"
 	"yam/y3d"
+	"yam/yphy"
 )
 
 type BSPTree struct {
@@ -44,7 +45,7 @@ func (bs *BSPTree) CalculateBoundingBox() {
 		},
 	}
 	for _, p := range bs.Children {
-		b := bs.World.GetComponent(p, BoundingBoxComponent).(Box).World
+		b := bs.World.GetComponent(p, BoundingBoxComponent).(yphy.Box).World
 		box.Max = y3d.Max(box.Max, b.Max)
 		box.Min = y3d.Min(box.Min, b.Min)
 	}
@@ -59,7 +60,7 @@ func (bs *BSPTree) FindBestSplitter() bool {
 		front, back, splits = 0, 0, 0
 		p1 := bs.Children[i]
 		flag := bs.World.GetComponent(p1, FlagComponent).(uint32)
-		pbox := bs.World.GetComponent(p1, BoundingBoxComponent).(Box).World
+		pbox := bs.World.GetComponent(p1, BoundingBoxComponent).(yphy.Box).World
 		if flag == 0x01 {
 			continue
 		}
@@ -68,7 +69,7 @@ func (bs *BSPTree) FindBestSplitter() bool {
 				continue
 			}
 			plane = pbox.GetPlanes()[0]
-			jbox := bs.World.GetComponent(bs.Children[j], BoundingBoxComponent).(Box).World
+			jbox := bs.World.GetComponent(bs.Children[j], BoundingBoxComponent).(yphy.Box).World
 			class := jbox.WhichSide(plane)
 			switch class {
 			case y3d.FRONT:
@@ -128,7 +129,7 @@ func (bs *BSPTree) CreateChild() {
 			bs.Back.Children = append(bs.Back.Children, p)
 			continue
 		}
-		pbox := bs.World.GetComponent(p, BoundingBoxComponent).(Box).World
+		pbox := bs.World.GetComponent(p, BoundingBoxComponent).(yphy.Box).World
 		class := bs.Plane.ClassifyAABB(pbox)
 		switch class {
 		case y3d.FRONT:
@@ -156,7 +157,7 @@ func (bs *BSPTree) BuildTree(entities []EntityId) {
 func (bs *BSPTree) TestCollision(r y3d.Ray, fl float32) (bool, y3d.Vec3) {
 	if bs.IsLeaf() {
 		for _, p := range bs.Children {
-			pbox := bs.World.GetComponent(p, BoundingBoxComponent).(Box).World
+			pbox := bs.World.GetComponent(p, BoundingBoxComponent).(yphy.Box).World
 			b, h := r.IntersectsAABB(pbox)
 			if b {
 				return b, h
@@ -219,7 +220,7 @@ func (bs *BSPTree) SelectFromPickRay(r y3d.Ray, fl float32) (EntityId, bool) {
 	ent := NullEntity
 	if bs.IsLeaf() {
 		for _, p := range bs.Children {
-			pbox := bs.World.GetComponent(p, BoundingBoxComponent).(Box).World
+			pbox := bs.World.GetComponent(p, BoundingBoxComponent).(yphy.Box).World
 			b, h := r.IntersectsAABB(pbox)
 			if b {
 				dist := y3d.Sub(h, r.O).Length()

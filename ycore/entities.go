@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"yam/y3d"
 	"yam/ycontroller"
+	"yam/yphy"
 )
 
 type InputFunc func(*InputManager, ycontroller.Controller)
@@ -15,8 +16,6 @@ const (
 	InputComponent
 	RenderableComponent
 	SkeletonComponent
-	MatInstanceComponent
-	RenderParamsInstanceComponent
 	HierarchyComponent
 	FlagComponent
 	AnimationComponent
@@ -44,9 +43,9 @@ func AddEntityRenderableData(
 			Alpha: 1.0,
 		},
 	}
-	box := NewBox()
-	_, localBox := vm.GetScalingAndBox(v, i, scale, vertexType)
-	box.Local = localBox
+	format := vm.Formats[vertexType]
+	stride := vm.Strides[vertexType]
+	box := yphy.BoundBox(int(stride), int(format[0].RelativeOffset), v, i)
 	world.AddComponent(ent, BoundingBoxComponent, box)
 	world.AddComponent(ent, RenderableComponent, renderable)
 	world.AddComponent(ent, ScaleComponent, float32(1.0))
@@ -74,14 +73,14 @@ func AddEntityAsInstance(w *World, holder EntityId, instance EntityId) {
 	if !w.HasComponent(holder, InstanceComponent) {
 		instances := make([]EntityId, 0)
 		instances = append(instances, instance)
-		box := w.GetComponent(holder, BoundingBoxComponent).(Box)
+		box := w.GetComponent(holder, BoundingBoxComponent).(yphy.Box)
 		w.AddComponent(instance, BoundingBoxComponent, box)
 		w.AddComponent(holder, InstanceComponent, instances)
 		return
 	}
 	instances := w.GetComponent(holder, InstanceComponent).([]EntityId)
 	instances = append(instances, instance)
-	box := w.GetComponent(holder, BoundingBoxComponent).(Box)
+	box := w.GetComponent(holder, BoundingBoxComponent).(yphy.Box)
 	w.AddComponent(instance, BoundingBoxComponent, box)
 	w.SetComponent(holder, InstanceComponent, instances)
 }
