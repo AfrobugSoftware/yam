@@ -1,6 +1,10 @@
 package ycore
 
-import "yam/y3d"
+import (
+	"sync"
+	"yam/y3d"
+	"yam/ycontroller"
+)
 
 type Hierarchy struct {
 	Children []EntityId
@@ -26,6 +30,34 @@ func (w *World) UpdateGS(owner EntityId, hierarchy Hierarchy) {
 		box.World.Min = y3d.Min(box.World.Min, b.World.Min)
 	}
 	w.SetComponent(owner, BoundingBoxComponent, box)
+}
+
+func (w *World) UpdateMovement(deltaTime float32) {
+	entites := w.Query(
+		TransformComponent,
+		ScaleComponent,
+		MoveControllerComponent)
+	var wg sync.WaitGroup
+	for _, e := range entites {
+		//change to go routine pool
+		wg.Go(
+			func() {
+				movement := w.GetComponent(e, MoveControllerComponent).(*ycontroller.MovementController)
+				transform := w.GetComponent(e, TransformComponent).(Transform)
+				movement.Update(deltaTime)
+				scaleFactor := float32(1.0) //l.World.GetComponent(e, ycore.ScaleComponent).(float32)
+				transform.Local = y3d.TRS(movement.Position, movement.Orientation, y3d.Vec3{
+					X: scaleFactor,
+					Y: scaleFactor,
+					Z: scaleFactor,
+				})
+				w.SetComponent(e, TransformComponent, transform)
+			})
+	}
+	wg.Wait()
+	w.UpdateGS(w.SceneRoot, w.SceneRootHierarchy)
+	UpdateEntityAnimation(w, deltaTime)
+	w.BoundingTree.BuildTree(entites)
 }
 
 func (w *World) RenderSceneGraph(r *RenderManager, root EntityId) {

@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"sort"
 	"sync"
+	"yam/y3d"
 )
 
 const (
@@ -180,10 +181,13 @@ type entityRecord struct {
 }
 
 type World struct {
-	mu         sync.RWMutex
-	entities   map[EntityId]*entityRecord
-	archetypes map[string]*Archetype
-	SceneRoot  Hierarchy
+	mu                 sync.RWMutex
+	entities           map[EntityId]*entityRecord
+	archetypes         map[string]*Archetype
+	SceneRootHierarchy Hierarchy
+	SceneRoot          EntityId
+	Gravity            y3d.Vec3
+	BoundingTree       *Octree
 }
 
 func NewWorld() *World {
@@ -191,6 +195,7 @@ func NewWorld() *World {
 		entities:   make(map[EntityId]*entityRecord),
 		archetypes: make(map[string]*Archetype),
 	}
+	w.BoundingTree = NewOctree(w)
 	return w
 }
 

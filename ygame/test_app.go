@@ -1,7 +1,6 @@
 package ygame
 
 import (
-	"fmt"
 	"math"
 	"yam/y3d"
 	"yam/ycontroller"
@@ -278,7 +277,6 @@ func (t *TestApplication) AddBox() {
 		o := t.engine.RenderManager.GetPickRay(caged)
 		ie1 := w.NewEntity()
 		w.AddComponent(ie1, ycore.ScaleComponent, float32(35.0))
-		fmt.Println(o.O)
 		ycore.AddEntityMoveData(w, ie1, y3d.Add(o.O, y3d.Smul(o.D, 5.0)), y3d.IdenQuat())
 		ycore.AddEntityAsInstance(w, t.boxEnt, ie1)
 	}
