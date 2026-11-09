@@ -49,13 +49,13 @@ func CreateSphere(sectorCount, stackCount int, radius float64) (dataV, dataI *by
 					X: s,
 					Y: t,
 				},
-				Color: [4]uint8{255, 255, 255, 255},
+				Color: y3d.Vec4{X: 1.0, Y: 1.0, Z: 1.0, W: 1.0},
 			})
 			count++
 		}
 	}
 	addr := unsafe.Pointer(reflect.ValueOf(verties).Index(0).UnsafeAddr())
-	b := unsafe.Slice((*byte)(addr), 36*len(verties))
+	b := unsafe.Slice((*byte)(addr), 48*len(verties))
 	dataV.Write(b)
 	for i := range stackCount {
 		k1 := uint32(i * (sectorCount + 1))

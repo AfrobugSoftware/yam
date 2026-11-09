@@ -58,7 +58,7 @@ func NewVertexCacheManager(
 		MaxJoints:       maxJoints,
 	}
 	vm.Strides[VPNT] = 32
-	vm.Strides[VPNTC] = 36
+	vm.Strides[VPNTC] = 48
 	vm.Strides[VPNTTB] = 56
 	vm.Strides[VPNTWJ] = 64
 
@@ -97,9 +97,8 @@ func NewVertexCacheManager(
 		},
 		{
 			ComponentSize:  4,
-			Type:           gl.UNSIGNED_BYTE,
+			Type:           gl.FLOAT,
 			RelativeOffset: uint32(32),
-			Normalized:     true,
 		},
 	}
 	vm.Formats[VPNTWJ] = []VertexFormat{

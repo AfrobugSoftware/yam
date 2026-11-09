@@ -82,7 +82,7 @@ func CreateCube() (dataV, dataI *bytes.Buffer) {
 	}
 
 	addr := unsafe.Pointer(reflect.ValueOf(verties).Index(0).UnsafeAddr())
-	b := unsafe.Slice((*byte)(addr), 36*len(verties))
+	b := unsafe.Slice((*byte)(addr), 48*len(verties))
 	dataV.Write(b)
 	binary.Write(dataI, binary.NativeEndian, indices)
 	return
@@ -123,7 +123,7 @@ func CreateQuad() (dataV, dataI *bytes.Buffer) {
 		},
 	)
 	addr := unsafe.Pointer(reflect.ValueOf(verties).Index(0).UnsafeAddr())
-	b := unsafe.Slice((*byte)(addr), 36*len(verties))
+	b := unsafe.Slice((*byte)(addr), 48*len(verties))
 	dataV.Write(b)
 
 	binary.Write(dataI, binary.NativeEndian, indices)
@@ -164,7 +164,7 @@ func CreateYPlaneQuad() (dataV, dataI *bytes.Buffer) {
 		},
 	)
 	addr := unsafe.Pointer(reflect.ValueOf(verties).Index(0).UnsafeAddr())
-	b := unsafe.Slice((*byte)(addr), 36*len(verties))
+	b := unsafe.Slice((*byte)(addr), 48*len(verties))
 	dataV.Write(b)
 
 	binary.Write(dataI, binary.NativeEndian, indices)

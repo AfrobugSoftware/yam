@@ -373,7 +373,7 @@ out data {
 }vs_out;
 
 void main() {
-	vs_out.color = color/255;
+	vs_out.color = color;
 	gl_Position = view_proj * vec4(pos, 1.0);
 }
 `
@@ -385,7 +385,7 @@ in data {
 }fs_in;
 
 void main() {
-	out_color = vec4(1.0, 0.0,0.0,1.0);
+	out_color = fs_in.color; //vec4(1.0, 0.0,0.0,1.0);
 }
 `
 	pickVert = `

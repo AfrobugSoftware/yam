@@ -873,9 +873,6 @@ func (r *RenderManager) Render() {
 	}
 	r.HighlightPickedEntity()
 
-	// if r.DrawBoundingBoxes {
-	// 	r.RenderBoundingBoxes()
-	// }
 	if r.DrawBoundingTree {
 		r.RenderBoundingTree()
 	}
@@ -914,11 +911,11 @@ func (r *RenderManager) DrawGizmo(c y3d.Vec3, radius float32) {
 		[2]y3d.PVertex{
 			{
 				Pos:   c,
-				Color: [4]uint8{255, 0, 0, 255},
+				Color: y3d.Vec4{X: 1.0, Y: 0.0, Z: 0.0, W: 1.0},
 			},
 			{
 				Pos:   y3d.Add(c, y3d.Smul(y3d.UNIT_X, radius)),
-				Color: [4]uint8{255, 0, 0, 255},
+				Color: y3d.Vec4{X: 1.0, Y: 0.0, Z: 0.0, W: 1.0},
 			},
 		},
 	)
@@ -926,11 +923,11 @@ func (r *RenderManager) DrawGizmo(c y3d.Vec3, radius float32) {
 		[2]y3d.PVertex{
 			{
 				Pos:   c,
-				Color: [4]uint8{0, 255, 0, 255},
+				Color: y3d.Vec4{X: 0.0, Y: 1.0, Z: 0.0, W: 1.0},
 			},
 			{
 				Pos:   y3d.Add(c, y3d.Smul(y3d.UNIT_Y, radius)),
-				Color: [4]uint8{0, 255, 0, 255},
+				Color: y3d.Vec4{X: 0.0, Y: 1.0, Z: 0.0, W: 1.0},
 			},
 		},
 	)
@@ -938,11 +935,11 @@ func (r *RenderManager) DrawGizmo(c y3d.Vec3, radius float32) {
 		[2]y3d.PVertex{
 			{
 				Pos:   c,
-				Color: [4]uint8{0, 0, 255, 255},
+				Color: y3d.Vec4{X: 0.0, Y: 0.0, Z: 1.0, W: 1.0},
 			},
 			{
 				Pos:   y3d.Add(c, y3d.Smul(y3d.UNIT_Z, radius)),
-				Color: [4]uint8{0, 0, 255, 255},
+				Color: y3d.Vec4{X: 0.0, Y: 0.0, Z: 1.0, W: 1.0},
 			},
 		},
 	)

@@ -18,7 +18,7 @@ type Polygon struct {
 	IsHidden     bool
 	IsSelected   bool
 	BoundingBox  y3d.AABB
-	Color        [4]uint8
+	Color        y3d.Vec4
 }
 
 func (p2 *Polygon) Copy(p *Polygon) {
@@ -50,7 +50,7 @@ func (p *Polygon) Mirror(origin, axis y3d.Vec3) {
 	}
 }
 
-func (p *Polygon) SetColor(color [4]uint8) {
+func (p *Polygon) SetColor(color y3d.Vec4) {
 	p.Color = color
 	for i := 0; i < len(p.Indices); i += 3 {
 

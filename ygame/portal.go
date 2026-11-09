@@ -9,7 +9,7 @@ type Portal struct {
 	vertices     []y3d.PVertex
 	indices      []uint32
 	lineIndicies []uint32
-	Color        [4]uint8
+	Color        y3d.Vec4
 	IsHidden     bool
 	IsSelected   bool
 	IsVisible    bool
@@ -83,7 +83,7 @@ func (p *Portal) Render(vm *ycore.VertexCacheManager) {
 	v.AddDrawCommand(p.DrawCommand)
 }
 
-func (p *Portal) SetColor(color [4]uint8) {
+func (p *Portal) SetColor(color y3d.Vec4) {
 	p.Color = color
 	for i := 0; i < len(p.indices); i += 3 {
 

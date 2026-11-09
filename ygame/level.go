@@ -94,11 +94,11 @@ func (l *Level) Select(pickRay y3d.Ray) (bool, [2]y3d.PVertex) {
 		lines := [2]y3d.PVertex{
 			{
 				Pos:   pickRay.O,
-				Color: [4]uint8{0.0, 0.0, 1.0, 1.0},
+				Color: y3d.Vec4{X: 0.0, Y: 0.0, Z: 1.0, W: 1.0},
 			},
 			{
 				Pos:   h,
-				Color: [4]uint8{1.0, 0.0, 0.0, 1.0},
+				Color: y3d.Vec4{X: 1.0, Y: 0.0, Z: 0.0, W: 1.0},
 			},
 		}
 		l.LastSelected = e
