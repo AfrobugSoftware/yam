@@ -1128,6 +1128,9 @@ func (r *RenderManager) RenderEntities(cull bool) {
 	}
 	vm := r.VertextManager
 	frustum := r.GetFrustum()
+	mats := make([]y3d.Mat4, 0, 1000)
+	rs := make([]PerObjectRenderState, 0, 1000)
+	tags := make([]uint32, 0, 1000)
 	entities := r.World.Query(
 		RenderableComponent,
 		BoundingBoxComponent)
@@ -1139,9 +1142,7 @@ func (r *RenderManager) RenderEntities(cull bool) {
 		}
 		if r.World.HasComponent(e, InstanceComponent) {
 			instances := r.World.GetComponent(e, InstanceComponent).([]EntityId)
-			mats := make([]y3d.Mat4, 0, len(instances))
-			rs := make([]PerObjectRenderState, 0, len(instances))
-			tags := make([]uint32, 0, len(instances))
+
 			for _, ie := range instances {
 				box := r.World.GetComponent(ie, BoundingBoxComponent).(yphy.Box)
 				if cull && box.World.Cull(frustum[:]) {
@@ -1175,6 +1176,9 @@ func (r *RenderManager) RenderEntities(cull bool) {
 			v.AddRenderState(int(renderable.DrawCmd.BaseInstance), rs...)
 			v.AddMatrix(int(renderable.DrawCmd.BaseInstance), mats...)
 			v.AddTag(int(renderable.DrawCmd.BaseInstance), tags...)
+			rs = rs[:0]
+			mats = mats[:0]
+			tags = tags[:0]
 		} else {
 			box := r.World.GetComponent(e, BoundingBoxComponent).(yphy.Box)
 			if cull && box.World.Cull(frustum[:]) {
