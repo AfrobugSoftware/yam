@@ -68,12 +68,12 @@ type VertexCache struct {
 	Id              int
 	Textures        []uint32
 	Format          []VertexFormat
-	SkinManager     *SkinManager
+	SkinManager     *TextureManager
 	VManager        *VertexCacheManager
 }
 
 func NewVertexCache(
-	skinmanager *SkinManager,
+	skinmanager *TextureManager,
 	vertexManger *VertexCacheManager,
 	maxVertex, maxIndex, maxDraws, maxInstances, maxJoints int32,
 	stride int32,
@@ -205,35 +205,6 @@ func (v *VertexCache) Add(command *DrawCommand,
 	if dataV == nil || dataI == nil {
 		return errors.New("cannot load empty vertex or index buffer")
 	}
-	if int32(dataV.Len()) >= (v.Stride * v.MaxVertices) {
-		blockSize := v.Stride * v.MaxVertices * 2
-		var s uint32
-		gl.CreateBuffers(1, &s)
-		gl.NamedBufferStorage(s, int(blockSize), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
-		gl.NamedCopyBufferSubDataEXT(v.VertexVbo, s, 0, 0, int(blockSize))
-		gl.DeleteBuffers(1, &v.VertexVbo)
-		v.VertexVbo = s
-		v.MaxVertices = v.MaxVertices * 2
-		err := CheckError()
-		if err != nil {
-			return err
-		}
-	}
-	if int32(dataI.Len()) >= (4 * v.MaxIndices) {
-		blockSize := 4 * v.MaxIndices * 2
-		var s uint32
-		gl.CreateBuffers(1, &s)
-		gl.NamedBufferStorage(s, int(blockSize), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
-		gl.NamedCopyBufferSubDataEXT(v.IndexVbo, s, 0, 0, int(blockSize))
-		gl.DeleteBuffers(1, &v.IndexVbo)
-		v.IndexVbo = s
-		v.MaxIndices = v.MaxIndices * 2
-		err := CheckError()
-		if err != nil {
-			return err
-		}
-	}
-
 	gl.NamedBufferSubData(v.VertexVbo,
 		int(v.Stride*v.NumVertics),
 		dataV.Len(),
@@ -384,6 +355,9 @@ func (v *VertexCache) AddMatrix(baseInstance int, world ...y3d.Mat4) error {
 }
 
 func (v *VertexCache) AddTexture(texId uint32) (int, error) {
+	if texId == 0 {
+		return 0, errors.New("cannot add a 0 texture")
+	}
 	var uints int32
 	gl.GetIntegerv(gl.MAX_TEXTURE_IMAGE_UNITS, &uints)
 	i := len(v.Textures)

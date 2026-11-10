@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sort"
 	"unsafe"
 	"yam/y3d"
 
@@ -25,9 +26,6 @@ const (
 )
 
 type VertexCacheManager struct {
-	ActiveSkin      int
-	ActiveCache     int
-	ActiveProgram   uint32
 	RenderManager   *RenderManager
 	CacheId         int
 	Strides         map[string]int32
@@ -45,8 +43,6 @@ func NewVertexCacheManager(
 	maxVerts, maxIndices, maxDrawCommands, maxInstances, maxJoints int32,
 ) *VertexCacheManager {
 	vm := &VertexCacheManager{
-		ActiveSkin:      NO_SKINID,
-		ActiveCache:     INVALID_CACHE,
 		RenderManager:   renderManager,
 		Caches:          make(map[string][MAX_CACHES]*VertexCache),
 		Formats:         make(map[string][]VertexFormat),
@@ -159,7 +155,7 @@ func NewVertexCacheManager(
 	for i := range MAX_CACHES {
 		c := vm.Caches[VPNT]
 		c[i] = NewVertexCache(
-			renderManager.SkinManager,
+			renderManager.TextureManager,
 			vm,
 			maxVerts,
 			maxIndices,
@@ -176,7 +172,7 @@ func NewVertexCacheManager(
 
 		c = vm.Caches[VPNTC]
 		c[i] = NewVertexCache(
-			renderManager.SkinManager,
+			renderManager.TextureManager,
 			vm,
 			maxVerts,
 			maxIndices,
@@ -193,7 +189,7 @@ func NewVertexCacheManager(
 
 		c = vm.Caches[VPNTWJ]
 		c[i] = NewVertexCache(
-			renderManager.SkinManager,
+			renderManager.TextureManager,
 			vm,
 			maxVerts,
 			maxIndices,
@@ -209,7 +205,7 @@ func NewVertexCacheManager(
 		vm.CacheId++
 		c = vm.Caches[VPNTTB]
 		c[i] = NewVertexCache(
-			renderManager.SkinManager,
+			renderManager.TextureManager,
 			vm,
 			maxVerts,
 			maxIndices,
@@ -226,7 +222,7 @@ func NewVertexCacheManager(
 	return vm
 }
 
-func (vm *VertexCacheManager) CreateVertexCache(name string, drawMode uint32, skinId, stride int,
+func (vm *VertexCacheManager) CreateVertexCache(name string, drawMode uint32, stride int,
 	format []VertexFormat) {
 	if _, exists := vm.Caches[name]; exists {
 		return // already have a cache with this tag
@@ -234,7 +230,7 @@ func (vm *VertexCacheManager) CreateVertexCache(name string, drawMode uint32, sk
 	c := [MAX_CACHES]*VertexCache{}
 	for i := range MAX_CACHES {
 		c[i] = NewVertexCache(
-			vm.RenderManager.SkinManager,
+			vm.RenderManager.TextureManager,
 			vm,
 			vm.MaxVerts,
 			vm.MaxIndices,
@@ -328,32 +324,18 @@ func (vm *VertexCacheManager) LoadCache(
 	dataV, dataI *bytes.Buffer,
 	command *DrawCommand,
 ) (int, error) {
-	var empty, fullest *VertexCache
 	vc, ok := vm.Caches[vertexType]
 	if !ok {
 		return -1, errors.New("invalid vertex type")
 	}
-	fullest = vc[0]
+	sort.Slice(vc[:], func(i, j int) bool {
+		return vc[i].NumVertics > vc[j].NumVertics
+	})
 	for i := range MAX_CACHES {
-		if vc[i].IsEmpty() {
-			empty = vc[i]
-			break
+		if vc[i].IsFull(dataV.Len()) {
+			continue
 		}
-
-	}
-	for i := range MAX_CACHES {
-		if vc[i].NumVertics > fullest.NumVertics {
-			fullest = vc[i]
-		}
-	}
-	err := fullest.Add(
-		command,
-		dataV,
-		dataI,
-	)
-	if err != nil {
-		//cannot add to fullest add to empty
-		err = empty.Add(
+		err := vc[i].Add(
 			command,
 			dataV,
 			dataI,
@@ -361,9 +343,9 @@ func (vm *VertexCacheManager) LoadCache(
 		if err != nil {
 			return -1, err
 		}
-		return empty.Id, nil
+		return vc[i].Id, nil
 	}
-	return fullest.Id, nil
+	return -1, errors.New("no cache avaliale for data")
 }
 
 func (vm *VertexCacheManager) ForceRender(vertexType string) error {

@@ -103,7 +103,7 @@ type RenderManager struct {
 	AspectRatio        [4]float32
 	Stage              int
 	Mode               int
-	SkinManager        *SkinManager
+	TextureManager     *TextureManager
 	VertextManager     *VertexCacheManager
 	ShaderManager      *ShaderManager
 	InputManager       *InputManager
@@ -226,7 +226,7 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 		rm.ClearColor.Y,
 		rm.ClearColor.Z,
 		rm.ClearColor.W)
-	rm.SkinManager = NewSkinManager()
+	rm.TextureManager = NewSkinManager()
 	rm.VertextManager = NewVertexCacheManager(rm,
 		MAX_VERTICES, MAX_VERTICES*3, MAX_DRAW_COMMAND, MAX_INSTANCES, MAX_JOINTS)
 	err = CheckError()
@@ -717,8 +717,8 @@ func (r *RenderManager) GetPickRay(pos y3d.Vec2) y3d.Ray {
 }
 
 func (r *RenderManager) Destroy() {
-	if r.SkinManager != nil {
-		r.SkinManager.Destroy()
+	if r.TextureManager != nil {
+		r.TextureManager.Destroy()
 	}
 	if r.VertextManager != nil {
 		r.VertextManager.Destory()
@@ -808,7 +808,6 @@ func (r *RenderManager) CreateDefaultShader() {
 }
 
 func (r *RenderManager) ShadowPhase() {
-	r.SkinManager.OverrideLocalPrograms = true
 	r.SetStage(MODE_3D_ORTHO, SHADOW_STAGE)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.shadowbuffer)
 	gl.Clear(gl.DEPTH_BUFFER_BIT)
@@ -816,7 +815,6 @@ func (r *RenderManager) ShadowPhase() {
 	gl.BindBufferBase(gl.UNIFORM_BUFFER, VIEW_PROJ_BINDING, r.viewubo)
 	gl.UseProgram(r.shadowProgram)
 	r.Render()
-	r.SkinManager.OverrideLocalPrograms = false
 	r.RenderParams.shadowMatrix = r.ViewProj
 }
 
@@ -1141,8 +1139,6 @@ func (r *RenderManager) RenderEntities(cull bool) {
 		}
 		if r.World.HasComponent(e, InstanceComponent) {
 			instances := r.World.GetComponent(e, InstanceComponent).([]EntityId)
-			renderable.DrawCmd.InstanceCount = uint32(len(instances))
-			v.AddInstances(&renderable.DrawCmd)
 			mats := make([]y3d.Mat4, 0, len(instances))
 			rs := make([]PerObjectRenderState, 0, len(instances))
 			tags := make([]uint32, 0, len(instances))
@@ -1151,8 +1147,27 @@ func (r *RenderManager) RenderEntities(cull bool) {
 				if cull && box.World.Cull(frustum[:]) {
 					continue
 				}
+				if r.World.HasComponent(ie, PbrMaterialComponent) {
+					//if we have textures for materials bound to this entity
+					nrs := renderable.RenderParams
+					pbr := r.World.GetComponent(ie, PbrMaterialComponent).(PbrMaterial)
+					t, err := v.AddTexture(pbr.Albeo)
+					if err == nil {
+						nrs.Tex1 = uint32(t)
+					}
+					t, err = v.AddTexture(pbr.Specular)
+					if err == nil {
+						nrs.Tex2 = uint32(t)
+					}
+					t, err = v.AddTexture(pbr.NormalMap)
+					if err == nil {
+						nrs.Tex1 = uint32(t)
+					}
+					rs = append(rs, nrs)
+				} else {
+					rs = append(rs, renderable.RenderParams)
+				}
 				mats = append(mats, r.World.GetComponent(ie, TransformComponent).(Transform).World)
-				rs = append(rs, renderable.RenderParams)
 				tags = append(tags, uint32(ie))
 			}
 			renderable.DrawCmd.InstanceCount = uint32(len(mats))
@@ -1168,7 +1183,26 @@ func (r *RenderManager) RenderEntities(cull bool) {
 			transform := r.World.GetComponent(e, TransformComponent).(Transform)
 			v.AddInstances(&renderable.DrawCmd)
 			v.AddMatrix(int(renderable.DrawCmd.BaseInstance), transform.World) //this needs to be world
-			v.AddRenderState(int(renderable.DrawCmd.BaseInstance), renderable.RenderParams)
+			if r.World.HasComponent(e, PbrMaterialComponent) {
+				//if we have textures for materials bound to this entity
+				nrs := renderable.RenderParams
+				pbr := r.World.GetComponent(e, PbrMaterialComponent).(PbrMaterial)
+				t, err := v.AddTexture(pbr.Albeo)
+				if err == nil {
+					nrs.Tex1 = uint32(t)
+				}
+				t, err = v.AddTexture(pbr.Specular)
+				if err == nil {
+					nrs.Tex2 = uint32(t)
+				}
+				t, err = v.AddTexture(pbr.NormalMap)
+				if err == nil {
+					nrs.Tex1 = uint32(t)
+				}
+				v.AddRenderState(int(renderable.DrawCmd.BaseInstance), nrs)
+			} else {
+				v.AddRenderState(int(renderable.DrawCmd.BaseInstance), renderable.RenderParams)
+			}
 			v.AddTag(int(renderable.DrawCmd.BaseInstance), uint32(e))
 		}
 		v.AddDrawCommand(renderable.DrawCmd)

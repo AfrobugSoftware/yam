@@ -96,8 +96,7 @@ func LoadGLTF(filename string, r *RenderManager, world *World) error {
 	}
 	scene := doc.Scenes[*doc.Scene]
 	data := make(map[int][]byte)
-	skin := r.SkinManager.AddSkin(IdentityMaterial)
-	loadTextureSkin(doc, skin, r.SkinManager)
+	skin := -1
 	for _, n := range scene.Nodes {
 		err := ProcessNode(world, doc.Nodes[n], doc, r, skin, data)
 		if err != nil {
@@ -107,69 +106,66 @@ func LoadGLTF(filename string, r *RenderManager, world *World) error {
 	return nil
 }
 
-func loadTextureSkin(doc *gltf.Document, skin int, skinManager *SkinManager) {
-	for _, t := range doc.Textures {
-		if t == nil {
-			continue
+func loadTexture(doc *gltf.Document, texIndx int, skinManager *TextureManager) (uint32, error) {
+	t := doc.Textures[texIndx]
+	if t == nil {
+		return 0, errors.New("no texture in doc")
+	}
+	sampler := doc.Samplers[*t.Sampler]
+	img := doc.Images[*t.Source]
+	if img.URI != "" {
+		return skinManager.AddTexture(img.URI, int32(sampler.MinFilter),
+			int32(sampler.MagFilter),
+			int32(sampler.WrapS),
+			int32(sampler.WrapT))
+	} else {
+		var texId uint32
+		gl.CreateTextures(gl.TEXTURE_2D, 1, &texId)
+		gl.TextureParameteri(texId, gl.TEXTURE_WRAP_S, int32(wrapMode[sampler.WrapS]))
+		gl.TextureParameteri(texId, gl.TEXTURE_WRAP_T, int32(wrapMode[sampler.WrapT]))
+		gl.TextureParameteri(texId, gl.TEXTURE_MIN_FILTER, int32(minFilter[sampler.MinFilter]))
+		gl.TextureParameteri(texId, gl.TEXTURE_MAG_FILTER, int32(magFilter[sampler.MagFilter]))
+
+		bv := doc.BufferViews[*img.BufferView]
+		buffer := doc.Buffers[bv.Buffer]
+		start := int(bv.ByteOffset)
+		end := int(bv.ByteOffset) + int(bv.ByteLength)
+		data := buffer.Data[start:end]
+
+		imgReader := bytes.NewReader(data)
+		imgData, _, err := image.Decode(imgReader)
+		if err != nil {
+			return 0, err
 		}
-		sampler := doc.Samplers[*t.Sampler]
-		img := doc.Images[*t.Source]
-		if img.URI != "" {
-			skinManager.AddTexture(skin,
-				img.URI, int32(sampler.MinFilter),
-				int32(sampler.MagFilter),
-				int32(sampler.WrapS),
-				int32(sampler.WrapT))
-		} else {
-			var texId uint32
-			gl.CreateTextures(gl.TEXTURE_2D, 1, &texId)
-			gl.TextureParameteri(texId, gl.TEXTURE_WRAP_S, int32(wrapMode[sampler.WrapS]))
-			gl.TextureParameteri(texId, gl.TEXTURE_WRAP_T, int32(wrapMode[sampler.WrapT]))
-			gl.TextureParameteri(texId, gl.TEXTURE_MIN_FILTER, int32(minFilter[sampler.MinFilter]))
-			gl.TextureParameteri(texId, gl.TEXTURE_MAG_FILTER, int32(magFilter[sampler.MagFilter]))
-
-			bv := doc.BufferViews[*img.BufferView]
-			buffer := doc.Buffers[bv.Buffer]
-			start := int(bv.ByteOffset)
-			end := int(bv.ByteOffset) + int(bv.ByteLength)
-			data := buffer.Data[start:end]
-
-			imgReader := bytes.NewReader(data)
-			imgData, _, err := image.Decode(imgReader)
-			if err != nil {
-				panic(err)
-			}
-			bounds := imgData.Bounds()
-			rgba := image.NewRGBA(bounds)
-			draw.Draw(rgba, bounds, imgData, bounds.Min, draw.Src)
-			levels := mipLevels(
-				int32(minFilter[sampler.MinFilter]),
-				int32(bounds.Max.X),
-				int32(bounds.Max.Y),
-			)
-			gl.TextureStorage2D(texId, levels, gl.RGBA8, int32(bounds.Max.X),
-				int32(bounds.Max.Y))
-			err = CheckError()
-			if err != nil {
-				panic(err)
-			}
-			gl.TextureSubImage2D(texId, 0, 0, 0, int32(bounds.Max.X),
-				int32(bounds.Max.Y), gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(rgba.Pix))
-			err = CheckError()
-			if err != nil {
-				panic(err)
-			}
-			if levels > 1 {
-				gl.BindTexture(gl.TEXTURE_2D, texId)
-				var v float32
-				gl.GetFloatv(gl.MAX_TEXTURE_MAX_ANISOTROPY, &v)
-				gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAX_ANISOTROPY, v)
-				gl.GenerateMipmap(gl.TEXTURE_2D)
-				gl.BindTexture(gl.TEXTURE_2D, 0)
-			}
-
-			skinManager.AddTextureHandle(skin, texId, 0)
+		bounds := imgData.Bounds()
+		rgba := image.NewRGBA(bounds)
+		draw.Draw(rgba, bounds, imgData, bounds.Min, draw.Src)
+		levels := mipLevels(
+			int32(minFilter[sampler.MinFilter]),
+			int32(bounds.Max.X),
+			int32(bounds.Max.Y),
+		)
+		gl.TextureStorage2D(texId, levels, gl.RGBA8, int32(bounds.Max.X),
+			int32(bounds.Max.Y))
+		err = CheckError()
+		if err != nil {
+			return 0, err
 		}
+		gl.TextureSubImage2D(texId, 0, 0, 0, int32(bounds.Max.X),
+			int32(bounds.Max.Y), gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(rgba.Pix))
+		err = CheckError()
+		if err != nil {
+			return 0, err
+		}
+		if levels > 1 {
+			gl.BindTexture(gl.TEXTURE_2D, texId)
+			var v float32
+			gl.GetFloatv(gl.MAX_TEXTURE_MAX_ANISOTROPY, &v)
+			gl.TexParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAX_ANISOTROPY, v)
+			gl.GenerateMipmap(gl.TEXTURE_2D)
+			gl.BindTexture(gl.TEXTURE_2D, 0)
+		}
+		return texId, nil
 	}
 }
 
@@ -402,7 +398,7 @@ func ProcessNode(world *World, node *gltf.Node,
 		tempVertexType := GetVertexFormat(format, r)
 		if tempVertexType == INVALID_VERTEX_FORMAT {
 			//EACH PRIMITVE CAN HAVE DIFFERENT DRAW MODES
-			r.VertextManager.CreateVertexCache(vertexType, gl.TRIANGLES, NO_SKINID, vertexSize, format)
+			r.VertextManager.CreateVertexCache(vertexType, gl.TRIANGLES, vertexSize, format)
 		} else {
 			vertexType = tempVertexType
 		}
