@@ -8,6 +8,7 @@ import (
 	"strings"
 	"unsafe"
 	"yam/y3d"
+	"yam/ycontroller"
 	"yam/yphy"
 	"yam/yui"
 
@@ -901,12 +902,15 @@ func (r *RenderManager) RenderGrid() {
 func (r *RenderManager) RenderLines() {
 	gl.BindVertexArray(r.linevao)
 	gl.UseProgram(r.lineprogram)
-
+	gl.Disable(gl.DEPTH_TEST)
+	gl.Disable(gl.BLEND)
 	gl.DrawArrays(gl.LINES, 0, int32(2*r.lineCount))
 	r.lineCount = 0
 }
 
-func (r *RenderManager) DrawGizmo(c y3d.Vec3, radius float32) {
+func (r *RenderManager) DrawGizmo(m *ycontroller.MovementController,
+	radius float32) {
+	c := m.Position
 	r.AddLine(
 		[2]y3d.PVertex{
 			{
@@ -914,7 +918,7 @@ func (r *RenderManager) DrawGizmo(c y3d.Vec3, radius float32) {
 				Color: y3d.Vec4{X: 1.0, Y: 0.0, Z: 0.0, W: 1.0},
 			},
 			{
-				Pos:   y3d.Add(c, y3d.Smul(y3d.UNIT_X, radius)),
+				Pos:   y3d.Add(c, y3d.Smul(m.Right, radius)),
 				Color: y3d.Vec4{X: 1.0, Y: 0.0, Z: 0.0, W: 1.0},
 			},
 		},
@@ -926,7 +930,7 @@ func (r *RenderManager) DrawGizmo(c y3d.Vec3, radius float32) {
 				Color: y3d.Vec4{X: 0.0, Y: 1.0, Z: 0.0, W: 1.0},
 			},
 			{
-				Pos:   y3d.Add(c, y3d.Smul(y3d.UNIT_Y, radius)),
+				Pos:   y3d.Add(c, y3d.Smul(m.Up, radius)),
 				Color: y3d.Vec4{X: 0.0, Y: 1.0, Z: 0.0, W: 1.0},
 			},
 		},
@@ -938,7 +942,7 @@ func (r *RenderManager) DrawGizmo(c y3d.Vec3, radius float32) {
 				Color: y3d.Vec4{X: 0.0, Y: 0.0, Z: 1.0, W: 1.0},
 			},
 			{
-				Pos:   y3d.Add(c, y3d.Smul(y3d.UNIT_Z, radius)),
+				Pos:   y3d.Add(c, y3d.Smul(m.Dir, radius)),
 				Color: y3d.Vec4{X: 0.0, Y: 0.0, Z: 1.0, W: 1.0},
 			},
 		},
@@ -1017,8 +1021,9 @@ func (r *RenderManager) HighlightPickedEntity() {
 		return
 	}
 	e := r.PickedEntity
+	m := r.World.GetComponent(e, MoveControllerComponent).(*ycontroller.MovementController)
 	box := r.World.GetComponent(e, BoundingBoxComponent).(yphy.Box)
-	r.DrawGizmo(box.World.GetCenter(), box.World.GetHalfSize().X+2)
+	r.DrawGizmo(m, box.World.GetHalfSize().X+2)
 
 	if r.DrawBoundingBoxes {
 		matrix := box.RenderBoxMatrix()

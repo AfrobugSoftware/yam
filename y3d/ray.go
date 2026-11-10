@@ -2,6 +2,7 @@ package y3d
 
 import (
 	"math"
+	"unsafe"
 )
 
 type Ray struct {
@@ -119,7 +120,8 @@ func (r Ray) IntersectsOBB(obb OBB, cull bool) (bool, float32) {
 	tmin := float32(-99999.9)
 	tmax := float32(+99999.9)
 	cp := Sub(obb.Center, r.O)
-	ex := obb.Extents.ToSlice()
+	exs := obb.Extents
+	ex := unsafe.Slice((*float32)(unsafe.Pointer(&exs)), 3)
 	//test the 3 planes of the obb
 	for i := range 3 {
 		e := Dot(obb.Axes[i], cp)

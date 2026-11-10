@@ -67,6 +67,7 @@ type VertexCache struct {
 	DrawMode        uint32
 	SkinId          int
 	Id              int
+	Textures        []uint32
 	Format          []VertexFormat
 	SkinManager     *SkinManager
 	VManager        *VertexCacheManager
@@ -137,7 +138,8 @@ func NewVertexCache(
 	if err != nil {
 		panic(err)
 	}
-
+	var uints int32
+	gl.GetIntegerv(gl.MAX_TEXTURE_IMAGE_UNITS, &uints)
 	return &VertexCache{
 		Vao:             vao,
 		VertexVbo:       vvbo,
@@ -161,7 +163,9 @@ func NewVertexCache(
 		SkinManager:     skinmanager,
 		VManager:        vertexManger,
 		Format:          format,
+		Textures:        make([]uint32, 0, uints),
 	}
+
 }
 func (v *VertexCache) IsFull(size int) bool {
 	n := size / int(v.Stride)
@@ -383,6 +387,17 @@ func (v *VertexCache) AddMatrix(baseInstance int, world ...y3d.Mat4) error {
 	return CheckError()
 }
 
+func (v *VertexCache) AddTexture(texId uint32) (int, error) {
+	var uints int32
+	gl.GetIntegerv(gl.MAX_TEXTURE_IMAGE_UNITS, &uints)
+	i := len(v.Textures)
+	if i >= int(uints) {
+		return 0, errors.New("no space for additional texture")
+	}
+	v.Textures = append(v.Textures, texId)
+	return i, nil
+}
+
 func (v *VertexCache) Render() {
 	if v.IsEmpty() {
 		return
@@ -394,6 +409,9 @@ func (v *VertexCache) Render() {
 			v.VManager.ActiveSkin = v.SkinId
 		}
 		//how to handle framebuffer operations ???
+		for i, t := range v.Textures {
+			gl.BindTextureUnit(uint32(i), t)
+		}
 		gl.BindVertexArray(v.Vao)
 		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, WORLD_MATRIX_BINDING, v.WorldMatrixSSBO)
 		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, JOINTS_SSBO_BINDING, v.JointSSBO)
@@ -413,6 +431,7 @@ func (v *VertexCache) Render() {
 		v.NumDrawCommands = 0
 		v.NumOfJoints = 0
 		v.NumOfInstances = 0
+		v.Textures = v.Textures[:0]
 	}
 }
 

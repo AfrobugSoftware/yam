@@ -21,6 +21,7 @@ const (
 	AnimationComponent
 	InstanceComponent
 	ScaleComponent
+	PbrMaterialComponent
 )
 
 func AddEntityRenderableData(

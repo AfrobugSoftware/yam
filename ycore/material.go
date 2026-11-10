@@ -17,3 +17,9 @@ type Material struct {
 	Specular y3d.Vec4
 	Emissive y3d.Vec4
 }
+
+type PbrMaterial struct {
+	Albeo     uint32
+	Specular  uint32
+	NormalMap uint32
+}

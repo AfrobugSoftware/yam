@@ -269,13 +269,13 @@ func (vm *VertexCacheManager) Destory() {
 
 func (vm *VertexCacheManager) LoadMatrix(vertexType string,
 	baseInstance int,
-	skinId int, world ...y3d.Mat4) error {
+	Id int, world ...y3d.Mat4) error {
 	vc, ok := vm.Caches[vertexType]
 	if !ok {
 		return errors.New("invalid vertex type")
 	}
 	for i := range MAX_CACHES {
-		if vc[i].SkinId == skinId {
+		if vc[i].SkinId == Id {
 			vc[i].AddMatrix(
 				baseInstance, world...)
 			return nil
@@ -387,6 +387,21 @@ func (vm *VertexCacheManager) ForceRenderAll() error {
 	for _, vc := range vm.Caches {
 		for _, c := range vc {
 			c.Render()
+		}
+	}
+	return nil
+}
+
+func (vm *VertexCacheManager) BindShawdowMap(texid uint32) error {
+	for _, vc := range vm.Caches {
+		for _, c := range vc {
+			if c.IsEmpty() {
+				continue
+			}
+			_, err := c.AddTexture(texid)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil

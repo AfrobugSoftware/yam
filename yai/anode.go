@@ -66,7 +66,6 @@ search:
 			}
 		}
 		f.IsVisited = true
-		//pop the front
 		queue = queue[1:]
 	}
 	if cur == end {

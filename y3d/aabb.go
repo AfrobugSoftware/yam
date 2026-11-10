@@ -49,10 +49,11 @@ func FromPoints(verts []Vec3) AABB {
 
 func FromOBB(obb OBB) AABB {
 	var a [3]Vec3
-	ex := obb.Extents.ToSlice()
-	for i := range 3 {
-		a[i] = Smul(obb.Axes[i], ex[i])
-	}
+	ex := obb.Extents
+	a[0] = Smul(obb.Axes[0], ex.X)
+	a[1] = Smul(obb.Axes[1], ex.Y)
+	a[2] = Smul(obb.Axes[2], ex.Z)
+
 	xMax := max(a[0].X, a[1].X, a[2].X)
 	yMax := max(a[0].Y, a[1].Y, a[2].Y)
 	zMax := max(a[0].Z, a[1].Z, a[2].Z)

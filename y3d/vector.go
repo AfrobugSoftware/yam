@@ -24,17 +24,6 @@ type Vec3 struct {
 
 type Vec4 struct{ X, Y, Z, W float32 }
 
-func (v Vec3) ToSlice() [3]float32 {
-	return [3]float32{
-		v.X, v.Y, v.Z,
-	}
-}
-func (v Vec4) ToSlice() [4]float32 {
-	return [4]float32{
-		v.X, v.Y, v.Z, v.W,
-	}
-}
-
 type IVec3 struct {
 	X, Y, Z int
 	//pad     int
@@ -50,6 +39,14 @@ func Add(v ...Vec3) Vec3 {
 		}
 	}
 	return lhs
+}
+
+func (v Vec3) AddScale(a Vec3, s float32) Vec3 {
+	return Vec3{
+		X: v.X + a.X*s,
+		Y: v.Y + a.Y*s,
+		Z: v.Z + a.Z*s,
+	}
 }
 
 func Max(v ...Vec3) Vec3 {
