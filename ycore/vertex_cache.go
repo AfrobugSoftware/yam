@@ -65,7 +65,6 @@ type VertexCache struct {
 	NumOfTags       int32
 	Stride          int32
 	DrawMode        uint32
-	SkinId          int
 	Id              int
 	Textures        []uint32
 	Format          []VertexFormat
@@ -79,7 +78,6 @@ func NewVertexCache(
 	maxVertex, maxIndex, maxDraws, maxInstances, maxJoints int32,
 	stride int32,
 	drawMode uint32,
-	skinId int,
 	id int,
 	format []VertexFormat,
 ) *VertexCache {
@@ -159,8 +157,6 @@ func NewVertexCache(
 		Stride:          stride,
 		Id:              id,
 		DrawMode:        drawMode,
-		SkinId:          skinId,
-		SkinManager:     skinmanager,
 		VManager:        vertexManger,
 		Format:          format,
 		Textures:        make([]uint32, 0, uints),
@@ -403,11 +399,6 @@ func (v *VertexCache) Render() {
 		return
 	}
 	if v.NumDrawCommands != 0 {
-		//setup skin
-		if v.VManager.ActiveSkin != v.SkinId && v.SkinId != -1 {
-			v.VManager.RenderManager.SkinManager.BindSkin(v.SkinId)
-			v.VManager.ActiveSkin = v.SkinId
-		}
 		//how to handle framebuffer operations ???
 		for i, t := range v.Textures {
 			gl.BindTextureUnit(uint32(i), t)
@@ -443,14 +434,6 @@ func (v *VertexCache) Reset() {
 	v.NumOfTags = 0
 }
 
-func (v *VertexCache) SetSkin(skin int) {
-	if !v.IsEmpty() {
-		v.Render()
-		v.Reset()
-	}
-	v.SkinId = skin
-}
-
 func (v *VertexCache) Destroy() {
 	gl.DeleteBuffers(1, &v.IndexVbo)
 	gl.DeleteBuffers(1, &v.VertexVbo)
@@ -478,7 +461,6 @@ func (v *VertexCache) String() string {
 	fmt.Fprintf(&b, "Number of indices in buffer: %d\n", v.NumIndices)
 	fmt.Fprintf(&b, "Number of draw commands in buffer: %d\n", v.NumDrawCommands)
 	fmt.Fprintf(&b, "Stride of vertex: %d\n", v.Stride)
-	fmt.Fprintf(&b, "Skin id: %d\n", v.SkinId)
 
 	b.WriteString("Vertex formats\n\n")
 	for _, vf := range v.Format {

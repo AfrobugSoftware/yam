@@ -150,7 +150,7 @@ func (t *TestApplication) LevelTest() {
 	ent2 := t.engine.Level.World.NewEntity()
 	ent3 := t.engine.Level.World.NewEntity()
 	ent4 := t.engine.Level.World.NewEntity()
-	skin := t.engine.RenderManager.SkinManager.AddSkin(ycore.IdentityMaterial)
+	//skin := t.engine.RenderManager.SkinManager.AddSkin(ycore.IdentityMaterial)
 	w := t.engine.Level.World
 	m := ycore.AddEntityMoveData(t.engine.Level.World, ent, y3d.Vec3{Z: -20, Y: 5}, y3d.IdenQuat())
 	m.Thrust = 0
@@ -159,24 +159,24 @@ func (t *TestApplication) LevelTest() {
 
 	v, i := ygl.CreateSphere(64, 36, 5.0)
 	err := ycore.AddEntityRenderableData(t.engine.Level.World, ent,
-		ycore.VPNTC, skin, 1.0, v, i, t.engine.RenderManager.VertextManager)
+		ycore.VPNTC, 1.0, v, i, t.engine.RenderManager.VertextManager)
 	if err != nil {
 		panic(err)
 	}
 	v2, i2 := ygl.CreateCube()
 	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent3,
-		ycore.VPNTC, skin, 35, v2, i2, t.engine.RenderManager.VertextManager)
+		ycore.VPNTC, 1.0, v2, i2, t.engine.RenderManager.VertextManager)
 	if err != nil {
 		panic(err)
 	}
 	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent2,
-		ycore.VPNTC, skin, 1.0, v, i, t.engine.RenderManager.VertextManager)
+		ycore.VPNTC, 1.0, v, i, t.engine.RenderManager.VertextManager)
 	if err != nil {
 		panic(err)
 	}
 	v, i = ygl.CreateQuad()
 	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent4,
-		ycore.VPNTC, skin, 1.0, v, i, t.engine.RenderManager.VertextManager)
+		ycore.VPNTC, 1.0, v, i, t.engine.RenderManager.VertextManager)
 	if err != nil {
 		panic(err)
 	}

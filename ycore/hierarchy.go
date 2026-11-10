@@ -79,7 +79,7 @@ func (w *World) RenderSceneGraph(r *RenderManager, root EntityId) {
 		}
 		if w.HasComponent(f, RenderableComponent, TransformComponent) {
 			renderable := w.GetComponent(f, RenderableComponent).(Renderable)
-			v, err := vm.GetCache(renderable.VertexType, renderable.SkinId)
+			v, err := vm.GetCache(renderable.VertexType, renderable.VertexCacheId)
 			if err != nil {
 				continue //no cache for this entity
 			}

@@ -168,7 +168,6 @@ func NewVertexCacheManager(
 			maxJoints,
 			vm.Strides[VPNT],
 			gl.TRIANGLES,
-			-1,
 			vm.CacheId,
 			vm.Formats[VPNT],
 		)
@@ -186,7 +185,6 @@ func NewVertexCacheManager(
 			maxJoints,
 			vm.Strides[VPNTC],
 			gl.TRIANGLES,
-			-1,
 			vm.CacheId,
 			vm.Formats[VPNTC],
 		)
@@ -204,7 +202,6 @@ func NewVertexCacheManager(
 			maxJoints,
 			vm.Strides[VPNTWJ],
 			gl.TRIANGLES,
-			-1,
 			vm.CacheId,
 			vm.Formats[VPNTWJ],
 		)
@@ -221,7 +218,6 @@ func NewVertexCacheManager(
 			maxJoints,
 			vm.Strides[VPNTTB],
 			gl.TRIANGLES,
-			-1,
 			vm.CacheId,
 			vm.Formats[VPNTTB],
 		)
@@ -247,7 +243,6 @@ func (vm *VertexCacheManager) CreateVertexCache(name string, drawMode uint32, sk
 			vm.MaxJoints,
 			int32(stride),
 			drawMode,
-			skinId,
 			vm.CacheId,
 			format,
 		)
@@ -275,7 +270,7 @@ func (vm *VertexCacheManager) LoadMatrix(vertexType string,
 		return errors.New("invalid vertex type")
 	}
 	for i := range MAX_CACHES {
-		if vc[i].SkinId == Id {
+		if vc[i].Id == Id {
 			vc[i].AddMatrix(
 				baseInstance, world...)
 			return nil
@@ -284,13 +279,13 @@ func (vm *VertexCacheManager) LoadMatrix(vertexType string,
 	return nil
 }
 
-func (vm *VertexCacheManager) GetCache(vertexType string, skinId int) (*VertexCache, error) {
+func (vm *VertexCacheManager) GetCache(vertexType string, Id int) (*VertexCache, error) {
 	vc, ok := vm.Caches[vertexType]
 	if !ok {
 		return nil, errors.New("no cache for this vertex type")
 	}
 	for i := range MAX_CACHES {
-		if vc[i].SkinId == skinId {
+		if vc[i].Id == Id {
 
 			return vc[i], nil
 		}
@@ -298,13 +293,14 @@ func (vm *VertexCacheManager) GetCache(vertexType string, skinId int) (*VertexCa
 	return nil, errors.New("cannot find cache with skin id")
 }
 
-func (vm *VertexCacheManager) LoadDrawCommand(vertexType string, skinId int, command DrawCommand) error {
+func (vm *VertexCacheManager) LoadDrawCommand(vertexType string,
+	Id int, command DrawCommand) error {
 	vc, ok := vm.Caches[vertexType]
 	if !ok {
 		return errors.New("invalid vertex type")
 	}
 	for i := range MAX_CACHES {
-		if vc[i].SkinId == skinId {
+		if vc[i].Id == Id {
 			vc[i].AddDrawCommand(command)
 			return nil
 		}
@@ -312,13 +308,13 @@ func (vm *VertexCacheManager) LoadDrawCommand(vertexType string, skinId int, com
 	return nil
 }
 
-func (vm *VertexCacheManager) LoadInstances(vertexType string, skinId int, command *DrawCommand, instanceCount int) error {
+func (vm *VertexCacheManager) LoadInstances(vertexType string, Id int, command *DrawCommand, instanceCount int) error {
 	vc, ok := vm.Caches[vertexType]
 	if !ok {
 		return errors.New("invalid vertex type")
 	}
 	for i := range MAX_CACHES {
-		if vc[i].SkinId == skinId {
+		if vc[i].Id == Id {
 			command.InstanceCount = uint32(instanceCount)
 			vc[i].AddInstances(command)
 			return nil
@@ -330,45 +326,44 @@ func (vm *VertexCacheManager) LoadInstances(vertexType string, skinId int, comma
 func (vm *VertexCacheManager) LoadCache(
 	vertexType string,
 	dataV, dataI *bytes.Buffer,
-	skinID int,
 	command *DrawCommand,
-) error {
+) (int, error) {
 	var empty, fullest *VertexCache
 	vc, ok := vm.Caches[vertexType]
 	if !ok {
-		return errors.New("invalid vertex type")
+		return -1, errors.New("invalid vertex type")
 	}
 	fullest = vc[0]
 	for i := range MAX_CACHES {
-		if vc[i].SkinId == skinID {
-			return vc[i].Add(
-				command,
-				dataV,
-				dataI,
-			)
-		}
 		if vc[i].IsEmpty() {
 			empty = vc[i]
 			break
 		}
+
+	}
+	for i := range MAX_CACHES {
 		if vc[i].NumVertics > fullest.NumVertics {
 			fullest = vc[i]
 		}
 	}
-	if empty != nil {
-		empty.SetSkin(skinID)
-		return empty.Add(
-			command,
-			dataV,
-			dataI,
-		)
-	}
-	fullest.SetSkin(skinID)
-	return fullest.Add(
+	err := fullest.Add(
 		command,
 		dataV,
 		dataI,
 	)
+	if err != nil {
+		//cannot add to fullest add to empty
+		err = empty.Add(
+			command,
+			dataV,
+			dataI,
+		)
+		if err != nil {
+			return -1, err
+		}
+		return empty.Id, nil
+	}
+	return fullest.Id, nil
 }
 
 func (vm *VertexCacheManager) ForceRender(vertexType string) error {

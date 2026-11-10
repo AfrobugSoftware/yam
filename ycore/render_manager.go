@@ -73,10 +73,10 @@ type RenderParameters struct {
 }
 
 type Renderable struct {
-	DrawCmd      DrawCommand
-	RenderParams PerObjectRenderState
-	SkinId       int
-	VertexType   string
+	DrawCmd       DrawCommand
+	RenderParams  PerObjectRenderState
+	VertexCacheId int
+	VertexType    string
 }
 
 type RenderManager struct {
@@ -141,6 +141,7 @@ type RenderManager struct {
 	pickDepth          uint32
 	pickProgram        uint32
 	lineCount          int
+	testMaterialUbo    uint32
 	lineprogram        uint32
 	RenderParams       RenderParameters
 	lightSphere        int
@@ -321,6 +322,11 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 		gl.EnableVertexArrayAttrib(rm.linevao, uint32(i))
 	}
 	gl.VertexArrayVertexBuffer(rm.linevao, VERTEX_ATTRIBUTE_BINDING, rm.debugLineBuffer, 0, stride)
+	gl.CreateBuffers(1, &rm.testMaterialUbo)
+	gl.NamedBufferStorage(rm.testMaterialUbo, int(unsafe.Sizeof([16]float32{})), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
+	m := unsafe.Slice((*float32)(unsafe.Pointer(&IdentityMaterial)), 16)
+	gl.NamedBufferSubData(rm.testMaterialUbo, 0, 64, gl.Ptr(m))
+
 	return rm
 }
 
@@ -820,6 +826,7 @@ func (r *RenderManager) EntitiesRenderPhase() {
 	r.LoadRenderParameters()
 	gl.BindBufferBase(gl.UNIFORM_BUFFER, VIEW_PROJ_BINDING, r.viewubo)
 	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, RENDER_PARAMS_BINDING, r.renderParamsSSBO)
+	gl.BindBufferBase(gl.UNIFORM_BUFFER, MATERIAL_UBO_BINDING, r.testMaterialUbo)
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
 
 	//render grid
@@ -1023,7 +1030,7 @@ func (r *RenderManager) HighlightPickedEntity() {
 	e := r.PickedEntity
 	m := r.World.GetComponent(e, MoveControllerComponent).(*ycontroller.MovementController)
 	box := r.World.GetComponent(e, BoundingBoxComponent).(yphy.Box)
-	r.DrawGizmo(m, box.World.GetHalfSize().X+2)
+	r.DrawGizmo(m, box.World.GetHalfSize().X)
 
 	if r.DrawBoundingBoxes {
 		matrix := box.RenderBoxMatrix()
@@ -1128,7 +1135,7 @@ func (r *RenderManager) RenderEntities(cull bool) {
 		BoundingBoxComponent)
 	for _, e := range entities {
 		renderable := r.World.GetComponent(e, RenderableComponent).(Renderable)
-		v, err := vm.GetCache(renderable.VertexType, renderable.SkinId)
+		v, err := vm.GetCache(renderable.VertexType, renderable.VertexCacheId)
 		if err != nil {
 			continue //no cache for this entity
 		}

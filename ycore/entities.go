@@ -28,18 +28,17 @@ func AddEntityRenderableData(
 	world *World,
 	ent EntityId,
 	vertexType string,
-	skinId int,
 	scale float32,
 	v, i *bytes.Buffer, vm *VertexCacheManager) error {
 	cmd := DrawCommand{}
-	err := vm.LoadCache(vertexType, v, i, skinId, &cmd)
+	vid, err := vm.LoadCache(vertexType, v, i, &cmd)
 	if err != nil {
 		return err
 	}
 	renderable := Renderable{
-		DrawCmd:    cmd,
-		VertexType: vertexType,
-		SkinId:     skinId,
+		DrawCmd:       cmd,
+		VertexType:    vertexType,
+		VertexCacheId: vid,
 		RenderParams: PerObjectRenderState{
 			Alpha: 1.0,
 		},
@@ -49,7 +48,7 @@ func AddEntityRenderableData(
 	box := yphy.BoundBox(int(stride), int(format[0].RelativeOffset), v, i)
 	world.AddComponent(ent, BoundingBoxComponent, box)
 	world.AddComponent(ent, RenderableComponent, renderable)
-	world.AddComponent(ent, ScaleComponent, float32(1.0))
+	world.AddComponent(ent, ScaleComponent, scale)
 	return nil
 }
 
