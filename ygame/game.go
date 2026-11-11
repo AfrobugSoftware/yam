@@ -93,6 +93,8 @@ func (g *Engine) Run() {
 		g.Level.ProcessEntityInput(g.InputManager)
 		g.Update(float64(dt))
 		g.Draw()
+
+		//fmt.Println(1 / dt)
 	}
 }
 

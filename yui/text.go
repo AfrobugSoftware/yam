@@ -17,8 +17,6 @@ import (
 const atlasPadding = 1
 const defaultCharset = " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890,!./;'#][]"
 
-var ErrAtlasFull = errors.New("font atlas has no space left for glyph")
-
 type FontInfo struct {
 	UMin, VMin float32
 	UMax, VMax float32
@@ -45,10 +43,8 @@ type Font struct {
 	ppem            fixed.Int26_6
 	gmap            map[rune]Character
 	FontIdx         int
-
-	// shelf packer state
-	atlasX, atlasY int
-	atlasRowH      int
+	atlasX, atlasY  int
+	atlasRowH       int
 }
 
 type Character struct {
@@ -126,7 +122,7 @@ func (font *Font) positionGlyphInAtlas(w, h int) (int, int, error) {
 	}
 	if font.atlasX+w+atlasPadding > font.Atlas.Width ||
 		font.atlasY+h+atlasPadding > font.Atlas.Height {
-		return 0, 0, ErrAtlasFull
+		return 0, 0, errors.New("font atlas has no space left for glyph")
 	}
 	x, y := font.atlasX, font.atlasY
 	font.atlasX += w + atlasPadding

@@ -119,7 +119,11 @@ void main () {
 				discard;
 			}
 		}else{
-			FragColor = fs_in.Color;	
+			if((fs_in.Flag & (1 << 20)) != 0) {
+				FragColor = texture(fontTex[fs_in.Tex], fs_in.TexCoords.xy);
+			}else{
+				FragColor = fs_in.Color;	
+			}
 		}
 	}
 }

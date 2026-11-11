@@ -51,8 +51,8 @@ func (t *TestApplication) Startup(e *Engine) {
 	})
 	t.font = yui.NewFont(12, t.engine.RenderManager.PixelPerInch,
 		"assets/fonts/Mina-Regular.ttf")
-	t.TestUI() // test ui
-	//t.TestAbsolutePositioning()
+	//t.TestUI() // test ui
+	t.TestAbsolutePositioning()
 	t.LevelTest() //level test
 }
 func (t *TestApplication) TestAbsolutePositioning() {
