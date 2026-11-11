@@ -128,10 +128,11 @@ func (v Vec3) LengthSq() float32 {
 func Normalize(v Vec3) Vec3 {
 	m := v.Length()
 	if m > 0 {
+		l := 1 / m
 		return Vec3{
-			X: v.X / m,
-			Y: v.Y / m,
-			Z: v.Z / m,
+			X: v.X * l,
+			Y: v.Y * l,
+			Z: v.Z * l,
 		}
 	}
 	return Vec3{}

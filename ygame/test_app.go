@@ -19,6 +19,7 @@ type TestApplication struct {
 	yaw, pitch   float32
 	pickedEntity ycore.EntityId
 	boxEnt       ycore.EntityId
+	font         *yui.Font
 }
 
 func (t *TestApplication) Startup(e *Engine) {
@@ -48,6 +49,8 @@ func (t *TestApplication) Startup(e *Engine) {
 		Y: float32(math.Sin(float64(t.pitch))),
 		Z: float32(math.Sin(float64(t.yaw)) * math.Cos(float64(t.pitch))),
 	})
+	t.font = yui.NewFont(12, t.engine.RenderManager.PixelPerInch,
+		"assets/fonts/Mina-Regular.ttf")
 	//t.TestUI() // test ui
 	t.TestAbsolutePositioning()
 	t.LevelTest() //level test
@@ -55,16 +58,25 @@ func (t *TestApplication) Startup(e *Engine) {
 func (t *TestApplication) TestAbsolutePositioning() {
 	root := &yui.UIElement{
 		Position: y3d.Vec2{
-			X: float32(t.engine.RenderManager.Width) - 110,
+			X: float32(t.engine.RenderManager.Width) - 210,
 			Y: 10,
 		},
 		BaseSize: y3d.Vec2{
-			X: 100,
-			Y: 120,
+			X: 200,
+			Y: 50,
 		},
-		Radius: 5.0,
-		Flag:   yui.UI_ABSOLUTE_POSITION,
-		Color:  [4]uint8{39, 245, 0, 255},
+		Radius:  5.0,
+		Padding: y3d.Vec4{X: 5, Y: 5, Z: 5, W: 5},
+		Flag:    yui.UI_ABSOLUTE_POSITION | yui.UI_ALIGN_CENTER | yui.UI_LAYOUT_LEFT_TO_RIGHT,
+		Color:   [4]uint8{0, 0, 0, 255},
+		Children: []*yui.UIElement{
+			{
+				Flag:  yui.UI_ALIGN_CENTER,
+				Text:  "Kiwi Island",
+				Font:  t.font,
+				Color: [4]uint8{255, 255, 255, 255},
+			},
+		},
 	}
 	t.engine.RenderManager.RootUI = root
 }
@@ -124,7 +136,7 @@ func (t *TestApplication) TestUI() {
 								Color: [4]uint8{255, 255, 0, 255},
 							},
 							{
-								Text:  "Yram!!",
+								Text:  "Zino is awesome",
 								Font:  font,
 								Color: [4]uint8{255, 255, 0, 255},
 							},

@@ -368,12 +368,12 @@ func (v *VertexCache) AddTexture(texId uint32) (int, error) {
 	return i, nil
 }
 
-func (v *VertexCache) Render() {
+func (v *VertexCache) DrawCache() {
 	if v.IsEmpty() {
 		return
 	}
 	if v.NumDrawCommands != 0 {
-		//how to handle framebuffer operations ???
+		//how to handle framebuffer operations ??? in pipelines
 		for i, t := range v.Textures {
 			gl.BindTextureUnit(uint32(i), t)
 		}

@@ -355,7 +355,7 @@ func (vm *VertexCacheManager) ForceRender(vertexType string) error {
 		return errors.New("invalid vertex type")
 	}
 	for _, c := range vc {
-		c.Render()
+		c.DrawCache()
 	}
 	return nil
 }
@@ -363,7 +363,7 @@ func (vm *VertexCacheManager) ForceRender(vertexType string) error {
 func (vm *VertexCacheManager) ForceRenderAll() error {
 	for _, vc := range vm.Caches {
 		for _, c := range vc {
-			c.Render()
+			c.DrawCache()
 		}
 	}
 	return nil

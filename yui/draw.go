@@ -2,6 +2,7 @@ package yui
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"yam/y3d"
 
@@ -82,34 +83,37 @@ func DrawText(baseInstance int, ui *UIElement) int {
 		return baseInstance
 	}
 	count := baseInstance
-	x := ui.Position.X
-	y := ui.Position.Y
+	baseline := ui.Position.Y + ui.Font.Ascent
+
 	for _, cand := range ui.Lines {
+		penX := ui.Position.X
 		for _, c := range cand {
 			char, ok := ui.Font.GetCharacter(c)
-			if c == ' ' {
-				x += char.Advance
-			}
 			if !ok {
 				//or render missing charater glyph
 				continue
 			}
-			arrayBuffer.SetQuad(count,
-				x,
-				y,
-				char.Size.X,
-				(char.Size.Y),
-				0,
-				0,
-				1, 1,
-				float32(ui.Color[0])/255.0,
-				float32(ui.Color[1])/255.0,
-				float32(ui.Color[2])/255.0,
-				float32(char.Idx), ui.Radius, ui.RenderFlag|UI_TEXT, ui.Tex)
-			count++
-			x = x + char.Advance + float32(ui.Font.Kern)
+			if char.Size.X > 0 && char.Size.Y > 0 {
+				uvs, _ := ui.Font.GetUV(c)
+				qx := float32(math.Round(float64(penX + char.Bearing.X)))
+				qy := float32(math.Round(float64(baseline + char.Bearing.Y)))
+				arrayBuffer.SetQuad(count,
+					qx,
+					qy,
+					char.Size.X,
+					(char.Size.Y),
+					uvs.UMin,
+					uvs.VMin,
+					uvs.UMax, uvs.VMax,
+					float32(ui.Color[0])/255.0,
+					float32(ui.Color[1])/255.0,
+					float32(ui.Color[2])/255.0,
+					float32(ui.Color[3])/255.0, ui.Radius, ui.RenderFlag|UI_TEXT, ui.Tex)
+				count++
+			}
+			penX += char.Advance + ui.Font.Kern
 		}
-		y += ui.Font.VerticalSpacing + float32(ui.Font.height)
+		baseline += ui.Font.VerticalSpacing
 	}
 	return count
 }

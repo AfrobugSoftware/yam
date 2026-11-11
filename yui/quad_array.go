@@ -70,7 +70,7 @@ void main() {
 layout (location = 0) out vec4 FragColor;
 
 uniform sampler2D tex;
-layout (binding = 1) uniform sampler2DArray fontTex;
+layout (binding = 1) uniform sampler2D fontTex;
 in Frag {
     vec4 Color;
 	vec2 Pos;
@@ -103,7 +103,7 @@ bool InConner(vec2 point, float radius, vec2 dim, out vec2 cen) {
 
 void main () {
 	if((fs_in.Flag & (1 << 18)) != 0) {
-		FragColor = vec4(fs_in.Color.rgb, texture(fontTex, vec3(fs_in.TexCoords.xy, fs_in.Idx)).r);
+		FragColor = vec4(fs_in.Color.rgb, texture(fontTex, fs_in.TexCoords.xy).r);
 	}else{
 		float u_radius = fs_in.Radius;
 		vec2 u_dimensions = fs_in.Extents;
@@ -161,7 +161,7 @@ func (q *QuadArray) Draw(numQuads int, font *Font) {
 		numQuads = int(count) - 1
 	}
 	if font != nil {
-		gl.BindTextureUnit(1, font.TextureID)
+		gl.BindTextureUnit(1, font.Atlas.ID)
 	}
 	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, BUFFER_BINDING, q.ssbo)
 	gl.Disable(gl.DEPTH_TEST)
