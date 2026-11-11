@@ -108,7 +108,7 @@ func DrawText(baseInstance int, ui *UIElement) int {
 					float32(ui.Color[0])/255.0,
 					float32(ui.Color[1])/255.0,
 					float32(ui.Color[2])/255.0,
-					float32(ui.Color[3])/255.0, ui.Radius, ui.RenderFlag|UI_TEXT, ui.Tex)
+					float32(ui.Color[3])/255.0, ui.Radius, ui.RenderFlag|UI_TEXT, uint32(ui.Font.FontIdx))
 				count++
 			}
 			penX += char.Advance + ui.Font.Kern
@@ -120,7 +120,6 @@ func DrawText(baseInstance int, ui *UIElement) int {
 
 func Draw(root *UIElement, proj y3d.Mat4) {
 	flatten(root)
-	var font *Font
 	gl.UseProgram(arrayProgram)
 	gl.UniformMatrix4fv(1, 1, false, &proj[0])
 	err := arrayBuffer.OpenArray()
@@ -131,7 +130,6 @@ func Draw(root *UIElement, proj y3d.Mat4) {
 	for _, ui := range flat {
 		if len(ui.Lines) > 0 {
 			i = DrawText(i, ui)
-			font = ui.Font
 		} else {
 			arrayBuffer.SetQuad(i,
 				ui.Position.X,
@@ -149,6 +147,6 @@ func Draw(root *UIElement, proj y3d.Mat4) {
 		}
 	}
 	arrayBuffer.CloseArray()
-	arrayBuffer.Draw(i, font)
+	arrayBuffer.Draw(i)
 	gl.UseProgram(0)
 }

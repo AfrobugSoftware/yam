@@ -44,6 +44,7 @@ type Font struct {
 	Kern            float32
 	ppem            fixed.Int26_6
 	gmap            map[rune]Character
+	FontIdx         int
 
 	// shelf packer state
 	atlasX, atlasY int
@@ -77,6 +78,11 @@ func NewFont(pointSize, ppi float32, filename string) *Font {
 		panic(err)
 	}
 	f.Kern = float32(k.Ceil())
+	idx, err := arrayBuffer.AddTexture(f.Atlas.ID)
+	if err != nil {
+		panic(err)
+	}
+	f.FontIdx = idx
 	return f
 }
 
@@ -112,9 +118,8 @@ func (font *Font) initAtlas(glyphCount int) {
 	font.atlasRowH = 0
 }
 
-func (font *Font) allocate(w, h int) (int, int, error) {
+func (font *Font) positionGlyphInAtlas(w, h int) (int, int, error) {
 	if font.atlasX+w+atlasPadding > font.Atlas.Width {
-		// start a new shelf
 		font.atlasX = atlasPadding
 		font.atlasY += font.atlasRowH + atlasPadding
 		font.atlasRowH = 0
@@ -203,7 +208,7 @@ func (font *Font) DrawRune(t rune) error {
 
 	var info FontInfo
 	if w > 0 && h > 0 { // whitespace has no ink: no atlas space, zero UVs
-		ax, ay, err := font.allocate(w, h)
+		ax, ay, err := font.positionGlyphInAtlas(w, h)
 		if err != nil {
 			return err
 		}

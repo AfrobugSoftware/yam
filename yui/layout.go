@@ -58,7 +58,7 @@ func (ui *UIElement) padStart(a axis) float32 {
 	if a == axisX {
 		return ui.Padding.X
 	}
-	return ui.Padding.Z
+	return ui.Padding.Y
 }
 
 func (ui *UIElement) pad(a axis) float32 {
@@ -373,9 +373,6 @@ func Position(ui *UIElement) {
 
 	used := ui.gap()
 	for _, c := range ui.Children {
-		if c.Flag&UI_FLOATING != 0 {
-			continue
-		}
 		used += get(c.Size, main)
 	}
 	free := get(ui.Size, main) - ui.pad(main) - used

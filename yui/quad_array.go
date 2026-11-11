@@ -41,6 +41,7 @@ out Frag {
     vec2 TexCoords;
     flat vec2 Extents;
 	flat uint Flag;
+	flat uint Tex;
 	flat float Idx;
 	flat float Radius;
 }vs_out;
@@ -64,19 +65,21 @@ void main() {
 	vs_out.Radius = info[gl_InstanceID].radius;
 	vs_out.Pos = positions[gl_VertexID];
 	vs_out.Extents = info[gl_InstanceID].pos_width_height.zw;
+	vs_out.Tex = info[gl_InstanceID].tex;
 }`
 	fragShader = `#version 430 core 
 
 layout (location = 0) out vec4 FragColor;
 
-uniform sampler2D tex;
-layout (binding = 1) uniform sampler2D fontTex;
+//uniform sampler2D tex;
+uniform sampler2D fontTex[32];
 in Frag {
     vec4 Color;
 	vec2 Pos;
     vec2 TexCoords;
 	flat vec2 Extents;
 	flat uint Flag;
+	flat uint Tex;
 	flat float Idx;
 	flat float Radius;
 }fs_in;
@@ -103,7 +106,7 @@ bool InConner(vec2 point, float radius, vec2 dim, out vec2 cen) {
 
 void main () {
 	if((fs_in.Flag & (1 << 18)) != 0) {
-		FragColor = vec4(fs_in.Color.rgb, texture(fontTex, fs_in.TexCoords.xy).r);
+		FragColor = vec4(fs_in.Color.rgb, texture(fontTex[fs_in.Tex], fs_in.TexCoords.xy).r);
 	}else{
 		float u_radius = fs_in.Radius;
 		vec2 u_dimensions = fs_in.Extents;
@@ -138,14 +141,18 @@ type QuadArray struct {
 	ssbo      uint32
 	blockSize int32
 	blockPtr  unsafe.Pointer
+	texs      []uint32
 }
 
 func CreateQuadArray(shader uint32) *QuadArray {
 	var vbo uint32
 	gl.CreateVertexArrays(1, &vbo)
 	gl.BindVertexArray(vbo)
+	var uints int32
+	gl.GetIntegerv(gl.MAX_TEXTURE_IMAGE_UNITS, &uints)
 	q := &QuadArray{
-		vbo: vbo,
+		vbo:  vbo,
+		texs: make([]uint32, 0, uints),
 	}
 	q.blockSize = 1000 * int32(unsafe.Sizeof(QuadInfo{}))
 	gl.CreateBuffers(1, &q.ssbo)
@@ -153,16 +160,31 @@ func CreateQuadArray(shader uint32) *QuadArray {
 	return q
 }
 
-func (q *QuadArray) Draw(numQuads int, font *Font) {
+func (q *QuadArray) AddTexture(texId uint32) (int, error) {
+	if texId == 0 {
+		return 0, errors.New("cannot add a 0 texture")
+	}
+	var uints int32
+	gl.GetIntegerv(gl.MAX_TEXTURE_IMAGE_UNITS, &uints)
+	i := len(q.texs)
+	if i >= int(uints) {
+		return 0, errors.New("no space for additional texture")
+	}
+	q.texs = append(q.texs, texId)
+	return i, nil
+}
+
+func (q *QuadArray) Draw(numQuads int) {
 	count := q.blockSize / int32(unsafe.Sizeof(QuadInfo{}))
 	if numQuads <= 0 {
 		return
 	} else if numQuads >= int(count) {
 		numQuads = int(count) - 1
 	}
-	if font != nil {
-		gl.BindTextureUnit(1, font.Atlas.ID)
+	for i, t := range q.texs {
+		gl.BindTextureUnit(uint32(i), t)
 	}
+
 	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, BUFFER_BINDING, q.ssbo)
 	gl.Disable(gl.DEPTH_TEST)
 	gl.Enable(gl.BLEND)
