@@ -4,7 +4,6 @@ import (
 	"math"
 	"slices"
 	"strings"
-	"unicode/utf8"
 	"yam/y3d"
 )
 
@@ -27,7 +26,18 @@ var MeasureText = func(s string, font *Font) y3d.Vec2 {
 	if font == nil {
 		return y3d.Vec2{}
 	}
-	return y3d.Vec2{X: float32(utf8.RuneCountInString(s)) * float32(font.width), Y: float32(font.height)}
+	total := float32(0)
+	totalY := float32(0)
+	for _, r := range s {
+		c, b := font.GetCharacter(r)
+		if !b {
+			total += float32(font.width)
+			totalY = max(totalY, float32(font.height))
+		}
+		total += c.Size.X + c.Bearing.X
+		totalY = max(c.Size.Y+c.Bearing.Y, totalY)
+	}
+	return y3d.Vec2{X: float32(total), Y: float32(totalY)}
 }
 
 func (a axis) other() axis { return 1 - a }
@@ -163,9 +173,6 @@ func fitSize(ui *UIElement, a axis) {
 	var content, minContent float32
 	if a == ui.mainAxis() {
 		for _, c := range ui.Children {
-			if c.Flag&UI_FLOATING != 0 {
-				continue
-			}
 			content += get(c.Size, a)
 			minContent += get(c.minSize, a)
 		}
@@ -191,9 +198,6 @@ func FitSizeY(ui *UIElement) { fitSize(ui, axisY) }
 func grow(children []*UIElement, a axis, remaining float32) {
 	var cands []*UIElement
 	for _, c := range children {
-		if c.Flag&UI_FLOATING != 0 {
-			continue
-		}
 		if c.grows(a) && get(c.Size, a) < c.max(a) {
 			cands = append(cands, c)
 		}
@@ -380,9 +384,6 @@ func Position(ui *UIElement) {
 	innerCross := get(ui.Size, cross) - ui.pad(cross)
 
 	for _, c := range ui.Children {
-		if c.Flag&UI_FLOATING != 0 {
-			continue
-		}
 		f := ui.Flag
 		if c.Flag&crossFlags(cross) != 0 {
 			f = c.Flag

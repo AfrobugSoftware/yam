@@ -56,36 +56,34 @@ func (t *TestApplication) Startup(e *Engine) {
 	t.LevelTest() //level test
 }
 func (t *TestApplication) TestAbsolutePositioning() {
-	root := &yui.UIElement{
-		Position: y3d.Vec2{
+	root := yui.NewUIElement(
+		y3d.Vec2{
 			X: float32(t.engine.RenderManager.Width) - 210,
 			Y: 10,
 		},
-		BaseSize: y3d.Vec2{
+		y3d.Vec2{
 			X: 200,
 			Y: 50,
 		},
-		Radius:  5.0,
-		Padding: y3d.Vec4{X: 5, Y: 5, Z: 5, W: 5},
-		Flag:    yui.UI_ABSOLUTE_POSITION | yui.UI_ALIGN_CENTER | yui.UI_LAYOUT_LEFT_TO_RIGHT,
-		Color:   [4]uint8{0, 0, 0, 255},
-		Children: []*yui.UIElement{
-			{
-				Flag:  yui.UI_ALIGN_CENTER,
-				Text:  "Kiwi Island",
-				Font:  t.font,
-				Color: [4]uint8{255, 255, 255, 255},
-			},
+	).Set(yui.UI_ALIGN_CENTER).SetRadius(5).SetColor(
+		[4]uint8{0, 0, 0, 255},
+	).Add(
+		&yui.UIElement{
+			Flag:  yui.UI_ALIGN_CENTER,
+			Text:  "Kiwi Island, this is a long text",
+			Font:  t.font,
+			Color: [4]uint8{255, 255, 255, 255},
 		},
-	}
+	)
 	t.engine.RenderManager.RootUI = root
 }
 
 func (t *TestApplication) TestUI() {
 	font := yui.NewFont(12, t.engine.RenderManager.PixelPerInch,
 		"assets/fonts/Mina-Regular.ttf")
-	root := yui.NewUIElement(y3d.Vec2{X: float32(t.engine.RenderManager.Width),
-		Y: float32(t.engine.RenderManager.Height)})
+	root := yui.NewUIElement(y3d.Vec2{},
+		y3d.Vec2{X: float32(t.engine.RenderManager.Width),
+			Y: float32(t.engine.RenderManager.Height)})
 	root.Color = [4]uint8{39, 245, 0, 0}
 	root.ChildGap = 20
 	root.Padding = y3d.Vec4{X: 10, Y: 10, Z: 10, W: 10}
@@ -345,9 +343,6 @@ func (t *TestApplication) UpdateCamera() {
 		-y3d.Dot(vRight, eye), -y3d.Dot(vUp, eye), -y3d.Dot(dir, eye), 1,
 	}
 	t.camUp = vUp
-}
-func (t *TestApplication) Draw() {
-
 }
 
 func (t *TestApplication) Shutdown() {}

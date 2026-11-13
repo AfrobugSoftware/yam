@@ -55,14 +55,15 @@ type UIElement struct {
 	ChildGap      int
 	minSize       y3d.Vec2
 	Lines         []string
-	MouseCallback func(any)
+	MouseCallback func(any) bool
 	Font          *Font
 	Name          string
 	Tex           uint32
 }
 
-func NewUIElement(baseSize y3d.Vec2) *UIElement {
+func NewUIElement(pos, baseSize y3d.Vec2) *UIElement {
 	return &UIElement{
+		Position: pos,
 		Flag:     UI_FIT | UI_LAYOUT_LEFT_TO_RIGHT,
 		ChildGap: 0,
 		BaseSize: baseSize,
@@ -70,8 +71,32 @@ func NewUIElement(baseSize y3d.Vec2) *UIElement {
 		Padding:  y3d.Vec4{X: 2, Y: 2, Z: 2, W: 2},
 	}
 }
-func (ui *UIElement) Add(eui ...*UIElement) {
+
+func (ui *UIElement) SetText(text string) *UIElement {
+	ui.Text = text
+	return ui
+}
+func (ui *UIElement) SetPosition(pos y3d.Vec2) *UIElement {
+	ui.Position = pos
+	return ui
+}
+
+func (ui *UIElement) SetSize(size y3d.Vec2) *UIElement {
+	ui.BaseSize = size
+	return ui
+}
+
+func (ui *UIElement) SetPadding(padding y3d.Vec4) *UIElement {
+	ui.Padding = padding
+	return ui
+}
+func (ui *UIElement) SetColor(color [4]uint8) *UIElement {
+	ui.Color = color
+	return ui
+}
+func (ui *UIElement) Add(eui ...*UIElement) *UIElement {
 	ui.Children = append(ui.Children, eui...)
+	return ui
 }
 func (ui *UIElement) BoundingBox() y3d.Rect {
 	return y3d.Rect{
@@ -81,11 +106,19 @@ func (ui *UIElement) BoundingBox() y3d.Rect {
 		Height: int(ui.Position.Y + ui.Size.Y),
 	}
 }
-
-func (ui *UIElement) Set(flag uint32) {
-	ui.Flag |= flag
+func (ui *UIElement) SetRadius(radius float32) *UIElement {
+	ui.Radius = radius
+	return ui
 }
-
-func (ui *UIElement) Unset(flag uint32) {
+func (ui *UIElement) Set(flag uint32) *UIElement {
+	ui.Flag |= flag
+	return ui
+}
+func (ui *UIElement) SetMouseCallback(callback func(any) bool) *UIElement {
+	ui.MouseCallback = callback
+	return ui
+}
+func (ui *UIElement) Unset(flag uint32) *UIElement {
 	ui.Flag = ui.Flag &^ flag
+	return ui
 }
