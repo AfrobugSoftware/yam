@@ -20,10 +20,12 @@ type TestApplication struct {
 	pickedEntity ycore.EntityId
 	boxEnt       ycore.EntityId
 	font         *yui.Font
+	useCam       bool
 }
 
 func (t *TestApplication) Startup(e *Engine) {
 	t.engine = e
+	t.useCam = true
 	t.camFront = y3d.UNIT_Z
 	v, i := ygl.CreateCube()
 	if v == nil || i == nil {
@@ -160,7 +162,6 @@ func (t *TestApplication) LevelTest() {
 	ent2 := t.engine.Level.World.NewEntity()
 	ent3 := t.engine.Level.World.NewEntity()
 	ent4 := t.engine.Level.World.NewEntity()
-	//skin := t.engine.RenderManager.SkinManager.AddSkin(ycore.IdentityMaterial)
 	w := t.engine.Level.World
 	m := ycore.AddEntityMoveData(t.engine.Level.World, ent, y3d.Vec3{Z: -20, Y: 5}, y3d.IdenQuat())
 	m.Thrust = 0
@@ -221,20 +222,26 @@ func (t *TestApplication) ProcessInput(deltaTime float32) {
 	caged := t.engine.InputManager.AbsolutePosition
 
 	if im.GetMouseButtonState(sdl.BUTTON_LEFT) == ycore.BUTTON_HELD {
-		if math.Abs(float64(im.MousePosition.X)) > y3d.NearZero ||
-			math.Abs(float64(im.MousePosition.Y)) > y3d.NearZero {
-			t.yaw += float32(y3d.ToRadians(float64(im.MousePosition.X))) * 0.5
-			t.pitch += float32(y3d.ToRadians(float64(im.MousePosition.Y))) * 0.5
-			if t.pitch > float32(y3d.ToRadians(89.0)) {
-				t.pitch = float32(y3d.ToRadians(89.0))
-			} else if t.pitch < -float32(y3d.ToRadians(89.0)) {
-				t.pitch = -float32(y3d.ToRadians(89.0))
+		if t.useCam {
+			if math.Abs(float64(im.MousePosition.X)) > y3d.NearZero ||
+				math.Abs(float64(im.MousePosition.Y)) > y3d.NearZero {
+				t.yaw += float32(y3d.ToRadians(float64(im.MousePosition.X))) * 0.5
+				t.pitch += float32(y3d.ToRadians(float64(im.MousePosition.Y))) * 0.5
+				if t.pitch > float32(y3d.ToRadians(89.0)) {
+					t.pitch = float32(y3d.ToRadians(89.0))
+				} else if t.pitch < -float32(y3d.ToRadians(89.0)) {
+					t.pitch = -float32(y3d.ToRadians(89.0))
+				}
+				t.camFront = y3d.Normalize(y3d.Vec3{
+					X: float32(math.Cos(float64(t.yaw)) * math.Cos(float64(t.pitch))),
+					Y: float32(math.Sin(float64(t.pitch))),
+					Z: float32(math.Sin(float64(t.yaw)) * math.Cos(float64(t.pitch))),
+				})
 			}
-			t.camFront = y3d.Normalize(y3d.Vec3{
-				X: float32(math.Cos(float64(t.yaw)) * math.Cos(float64(t.pitch))),
-				Y: float32(math.Sin(float64(t.pitch))),
-				Z: float32(math.Sin(float64(t.yaw)) * math.Cos(float64(t.pitch))),
-			})
+		} else {
+			if t.pickedEntity != ycore.NullEntity {
+				t.engine.RenderManager.DragObject(t.pickedEntity, caged)
+			}
 		}
 	}
 	if im.GetMouseButtonState(sdl.BUTTON_LEFT) == ycore.BUTTON_PRESSED {
@@ -249,18 +256,18 @@ func (t *TestApplication) ProcessInput(deltaTime float32) {
 		}
 	}
 	if im.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_HELD {
-		t.camPostiion = y3d.Add(t.camPostiion, y3d.Smul(t.camFront, float32(camSpeed)))
+		t.camPostiion = t.camPostiion.AddScale(t.camFront, -camSpeed)
 	}
 	if im.GetKeyState(sdl.SCANCODE_DOWN) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_DOWN) == ycore.BUTTON_HELD {
-		t.camPostiion = y3d.Sub(t.camPostiion, y3d.Smul(t.camFront, float32(camSpeed)))
+		t.camPostiion = t.camPostiion.AddScale(t.camFront, camSpeed)
 	}
 	if im.GetKeyState(sdl.SCANCODE_RIGHT) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_RIGHT) == ycore.BUTTON_HELD {
 		right := y3d.Normalize(y3d.Cross(t.camFront, t.camUp))
-		t.camPostiion = y3d.Add(t.camPostiion, y3d.Smul(right, float32(camSpeed)))
+		t.camPostiion = t.camPostiion.AddScale(right, camSpeed)
 	}
 	if im.GetKeyState(sdl.SCANCODE_LEFT) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_LEFT) == ycore.BUTTON_HELD {
 		right := y3d.Normalize(y3d.Cross(t.camFront, t.camUp))
-		t.camPostiion = y3d.Sub(t.camPostiion, y3d.Smul(right, float32(camSpeed)))
+		t.camPostiion = t.camPostiion.AddScale(right, -camSpeed)
 	}
 	if im.GetKeyState(sdl.SCANCODE_B) == ycore.BUTTON_PRESSED {
 		t.engine.RenderManager.DrawBoundingBoxes = !t.engine.RenderManager.DrawBoundingBoxes
@@ -273,6 +280,9 @@ func (t *TestApplication) ProcessInput(deltaTime float32) {
 	}
 	if im.GetKeyState(sdl.SCANCODE_O) == ycore.BUTTON_PRESSED {
 		t.engine.RenderManager.EnablePicking = !t.engine.RenderManager.EnablePicking
+	}
+	if im.GetKeyState(sdl.SCANCODE_C) == ycore.BUTTON_PRESSED {
+		t.useCam = !t.useCam
 	}
 
 	t.UpdatePickedEntity()

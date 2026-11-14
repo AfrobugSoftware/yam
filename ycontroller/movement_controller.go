@@ -18,7 +18,6 @@ type MovementController struct {
 	Up               y3d.Vec3
 	Right            y3d.Vec3
 	Thrust           float32
-	Velocity         y3d.Vec3
 	Orientation      y3d.Quaternion
 	Position         y3d.Vec3
 }
@@ -75,9 +74,7 @@ func (m *MovementController) Update(deltaTime float32) {
 	m.RotY = (m.RotSpeedYaw * deltaTime)
 	m.RotZ = (m.RotSpeedRoll * deltaTime)
 	m.RecalAxes()
-
-	m.Velocity = y3d.Smul(m.Dir, (m.Thrust * deltaTime))
-	m.Position = y3d.Add(m.Position, m.Velocity)
+	m.Position = m.Position.AddScale(m.Dir, (m.Thrust * deltaTime))
 }
 
 func (m *MovementController) GetDir() y3d.Vec3 {

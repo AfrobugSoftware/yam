@@ -663,6 +663,52 @@ func (r *RenderManager) Transfrom3Dto2D(pos y3d.Vec3) y3d.Vec2 {
 	}
 }
 
+func (r *RenderManager) DragObject(entity EntityId, pos y3d.Vec2) {
+	width, height := float32(r.ViewPort[r.Stage].Width),
+		float32(r.ViewPort[r.Stage].Height)
+		//this is completely flipped, the x, y and z are all inverted for it to work
+		// i am not sure it is correct
+	ray_clip := y3d.Vec4{
+		X: 1.0 - (2.0*pos.X)/width,
+		Y: (2.0*pos.Y)/height - 1.0,
+		Z: 1.0,
+		W: 1.0,
+	}
+	InvProj := r.ProjP[r.Stage]
+	(&InvProj).Invert()
+	ray_eye := InvProj.MulVec4(ray_clip)
+	m := r.World.GetComponent(entity, MoveControllerComponent).(*ycontroller.MovementController)
+	pos4 := y3d.Vec4{
+		X: m.Position.X,
+		Y: m.Position.Y,
+		Z: m.Position.Z,
+		W: 1,
+	}
+	objView := r.View3D[r.Stage].MulVec4(pos4)
+	ray_eye = y3d.Vec4{
+		X: ray_eye.X * objView.Z,
+		Y: ray_eye.Y * objView.Z,
+		Z: ray_eye.Z * objView.Z,
+		W: 1,
+	}
+
+	view3d := r.View3D[r.Stage]
+	tx, ty, tz := view3d[12], view3d[13], view3d[14]
+	camX := -(view3d[0]*tx + view3d[1]*ty + view3d[2]*tz)
+	camY := -(view3d[4]*tx + view3d[5]*ty + view3d[6]*tz)
+	camZ := -(view3d[8]*tx + view3d[9]*ty + view3d[10]*tz)
+
+	dirX := (view3d[0]*ray_eye.X + view3d[1]*ray_eye.Y + view3d[2]*ray_eye.Z) + camX
+	dirY := (view3d[4]*ray_eye.X + view3d[5]*ray_eye.Y + view3d[6]*ray_eye.Z) + camY
+	dirZ := (view3d[8]*ray_eye.X + view3d[9]*ray_eye.Y + view3d[10]*ray_eye.Z) + camZ
+
+	m.Position = y3d.Vec3{
+		X: dirX,
+		Y: dirY,
+		Z: dirZ,
+	}
+}
+
 func (r *RenderManager) GetPickInfo(x, y int32) [4]uint32 {
 	gl.BindFramebuffer(gl.READ_FRAMEBUFFER, r.pickBuffer)
 	gl.ReadBuffer(gl.COLOR_ATTACHMENT0)

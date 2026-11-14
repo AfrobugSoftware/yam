@@ -69,6 +69,7 @@ func (l *Level) UpdateEntitesMovement(deltaTime float32) {
 				box := l.World.GetComponent(e, ycore.BoundingBoxComponent).(yphy.Box)
 				movement.Update(deltaTime)
 				scaleFactor := float32(1.0) //l.World.GetComponent(e, ycore.ScaleComponent).(float32)
+
 				transform.Local = y3d.TRS(movement.Position, movement.Orientation, y3d.Vec3{
 					X: scaleFactor,
 					Y: scaleFactor,

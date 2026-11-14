@@ -7,6 +7,10 @@ import (
 	"yam/yphy"
 )
 
+var (
+	wg sync.WaitGroup
+)
+
 type Hierarchy struct {
 	Children []EntityId
 	Parent   EntityId
@@ -33,12 +37,31 @@ func (w *World) UpdateGS(owner EntityId, hierarchy Hierarchy) {
 	w.SetComponent(owner, BoundingBoxComponent, box)
 }
 
+func (w *World) UpdateParticle(dt float32) {
+	entites := w.Query(
+		TransformComponent,
+		ParticleComponent,
+	)
+	for _, e := range entites {
+		wg.Go(func() {
+			particle := w.GetComponent(e, ParticleComponent).(yphy.Particle)
+			transform := w.GetComponent(e, TransformComponent).(Transform)
+			(&particle).Update(dt)
+			transform.Local = y3d.Translation(particle.Position)
+			w.SetComponent(e, TransformComponent, transform)
+			w.SetComponent(e, ParticleComponent, particle)
+		})
+	}
+	wg.Wait()
+	w.UpdateGS(w.SceneRoot, w.SceneRootHierarchy)
+	w.BoundingTree.BuildTree(entites)
+}
+
 func (w *World) UpdateMovement(deltaTime float32) {
 	entites := w.Query(
 		TransformComponent,
 		ScaleComponent,
 		MoveControllerComponent)
-	var wg sync.WaitGroup
 	for _, e := range entites {
 		//change to go routine pool
 		wg.Go(

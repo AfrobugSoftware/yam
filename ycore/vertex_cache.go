@@ -238,6 +238,9 @@ func (v *VertexCache) AddSkeleton(s *Skeleton) (int, error) {
 }
 
 func (v *VertexCache) AddTag(baseInstance int, tag ...uint32) error {
+	if len(tag) == 0 {
+		return nil
+	}
 	if v.NumOfTags >= v.MaxTags {
 		return errors.New("cannot add more tags") //we should make this growable
 	}
@@ -301,6 +304,9 @@ func (v *VertexCache) AddDrawCommand(command DrawCommand) error {
 }
 
 func (v *VertexCache) AddRenderState(baseInstance int, flag ...PerObjectRenderState) error {
+	if len(flag) == 0 {
+		return nil
+	}
 	if baseInstance+len(flag) >= int(v.MaxInstances) {
 		return errors.New("invalid matrix instance range")
 	}
@@ -324,6 +330,9 @@ func (v *VertexCache) AddRenderState(baseInstance int, flag ...PerObjectRenderSt
 }
 
 func (v *VertexCache) AddMatrix(baseInstance int, world ...y3d.Mat4) error {
+	if len(world) == 0 {
+		return nil
+	}
 	if baseInstance+len(world) >= int(v.MaxInstances) {
 		return errors.New("invalid matrix instance range")
 	}
