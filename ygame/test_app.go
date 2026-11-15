@@ -199,6 +199,10 @@ func (t *TestApplication) Update(deltaTime float64) {
 		ycore.PrintMemoryUsage()
 	}
 	t.ProcessInput(float32(deltaTime))
+
+	t.UpdatePickedEntity()
+	t.AddBox()
+	t.ShotBullet()
 	t.UpdateCamera()
 }
 
@@ -271,9 +275,6 @@ func (t *TestApplication) ProcessInput(deltaTime float32) {
 		t.useCam = !t.useCam
 	}
 
-	t.UpdatePickedEntity()
-	t.AddBox()
-	t.ShotBullet()
 }
 
 func (t *TestApplication) AddBox() {
@@ -296,13 +297,13 @@ func (t *TestApplication) ShotBullet() {
 	if im.GetKeyState(sdl.SCANCODE_O) == ycore.BUTTON_PRESSED {
 		o := t.engine.RenderManager.GetPickRay(caged)
 		ie1 := w.NewEntity()
-		w.AddComponent(ie1, ycore.ScaleComponent, float32(0.005))
+		w.AddComponent(ie1, ycore.ScaleComponent, float32(0.25))
 		//ycore.AddEntityMoveData(w, ie1, y3d.Add(o.O, y3d.Smul(o.D, 5.0)), y3d.IdenQuat())
 		w.AddComponent(ie1, ycore.TransformComponent, ycore.NewTransform())
 		ycore.AddEntityAsInstance(w, t.boxEnt, ie1)
 		p := yphy.Particle{
 			InverseMass: float32(1.0 / 2.0),
-			Velocity:    y3d.Smul(o.D, 35), //y3d.Vec3{Z: 35},
+			Velocity:    y3d.Smul(o.D, 100), //y3d.Vec3{Z: 35},
 			Position:    o.O,
 			Damping:     0.99,
 			Acceleration: y3d.Vec3{
@@ -313,7 +314,6 @@ func (t *TestApplication) ShotBullet() {
 		}
 		w.AddComponent(ie1, ycore.ParticleComponent, p)
 	}
-
 }
 
 func (t *TestApplication) UpdatePickedEntity() {

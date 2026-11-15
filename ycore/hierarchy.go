@@ -49,17 +49,14 @@ func (w *World) UpdateParticle(dt float32) {
 		wg.Go(func() {
 			particle := w.GetComponent(e, ParticleComponent).(yphy.Particle)
 			transform := w.GetComponent(e, TransformComponent).(Transform)
+			scaleFactor := w.GetComponent(e, ScaleComponent).(float32)
 
-			//add gravity
-			//particle.Acceleration = y3d.Add(particle.Acceleration, w.Gravity)
-			//just put it here for now
 			if math.Abs(float64(particle.Position.Z)) > 500 || particle.Position.Y < 0.0 {
-				//fmt.Println("destoryed")
 				w.DestroyEntity(e)
 				return
 			}
-			(&particle).Update(dt)
-			transform.World = y3d.Translation(particle.Position)
+			particle.Update(dt)
+			transform.World = y3d.TranslationScale(particle.Position, scaleFactor)
 			box := w.GetComponent(e, BoundingBoxComponent).(yphy.Box)
 			box.World = transform.TransformAABB(box.Local)
 			w.SetComponent(e, BoundingBoxComponent, box)
@@ -68,7 +65,6 @@ func (w *World) UpdateParticle(dt float32) {
 		})
 	}
 	wg.Wait()
-	//w.UpdateGS(w.SceneRoot, w.SceneRootHierarchy) igore scene graphs for now
 }
 
 func (w *World) UpdateMovement(deltaTime float32) {

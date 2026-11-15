@@ -239,6 +239,15 @@ func Scale(s Vec3) Mat4 {
 	}
 }
 
+func TranslationScale(t Vec3, s float32) Mat4 {
+	return Mat4{
+		s, 0, 0, 0,
+		0, s, 0, 0,
+		0, 0, s, 0,
+		t.X, t.Y, t.Z, 1,
+	}
+}
+
 func Translation(t Vec3) Mat4 {
 	return Mat4{
 		1, 0, 0, 0,

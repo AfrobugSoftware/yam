@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"slices"
 	"strings"
 	"unsafe"
 	"yam/y3d"
@@ -1219,12 +1220,11 @@ func (r *RenderManager) RenderEntities(cull bool, entities []EntityId) {
 		}
 		if r.World.HasComponent(e, InstanceComponent) {
 			instances := r.World.GetComponent(e, InstanceComponent).([]EntityId)
-			for i, ie := range instances {
+			for _, ie := range instances {
 				//works but I do not like it at all,
-				//this is very slow
+				//this is very slow not correct
 				if !r.World.IsEntity(ie) {
 					//entity has been removed
-					instances = append(instances[:i], instances[i+1:]...)
 					continue
 				}
 				box := r.World.GetComponent(ie, BoundingBoxComponent).(yphy.Box)
@@ -1262,6 +1262,9 @@ func (r *RenderManager) RenderEntities(cull bool, entities []EntityId) {
 			rs = rs[:0]
 			mats = mats[:0]
 			tags = tags[:0]
+			instances = slices.DeleteFunc(instances, func(e EntityId) bool {
+				return !r.World.IsEntity(e)
+			})
 			r.World.SetComponent(e, InstanceComponent, instances)
 		} else {
 			box := r.World.GetComponent(e, BoundingBoxComponent).(yphy.Box)
