@@ -1,7 +1,10 @@
 package yui
 
 type Context struct {
-	Fonts []*Font
+	Fonts        []*Font
+	PixelPerInch float32
+	Width        float32
+	Height       float32
 }
 
 func NewContext() *Context {

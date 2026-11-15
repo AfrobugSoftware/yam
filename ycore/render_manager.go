@@ -1078,6 +1078,9 @@ func (r *RenderManager) HighlightPickedEntity() {
 	if r.PickedEntity == NullEntity {
 		return
 	}
+	if !r.World.HasComponent(r.PickedEntity, MoveControllerComponent) {
+		return
+	}
 	e := r.PickedEntity
 	m := r.World.GetComponent(e, MoveControllerComponent).(*ycontroller.MovementController)
 	box := r.World.GetComponent(e, BoundingBoxComponent).(yphy.Box)
@@ -1216,8 +1219,14 @@ func (r *RenderManager) RenderEntities(cull bool, entities []EntityId) {
 		}
 		if r.World.HasComponent(e, InstanceComponent) {
 			instances := r.World.GetComponent(e, InstanceComponent).([]EntityId)
-
-			for _, ie := range instances {
+			for i, ie := range instances {
+				//works but I do not like it at all,
+				//this is very slow
+				if !r.World.IsEntity(ie) {
+					//entity has been removed
+					instances = append(instances[:i], instances[i+1:]...)
+					continue
+				}
 				box := r.World.GetComponent(ie, BoundingBoxComponent).(yphy.Box)
 				if cull && box.World.Cull(frustum[:]) {
 					continue
@@ -1253,6 +1262,7 @@ func (r *RenderManager) RenderEntities(cull bool, entities []EntityId) {
 			rs = rs[:0]
 			mats = mats[:0]
 			tags = tags[:0]
+			r.World.SetComponent(e, InstanceComponent, instances)
 		} else {
 			box := r.World.GetComponent(e, BoundingBoxComponent).(yphy.Box)
 			if cull && box.World.Cull(frustum[:]) {

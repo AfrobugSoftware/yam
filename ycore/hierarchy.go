@@ -1,6 +1,7 @@
 package ycore
 
 import (
+	"math"
 	"sync"
 	"yam/y3d"
 	"yam/ycontroller"
@@ -41,24 +42,33 @@ func (w *World) UpdateParticle(dt float32) {
 	entites := w.Query(
 		TransformComponent,
 		ParticleComponent,
+		BoundingBoxComponent,
 	)
+	var wg sync.WaitGroup
 	for _, e := range entites {
 		wg.Go(func() {
 			particle := w.GetComponent(e, ParticleComponent).(yphy.Particle)
 			transform := w.GetComponent(e, TransformComponent).(Transform)
 
 			//add gravity
-			particle.Acceleration = y3d.Add(particle.Acceleration, w.Gravity)
-
+			//particle.Acceleration = y3d.Add(particle.Acceleration, w.Gravity)
+			//just put it here for now
+			if math.Abs(float64(particle.Position.Z)) > 500 || particle.Position.Y < 0.0 {
+				//fmt.Println("destoryed")
+				w.DestroyEntity(e)
+				return
+			}
 			(&particle).Update(dt)
-			transform.Local = y3d.Translation(particle.Position)
+			transform.World = y3d.Translation(particle.Position)
+			box := w.GetComponent(e, BoundingBoxComponent).(yphy.Box)
+			box.World = transform.TransformAABB(box.Local)
+			w.SetComponent(e, BoundingBoxComponent, box)
 			w.SetComponent(e, TransformComponent, transform)
 			w.SetComponent(e, ParticleComponent, particle)
 		})
 	}
 	wg.Wait()
 	//w.UpdateGS(w.SceneRoot, w.SceneRootHierarchy) igore scene graphs for now
-	w.BoundingTree.BuildTree(entites)
 }
 
 func (w *World) UpdateMovement(deltaTime float32) {
@@ -85,7 +95,7 @@ func (w *World) UpdateMovement(deltaTime float32) {
 	wg.Wait()
 	w.UpdateGS(w.SceneRoot, w.SceneRootHierarchy)
 	UpdateEntityAnimation(w, deltaTime)
-	w.BoundingTree.BuildTree(entites)
+	w.BoundingTree.BuildTree()
 }
 
 func (w *World) RenderSceneGraph(r *RenderManager, root EntityId) {

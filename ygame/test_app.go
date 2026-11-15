@@ -6,6 +6,7 @@ import (
 	"yam/ycontroller"
 	"yam/ycore"
 	"yam/ygl"
+	"yam/yphy"
 	"yam/yui"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -184,9 +185,9 @@ func (t *TestApplication) LevelTest() {
 	ycore.AddEntityMoveData(w, ie2, y3d.Vec3{X: 10, Z: 0, Y: 2.0}, y3d.IdenQuat())
 	ycore.AddEntityMoveData(w, ie3, y3d.Vec3{X: -5, Z: 0, Y: 2.0}, y3d.IdenQuat())
 
-	w.AddComponent(ie1, ycore.ScaleComponent, float32(35.0))
-	w.AddComponent(ie2, ycore.ScaleComponent, float32(50.0))
-	w.AddComponent(ie3, ycore.ScaleComponent, float32(20.0))
+	w.AddComponent(ie1, ycore.ScaleComponent, float32(1.0))
+	w.AddComponent(ie2, ycore.ScaleComponent, float32(1.0))
+	w.AddComponent(ie3, ycore.ScaleComponent, float32(1.0))
 	ycore.AddEntityAsInstance(w, ent3, ie1)
 	ycore.AddEntityAsInstance(w, ent3, ie2)
 	ycore.AddEntityAsInstance(w, ent3, ie3)
@@ -272,6 +273,7 @@ func (t *TestApplication) ProcessInput(deltaTime float32) {
 
 	t.UpdatePickedEntity()
 	t.AddBox()
+	t.ShotBullet()
 }
 
 func (t *TestApplication) AddBox() {
@@ -281,14 +283,44 @@ func (t *TestApplication) AddBox() {
 	if im.GetMouseButtonState(sdl.BUTTON_RIGHT) == ycore.BUTTON_PRESSED {
 		o := t.engine.RenderManager.GetPickRay(caged)
 		ie1 := w.NewEntity()
-		w.AddComponent(ie1, ycore.ScaleComponent, float32(35.0))
+		w.AddComponent(ie1, ycore.ScaleComponent, float32(0.5))
 		ycore.AddEntityMoveData(w, ie1, y3d.Add(o.O, y3d.Smul(o.D, 5.0)), y3d.IdenQuat())
 		ycore.AddEntityAsInstance(w, t.boxEnt, ie1)
 	}
 }
 
+func (t *TestApplication) ShotBullet() {
+	im := t.engine.InputManager
+	w := t.engine.Level.World
+	caged := t.engine.InputManager.AbsolutePosition
+	if im.GetKeyState(sdl.SCANCODE_O) == ycore.BUTTON_PRESSED {
+		o := t.engine.RenderManager.GetPickRay(caged)
+		ie1 := w.NewEntity()
+		w.AddComponent(ie1, ycore.ScaleComponent, float32(0.005))
+		//ycore.AddEntityMoveData(w, ie1, y3d.Add(o.O, y3d.Smul(o.D, 5.0)), y3d.IdenQuat())
+		w.AddComponent(ie1, ycore.TransformComponent, ycore.NewTransform())
+		ycore.AddEntityAsInstance(w, t.boxEnt, ie1)
+		p := yphy.Particle{
+			InverseMass: float32(1.0 / 2.0),
+			Velocity:    y3d.Smul(o.D, 35), //y3d.Vec3{Z: 35},
+			Position:    o.O,
+			Damping:     0.99,
+			Acceleration: y3d.Vec3{
+				X: 0.0,
+				Y: -1.0,
+				Z: 0.0,
+			},
+		}
+		w.AddComponent(ie1, ycore.ParticleComponent, p)
+	}
+
+}
+
 func (t *TestApplication) UpdatePickedEntity() {
 	if t.pickedEntity == ycore.NullEntity {
+		return
+	}
+	if !t.engine.Level.World.HasComponent(t.pickedEntity, ycore.MoveControllerComponent) {
 		return
 	}
 	im := t.engine.InputManager

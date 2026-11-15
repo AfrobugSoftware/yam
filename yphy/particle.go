@@ -20,5 +20,5 @@ func (p *Particle) Update(dt float32) {
 	p.Velocity = p.Velocity.AddScale(retAcc, dt)
 
 	p.Velocity = y3d.Smul(p.Velocity, float32(math.Pow(float64(p.Damping), float64(dt))))
-	p.Acceleration = y3d.Vec3{} //no acceleration until force is added to the particle
+	//p.Acceleration = y3d.Vec3{} //no acceleration until force is added to the particle
 }

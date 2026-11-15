@@ -68,7 +68,7 @@ func (l *Level) UpdateEntitesMovement(deltaTime float32) {
 				transform := l.World.GetComponent(e, ycore.TransformComponent).(ycore.Transform)
 				box := l.World.GetComponent(e, ycore.BoundingBoxComponent).(yphy.Box)
 				movement.Update(deltaTime)
-				scaleFactor := float32(1.0) //l.World.GetComponent(e, ycore.ScaleComponent).(float32)
+				scaleFactor := l.World.GetComponent(e, ycore.ScaleComponent).(float32)
 
 				transform.Local = y3d.TRS(movement.Position, movement.Orientation, y3d.Vec3{
 					X: scaleFactor,
@@ -86,7 +86,6 @@ func (l *Level) UpdateEntitesMovement(deltaTime float32) {
 	}
 	wg.Wait()
 	ycore.UpdateEntityAnimation(l.World, deltaTime)
-	l.OctTree.BuildTree(entites)
 }
 
 func (l *Level) Select(pickRay y3d.Ray) (bool, [2]y3d.PVertex) {

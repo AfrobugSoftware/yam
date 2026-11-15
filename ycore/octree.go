@@ -121,20 +121,13 @@ func (o *Octree) InitChild(pos int) {
 		aabb.Max = y3d.Vec3{X: xmax, Y: ycen, Z: zcen}
 		aabb.Min = y3d.Vec3{X: xcen, Y: ymin, Z: zmin}
 	}
-	if o.Children[pos] != nil {
-		o.Children[pos].Position = pos
-		o.Children[pos].BoundingBox = aabb
-		o.Children[pos].Parent = o
-		o.Children[pos].World = o.World
-	} else {
-		o.Children[pos] = &Octree{
-			World:       o.World,
-			Entites:     make([]EntityId, 0),
-			BoundingBox: aabb,
-			Parent:      o,
-			Position:    pos,
-			Root:        o.Root,
-		}
+	o.Children[pos] = &Octree{
+		World:       o.World,
+		Entites:     make([]EntityId, 0), //allocate every frame
+		BoundingBox: aabb,
+		Parent:      o,
+		Position:    pos,
+		Root:        o.Root,
 	}
 
 }
@@ -143,7 +136,7 @@ func (o *Octree) ChopListToMe(entites []EntityId) {
 	if len(entites) == 0 {
 		return
 	}
-	o.Entites = o.Entites[:0]
+	//o.Entites = o.Entites[:0]
 	entites = slices.DeleteFunc(entites, func(p EntityId) bool {
 		if p == NullEntity {
 			return false
@@ -171,12 +164,15 @@ func (o *Octree) CreateChild() {
 	o.Entites = o.Entites[:0]
 }
 
-func (o *Octree) BuildTree(entties []EntityId) {
+func (o *Octree) BuildTree() {
+	entites := o.World.Query(
+		BoundingBoxComponent,
+	)
 	o.Root = o
-	if len(entties) == 0 {
+	if len(entites) == 0 {
 		return
 	}
-	o.Entites = append(o.Entites, entties...)
+	o.Entites = append(o.Entites, entites...)
 	o.CalculateBoundingBox()
 	o.CreateChild()
 }

@@ -74,6 +74,8 @@ func (g *Engine) Update(dt float64) {
 		g.App.Update(dt)
 	}
 	g.Level.UpdateEntitesMovement(float32(dt))
+	g.RenderManager.World.UpdateParticle(float32(dt))
+	g.RenderManager.BoundingTree.BuildTree()
 }
 
 func (g *Engine) Draw() {
