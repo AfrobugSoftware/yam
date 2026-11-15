@@ -23,6 +23,7 @@ const (
 	ScaleComponent
 	PbrMaterialComponent
 	ParticleComponent
+	PipelineComponent
 )
 
 func AddEntityRenderableData(

@@ -46,6 +46,10 @@ func (w *World) UpdateParticle(dt float32) {
 		wg.Go(func() {
 			particle := w.GetComponent(e, ParticleComponent).(yphy.Particle)
 			transform := w.GetComponent(e, TransformComponent).(Transform)
+
+			//add gravity
+			particle.Acceleration = y3d.Add(particle.Acceleration, w.Gravity)
+
 			(&particle).Update(dt)
 			transform.Local = y3d.Translation(particle.Position)
 			w.SetComponent(e, TransformComponent, transform)
@@ -53,7 +57,7 @@ func (w *World) UpdateParticle(dt float32) {
 		})
 	}
 	wg.Wait()
-	w.UpdateGS(w.SceneRoot, w.SceneRootHierarchy)
+	//w.UpdateGS(w.SceneRoot, w.SceneRootHierarchy) igore scene graphs for now
 	w.BoundingTree.BuildTree(entites)
 }
 

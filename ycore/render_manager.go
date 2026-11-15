@@ -150,6 +150,7 @@ type RenderManager struct {
 	FpCamera           *FPCamera
 	FollowCamera       *FollowCamera
 	RootUI             *yui.UIElement
+	Pipelines          map[PipelineType]*Pipeline
 }
 
 func CheckError() error {
@@ -207,6 +208,7 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 		Stage:          -1,
 		EnablePicking:  true,
 		DrawDebugLines: true,
+		Pipelines:      make(map[PipelineType]*Pipeline),
 	}
 	context, err := window.GLCreateContext()
 	if err != nil {
@@ -288,8 +290,8 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 			Z: -1.0,
 			W: 1.0},
 		Color: y3d.Vec4{
-			X: 1.0,
-			Y: 0.0,
+			X: 0.0,
+			Y: 1.0,
 			Z: 1.0,
 			W: 1.0,
 		},
@@ -664,6 +666,9 @@ func (r *RenderManager) Transfrom3Dto2D(pos y3d.Vec3) y3d.Vec2 {
 }
 
 func (r *RenderManager) DragObject(entity EntityId, pos y3d.Vec2) {
+	if !r.World.HasComponent(entity, MoveControllerComponent) {
+		return
+	}
 	width, height := float32(r.ViewPort[r.Stage].Width),
 		float32(r.ViewPort[r.Stage].Height)
 		//this is completely flipped, the x, y and z are all inverted for it to work
@@ -917,8 +922,10 @@ func (r *RenderManager) PickPhase() {
 
 // hmmm
 func (r *RenderManager) Render() {
-
-	r.RenderEntities(true)
+	entities := r.World.Query(
+		RenderableComponent,
+		BoundingBoxComponent)
+	r.RenderEntities(true, entities)
 	err := r.VertextManager.ForceRenderAll()
 	if err != nil {
 		log.Println(err)
@@ -1168,7 +1175,31 @@ func (r *RenderManager) RenderBoundingTree() {
 	gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
 }
 
-func (r *RenderManager) RenderEntities(cull bool) {
+func (r *RenderManager) SortIntoPipelines(entites []EntityId) {
+	for _, e := range entites {
+		pipelineType := r.World.GetComponent(e, PipelineComponent).(PipelineType)
+		pipeline, ok := r.Pipelines[pipelineType]
+		if ok && pipeline.DrawFunc != nil {
+			pipeline.Entites = append(pipeline.Entites, e)
+		}
+	}
+}
+
+func (r *RenderManager) DrawPipelines() {
+	entities := r.World.Query(
+		RenderableComponent,
+		BoundingBoxComponent,
+		PipelineComponent)
+	r.SortIntoPipelines(entities)
+	for _, p := range r.Pipelines {
+		if p.DrawFunc != nil {
+			p.DrawFunc(r, p.Entites)
+			p.Entites = p.Entites[:0] //should I sort once or on every frame ?
+		}
+	}
+}
+
+func (r *RenderManager) RenderEntities(cull bool, entities []EntityId) {
 	if r.World == nil {
 		return
 	}
@@ -1177,9 +1208,6 @@ func (r *RenderManager) RenderEntities(cull bool) {
 	mats := make([]y3d.Mat4, 0, 1000)
 	rs := make([]PerObjectRenderState, 0, 1000)
 	tags := make([]uint32, 0, 1000)
-	entities := r.World.Query(
-		RenderableComponent,
-		BoundingBoxComponent)
 	for _, e := range entities {
 		renderable := r.World.GetComponent(e, RenderableComponent).(Renderable)
 		v, err := vm.GetCache(renderable.VertexType, renderable.VertexCacheId)

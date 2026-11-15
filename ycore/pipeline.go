@@ -1,5 +1,6 @@
 package ycore
 
+type PipelineType string
 type Pipeline struct {
 	Entites  []EntityId
 	Program  uint32

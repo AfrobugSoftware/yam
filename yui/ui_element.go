@@ -47,6 +47,7 @@ type UIElement struct {
 	Radius        float32
 	Color         [4]uint8
 	TextureBase   [2]float32
+	TextureMax    [2]float32
 	Children      []*UIElement
 	Padding       y3d.Vec4
 	Flag          uint32
@@ -59,6 +60,7 @@ type UIElement struct {
 	Font          *Font
 	Name          string
 	Tex           uint32
+	IconRune      rune
 }
 
 func NewUIElement(pos, baseSize y3d.Vec2) *UIElement {

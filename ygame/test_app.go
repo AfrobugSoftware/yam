@@ -58,25 +58,10 @@ func (t *TestApplication) Startup(e *Engine) {
 	t.LevelTest() //level test
 }
 func (t *TestApplication) TestAbsolutePositioning() {
-	root := yui.NewUIElement(
-		y3d.Vec2{
-			X: float32(t.engine.RenderManager.Width) - 210,
-			Y: 10,
-		},
-		y3d.Vec2{
-			X: 200,
-			Y: 50,
-		},
-	).Set(yui.UI_ALIGN_CENTER).SetRadius(5).SetColor(
-		[4]uint8{0, 0, 0, 255},
-	).Add(
-		&yui.UIElement{
-			Flag:  yui.UI_ALIGN_CENTER,
-			Text:  "Kiwi Island, this is a long text",
-			Font:  t.font,
-			Color: [4]uint8{255, 255, 255, 255},
-		},
-	)
+	root := yui.Button("Click me", y3d.Vec2{
+		X: 110,
+		Y: 50,
+	}, t.font)
 	t.engine.RenderManager.RootUI = root
 }
 
