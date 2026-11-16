@@ -73,7 +73,7 @@ func (g *Engine) Update(dt float64) {
 	if g.App != nil {
 		g.App.Update(dt)
 	}
-	g.Level.UpdateEntitesMovement(float32(dt))
+	g.RenderManager.World.UpdateMovement(float32(dt))
 	g.RenderManager.World.UpdateParticle(float32(dt))
 	g.RenderManager.BoundingTree.BuildTree()
 }

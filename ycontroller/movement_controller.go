@@ -25,7 +25,7 @@ type MovementController struct {
 func NewMovementController(pos y3d.Vec3, orient y3d.Quaternion) *MovementController {
 	return &MovementController{
 		Position:    pos,
-		Orientation: y3d.IdenQuat(),
+		Orientation: orient,
 		Right:       y3d.UNIT_X,
 		Up:          y3d.UNIT_Y,
 		Dir:         y3d.UNIT_Z,

@@ -4,11 +4,9 @@ import (
 	"encoding/gob"
 	"errors"
 	"os"
-	"sync"
 	"yam/y3d"
 	"yam/ycontroller"
 	"yam/ycore"
-	"yam/yphy"
 )
 
 const (
@@ -51,41 +49,6 @@ func NewLevel() *Level {
 	}
 	l.OctTree = ycore.NewOctree(l.World)
 	return l
-}
-
-func (l *Level) UpdateEntitesMovement(deltaTime float32) {
-	entites := l.World.Query(
-		ycore.TransformComponent,
-		ycore.ScaleComponent,
-		ycore.BoundingBoxComponent,
-		ycore.MoveControllerComponent)
-	var wg sync.WaitGroup
-	for _, e := range entites {
-		//change to go routine pool
-		wg.Go(
-			func() {
-				movement := l.World.GetComponent(e, ycore.MoveControllerComponent).(*ycontroller.MovementController)
-				transform := l.World.GetComponent(e, ycore.TransformComponent).(ycore.Transform)
-				box := l.World.GetComponent(e, ycore.BoundingBoxComponent).(yphy.Box)
-				movement.Update(deltaTime)
-				scaleFactor := l.World.GetComponent(e, ycore.ScaleComponent).(float32)
-
-				transform.Local = y3d.TRS(movement.Position, movement.Orientation, y3d.Vec3{
-					X: scaleFactor,
-					Y: scaleFactor,
-					Z: scaleFactor,
-				})
-
-				//this should be handled by the scene hierarchy updating method
-				transform.World = transform.Local
-
-				box.World = transform.TransformAABB(box.Local)
-				l.World.SetComponent(e, ycore.TransformComponent, transform)
-				l.World.SetComponent(e, ycore.BoundingBoxComponent, box)
-			})
-	}
-	wg.Wait()
-	ycore.UpdateEntityAnimation(l.World, deltaTime)
 }
 
 func (l *Level) Select(pickRay y3d.Ray) (bool, [2]y3d.PVertex) {

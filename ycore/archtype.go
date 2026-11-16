@@ -225,7 +225,6 @@ func (w *World) DestroyEntity(entity EntityId) {
 
 	swapped, wasSwapped := record.archetype.removeEntity(record.row)
 	if wasSwapped {
-		// Update the swapped entity's row
 		w.entities[swapped].row = record.row
 	}
 	delete(w.entities, entity)

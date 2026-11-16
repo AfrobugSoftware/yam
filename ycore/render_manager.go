@@ -1234,6 +1234,7 @@ func (r *RenderManager) RenderEntities(cull bool, entities []EntityId) {
 				if r.World.HasComponent(ie, PbrMaterialComponent) {
 					//if we have textures for materials bound to this entity
 					nrs := renderable.RenderParams
+					//have only one source of truth for textures
 					pbr := r.World.GetComponent(ie, PbrMaterialComponent).(PbrMaterial)
 					t, err := v.AddTexture(pbr.Albeo)
 					if err == nil {

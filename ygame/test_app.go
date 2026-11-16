@@ -22,6 +22,7 @@ type TestApplication struct {
 	boxEnt       ycore.EntityId
 	font         *yui.Font
 	useCam       bool
+	drag         *yphy.DragForce
 }
 
 func (t *TestApplication) Startup(e *Engine) {
@@ -64,6 +65,7 @@ func (t *TestApplication) TestAbsolutePositioning() {
 		Y: 50,
 	}, t.font)
 	t.engine.RenderManager.RootUI = root
+	t.drag = yphy.NewDragForce(0.5, 0.5)
 }
 
 func (t *TestApplication) TestUI() {
@@ -203,6 +205,7 @@ func (t *TestApplication) Update(deltaTime float64) {
 	t.UpdatePickedEntity()
 	t.AddBox()
 	t.ShotBullet()
+	t.AddDrag(float32(deltaTime))
 	t.UpdateCamera()
 }
 
@@ -313,6 +316,16 @@ func (t *TestApplication) ShotBullet() {
 			},
 		}
 		w.AddComponent(ie1, ycore.ParticleComponent, p)
+	}
+}
+
+func (t TestApplication) AddDrag(dt float32) {
+	entites := t.engine.RenderManager.World.Query(ycore.ParticleComponent)
+	for _, e := range entites {
+		p := t.engine.RenderManager.World.GetComponent(e, ycore.ParticleComponent).(yphy.Particle)
+		p.AddForce(t.drag, dt)
+
+		t.engine.RenderManager.World.SetComponent(e, ycore.ParticleComponent, p)
 	}
 }
 

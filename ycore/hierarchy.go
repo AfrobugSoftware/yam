@@ -44,7 +44,6 @@ func (w *World) UpdateParticle(dt float32) {
 		ParticleComponent,
 		BoundingBoxComponent,
 	)
-	var wg sync.WaitGroup
 	for _, e := range entites {
 		wg.Go(func() {
 			particle := w.GetComponent(e, ParticleComponent).(yphy.Particle)
@@ -78,20 +77,25 @@ func (w *World) UpdateMovement(deltaTime float32) {
 			func() {
 				movement := w.GetComponent(e, MoveControllerComponent).(*ycontroller.MovementController)
 				transform := w.GetComponent(e, TransformComponent).(Transform)
+				box := w.GetComponent(e, BoundingBoxComponent).(yphy.Box)
+
 				movement.Update(deltaTime)
-				scaleFactor := float32(1.0) //l.World.GetComponent(e, ycore.ScaleComponent).(float32)
+				scaleFactor := w.GetComponent(e, ScaleComponent).(float32)
 				transform.Local = y3d.TRS(movement.Position, movement.Orientation, y3d.Vec3{
 					X: scaleFactor,
 					Y: scaleFactor,
 					Z: scaleFactor,
 				})
+				transform.World = transform.Local
+				box.World = transform.TransformAABB(box.Local)
 				w.SetComponent(e, TransformComponent, transform)
+				w.SetComponent(e, BoundingBoxComponent, box)
+
 			})
 	}
 	wg.Wait()
-	w.UpdateGS(w.SceneRoot, w.SceneRootHierarchy)
+	//w.UpdateGS(w.SceneRoot, w.SceneRootHierarchy)
 	UpdateEntityAnimation(w, deltaTime)
-	w.BoundingTree.BuildTree()
 }
 
 func (w *World) RenderSceneGraph(r *RenderManager, root EntityId) {

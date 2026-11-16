@@ -2,6 +2,7 @@ package yui
 
 type Context struct {
 	Fonts        []*Font
+	Layers       []*QuadArray
 	PixelPerInch float32
 	Width        float32
 	Height       float32
@@ -9,6 +10,7 @@ type Context struct {
 
 func NewContext() *Context {
 	return &Context{
-		Fonts: make([]*Font, 0),
+		Fonts:  make([]*Font, 0),
+		Layers: make([]*QuadArray, 0),
 	}
 }
