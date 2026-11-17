@@ -52,7 +52,7 @@ func NewEngine(title string, width, height int32) (*Engine, error) {
 	gEngine.AudioManager = ycore.NewAudioManager()
 	gEngine.Level = NewLevel()
 	gEngine.RenderManager.World = gEngine.Level.World // this might be an issue
-	gEngine.RenderManager.BoundingTree = gEngine.Level.OctTree
+	gEngine.RenderManager.BoundingTree = ycore.NewOctree(gEngine.Level.World)
 	return gEngine, nil
 }
 
@@ -73,8 +73,8 @@ func (g *Engine) Update(dt float64) {
 	if g.App != nil {
 		g.App.Update(dt)
 	}
-	g.RenderManager.World.UpdateMovement(float32(dt))
-	g.RenderManager.World.UpdateParticle(float32(dt))
+	ycore.UpdateMovement(g.RenderManager.World, float32(dt))
+	ycore.UpdateParticle(g.RenderManager.World, float32(dt))
 	g.RenderManager.BoundingTree.BuildTree()
 }
 
@@ -92,7 +92,6 @@ func (g *Engine) Run() {
 			dt = 1.0 / 60.0
 		}
 		last = now
-		g.Level.ProcessEntityInput(g.InputManager)
 		g.Update(float64(dt))
 		g.Draw()
 

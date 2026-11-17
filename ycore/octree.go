@@ -6,6 +6,7 @@ import (
 	"sync"
 	"yam/y3d"
 	"yam/yphy"
+	"yam/ywd"
 )
 
 const (
@@ -25,9 +26,9 @@ const (
 
 type Octree struct {
 	Root        *Octree
-	World       *World
+	World       *ywd.World
 	Children    [8]*Octree
-	Entites     []EntityId
+	Entites     []ywd.EntityId
 	BoundingBox y3d.AABB
 	Parent      *Octree
 	Position    int
@@ -73,17 +74,17 @@ func (o *Octree) CalculateBoundingBox() {
 		},
 	}
 	for _, p := range o.Entites {
-		b := o.World.GetComponent(p, BoundingBoxComponent).(yphy.Box).World
+		b := o.World.GetComponent(p, ywd.BoundingBoxComponent).(yphy.Box).World
 		box.Max = y3d.Max(box.Max, b.Max)
 		box.Min = y3d.Min(box.Min, b.Min)
 	}
 	o.BoundingBox = box
 }
 
-func NewOctree(w *World) *Octree {
+func NewOctree(w *ywd.World) *Octree {
 	return &Octree{
 		World:    w,
-		Entites:  make([]EntityId, 0),
+		Entites:  make([]ywd.EntityId, 0),
 		Position: -1,
 	}
 }
@@ -123,7 +124,7 @@ func (o *Octree) InitChild(pos int) {
 	}
 	o.Children[pos] = &Octree{
 		World:       o.World,
-		Entites:     make([]EntityId, 0), //allocate every frame
+		Entites:     make([]ywd.EntityId, 0), //allocate every frame
 		BoundingBox: aabb,
 		Parent:      o,
 		Position:    pos,
@@ -132,16 +133,16 @@ func (o *Octree) InitChild(pos int) {
 
 }
 
-func (o *Octree) ChopListToMe(entites []EntityId) {
+func (o *Octree) ChopListToMe(entites []ywd.EntityId) {
 	if len(entites) == 0 {
 		return
 	}
 	//o.Entites = o.Entites[:0]
-	entites = slices.DeleteFunc(entites, func(p EntityId) bool {
-		if p == NullEntity {
+	entites = slices.DeleteFunc(entites, func(p ywd.EntityId) bool {
+		if p == ywd.NullEntity {
 			return false
 		}
-		pbox := o.World.GetComponent(p, BoundingBoxComponent).(yphy.Box).World
+		pbox := o.World.GetComponent(p, ywd.BoundingBoxComponent).(yphy.Box).World
 		if o.BoundingBox.Overlaps(pbox) {
 			o.Entites = append(o.Entites, p)
 			return true
@@ -166,7 +167,7 @@ func (o *Octree) CreateChild() {
 
 func (o *Octree) BuildTree() {
 	entites := o.World.Query(
-		BoundingBoxComponent,
+		ywd.BoundingBoxComponent,
 	)
 	o.Root = o
 	if len(entites) == 0 {
@@ -177,10 +178,10 @@ func (o *Octree) BuildTree() {
 	o.CreateChild()
 }
 
-func (o *Octree) TestCollision(b y3d.AABB) (bool, EntityId) {
+func (o *Octree) TestCollision(b y3d.AABB) (bool, ywd.EntityId) {
 	if o != o.Root {
 		if !o.BoundingBox.Overlaps(b) {
-			return false, NullEntity
+			return false, ywd.NullEntity
 		}
 	}
 	if !o.IsLeaf() {
@@ -192,22 +193,22 @@ func (o *Octree) TestCollision(b y3d.AABB) (bool, EntityId) {
 				}
 			}
 		}
-		return false, NullEntity
+		return false, ywd.NullEntity
 	}
 	for _, p := range o.Entites {
-		box := o.World.GetComponent(p, BoundingBoxComponent).(yphy.Box).World
+		box := o.World.GetComponent(p, ywd.BoundingBoxComponent).(yphy.Box).World
 		if box.Overlaps(b) {
 			return true, p
 		}
 	}
-	return false, NullEntity
+	return false, ywd.NullEntity
 }
 
-func (o *Octree) TestCollisionWithRay(r y3d.Ray) (bool, EntityId, y3d.Vec3) {
+func (o *Octree) TestCollisionWithRay(r y3d.Ray) (bool, ywd.EntityId, y3d.Vec3) {
 	if o != o.Root {
 		b, _ := r.IntersectsAABB(o.BoundingBox)
 		if !b {
-			return false, NullEntity, y3d.Vec3{}
+			return false, ywd.NullEntity, y3d.Vec3{}
 		}
 	}
 	if !o.IsLeaf() {
@@ -219,13 +220,13 @@ func (o *Octree) TestCollisionWithRay(r y3d.Ray) (bool, EntityId, y3d.Vec3) {
 				}
 			}
 		}
-		return false, NullEntity, y3d.Vec3{}
+		return false, ywd.NullEntity, y3d.Vec3{}
 	}
 	var br bool
 	var hit y3d.Vec3
-	var e EntityId
+	var e ywd.EntityId
 	for _, p := range o.Entites {
-		pbox := o.World.GetComponent(p, BoundingBoxComponent).(yphy.Box).World
+		pbox := o.World.GetComponent(p, ywd.BoundingBoxComponent).(yphy.Box).World
 		b, h := r.IntersectsAABB(pbox)
 		dist := y3d.Sub(h, r.O).Length()
 		fl := float32(math.MaxFloat32)
@@ -258,7 +259,7 @@ func (o *Octree) InsectDownwardsRay(origin y3d.Vec3, f float32) bool {
 	return false
 }
 
-func (o *Octree) GetFloor(origin y3d.Vec3, from EntityId) (bool, y3d.Vec3) {
+func (o *Octree) GetFloor(origin y3d.Vec3, from ywd.EntityId) (bool, y3d.Vec3) {
 	var pf float32
 	var bhit bool
 	var hit y3d.Vec3
@@ -286,7 +287,7 @@ func (o *Octree) GetFloor(origin y3d.Vec3, from EntityId) (bool, y3d.Vec3) {
 		if p == from {
 			continue //remove self intersection
 		}
-		box := o.World.GetComponent(p, BoundingBoxComponent).(yphy.Box).World
+		box := o.World.GetComponent(p, ywd.BoundingBoxComponent).(yphy.Box).World
 		if r.O.X < box.Min.X ||
 			r.O.X > box.Max.X ||
 			r.O.Y < box.Min.Y ||

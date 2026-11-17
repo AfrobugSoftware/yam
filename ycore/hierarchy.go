@@ -6,49 +6,45 @@ import (
 	"yam/y3d"
 	"yam/ycontroller"
 	"yam/yphy"
+	"yam/ywd"
 )
 
 var (
 	wg sync.WaitGroup
 )
 
-type Hierarchy struct {
-	Children []EntityId
-	Parent   EntityId
-}
-
-func (w *World) UpdateGS(owner EntityId, hierarchy Hierarchy) {
-	transform := w.GetComponent(owner, TransformComponent).(Transform)
-	box := w.GetComponent(owner, BoundingBoxComponent).(yphy.Box)
-	if hierarchy.Parent == NullEntity {
+func UpdateGS(w *ywd.World, owner ywd.EntityId, hierarchy ywd.Hierarchy) {
+	transform := w.GetComponent(owner, ywd.TransformComponent).(Transform)
+	box := w.GetComponent(owner, ywd.BoundingBoxComponent).(yphy.Box)
+	if hierarchy.Parent == ywd.NullEntity {
 		transform.World = transform.Local
 	} else {
-		ptransform := w.GetComponent(hierarchy.Parent, TransformComponent).(Transform)
+		ptransform := w.GetComponent(hierarchy.Parent, ywd.TransformComponent).(Transform)
 		transform.World = ptransform.World.Mul(transform.Local)
 		box.World = transform.TransformAABB(box.Local)
 	}
-	w.SetComponent(owner, TransformComponent, transform)
+	w.SetComponent(owner, ywd.TransformComponent, transform)
 	for _, c := range hierarchy.Children {
-		h := w.GetComponent(c, HierarchyComponent).(Hierarchy)
-		w.UpdateGS(c, h)
-		b := w.GetComponent(c, BoundingBoxComponent).(yphy.Box)
+		h := w.GetComponent(c, ywd.HierarchyComponent).(ywd.Hierarchy)
+		UpdateGS(w, c, h)
+		b := w.GetComponent(c, ywd.BoundingBoxComponent).(yphy.Box)
 		box.World.Max = y3d.Max(box.World.Max, b.World.Max)
 		box.World.Min = y3d.Min(box.World.Min, b.World.Min)
 	}
-	w.SetComponent(owner, BoundingBoxComponent, box)
+	w.SetComponent(owner, ywd.BoundingBoxComponent, box)
 }
 
-func (w *World) UpdateParticle(dt float32) {
+func UpdateParticle(w *ywd.World, dt float32) {
 	entites := w.Query(
-		TransformComponent,
-		ParticleComponent,
-		BoundingBoxComponent,
+		ywd.TransformComponent,
+		ywd.ParticleComponent,
+		ywd.BoundingBoxComponent,
 	)
 	for _, e := range entites {
 		wg.Go(func() {
-			particle := w.GetComponent(e, ParticleComponent).(yphy.Particle)
-			transform := w.GetComponent(e, TransformComponent).(Transform)
-			scaleFactor := w.GetComponent(e, ScaleComponent).(float32)
+			particle := w.GetComponent(e, ywd.ParticleComponent).(yphy.Particle)
+			transform := w.GetComponent(e, ywd.TransformComponent).(Transform)
+			scaleFactor := w.GetComponent(e, ywd.ScaleComponent).(float32)
 
 			if math.Abs(float64(particle.Position.Z)) > 500 || particle.Position.Y < 0.0 {
 				w.DestroyEntity(e)
@@ -56,31 +52,31 @@ func (w *World) UpdateParticle(dt float32) {
 			}
 			particle.Update(dt)
 			transform.World = y3d.TranslationScale(particle.Position, scaleFactor)
-			box := w.GetComponent(e, BoundingBoxComponent).(yphy.Box)
+			box := w.GetComponent(e, ywd.BoundingBoxComponent).(yphy.Box)
 			box.World = transform.TransformAABB(box.Local)
-			w.SetComponent(e, BoundingBoxComponent, box)
-			w.SetComponent(e, TransformComponent, transform)
-			w.SetComponent(e, ParticleComponent, particle)
+			w.SetComponent(e, ywd.BoundingBoxComponent, box)
+			w.SetComponent(e, ywd.TransformComponent, transform)
+			w.SetComponent(e, ywd.ParticleComponent, particle)
 		})
 	}
 	wg.Wait()
 }
 
-func (w *World) UpdateMovement(deltaTime float32) {
+func UpdateMovement(w *ywd.World, deltaTime float32) {
 	entites := w.Query(
-		TransformComponent,
-		ScaleComponent,
-		MoveControllerComponent)
+		ywd.TransformComponent,
+		ywd.ScaleComponent,
+		ywd.MoveControllerComponent)
 	for _, e := range entites {
 		//change to go routine pool
 		wg.Go(
 			func() {
-				movement := w.GetComponent(e, MoveControllerComponent).(*ycontroller.MovementController)
-				transform := w.GetComponent(e, TransformComponent).(Transform)
-				box := w.GetComponent(e, BoundingBoxComponent).(yphy.Box)
+				movement := w.GetComponent(e, ywd.MoveControllerComponent).(*ycontroller.MovementController)
+				transform := w.GetComponent(e, ywd.TransformComponent).(Transform)
+				box := w.GetComponent(e, ywd.BoundingBoxComponent).(yphy.Box)
 
 				movement.Update(deltaTime)
-				scaleFactor := w.GetComponent(e, ScaleComponent).(float32)
+				scaleFactor := w.GetComponent(e, ywd.ScaleComponent).(float32)
 				transform.Local = y3d.TRS(movement.Position, movement.Orientation, y3d.Vec3{
 					X: scaleFactor,
 					Y: scaleFactor,
@@ -88,8 +84,8 @@ func (w *World) UpdateMovement(deltaTime float32) {
 				})
 				transform.World = transform.Local
 				box.World = transform.TransformAABB(box.Local)
-				w.SetComponent(e, TransformComponent, transform)
-				w.SetComponent(e, BoundingBoxComponent, box)
+				w.SetComponent(e, ywd.TransformComponent, transform)
+				w.SetComponent(e, ywd.BoundingBoxComponent, box)
 
 			})
 	}
@@ -98,37 +94,37 @@ func (w *World) UpdateMovement(deltaTime float32) {
 	UpdateEntityAnimation(w, deltaTime)
 }
 
-func (w *World) RenderSceneGraph(r *RenderManager, root EntityId) {
+func RenderSceneGraph(w *ywd.World, r *RenderManager, root ywd.EntityId) {
 	vm := r.VertextManager
-	q := make([]EntityId, 0, 1000)
+	q := make([]ywd.EntityId, 0, 1000)
 	q = append(q, root)
 	for len(q) > 0 {
 		f := q[0]
 		q = q[1:]
-		box := w.GetComponent(f, BoundingBoxComponent).(yphy.Box)
+		box := w.GetComponent(f, ywd.BoundingBoxComponent).(yphy.Box)
 		c := r.GetFrustum()
 		if box.World.Cull(c[:]) {
 			continue
 		}
-		if w.HasComponent(f, HierarchyComponent) {
-			hierarchy := w.GetComponent(f, HierarchyComponent).(Hierarchy)
+		if w.HasComponent(f, ywd.HierarchyComponent) {
+			hierarchy := w.GetComponent(f, ywd.HierarchyComponent).(ywd.Hierarchy)
 			q = append(q, hierarchy.Children...)
 		}
-		if w.HasComponent(f, RenderableComponent, TransformComponent) {
-			renderable := w.GetComponent(f, RenderableComponent).(Renderable)
+		if w.HasComponent(f, ywd.RenderableComponent, ywd.TransformComponent) {
+			renderable := w.GetComponent(f, ywd.RenderableComponent).(Renderable)
 			v, err := vm.GetCache(renderable.VertexType, renderable.VertexCacheId)
 			if err != nil {
 				continue //no cache for this entity
 			}
-			transform := w.GetComponent(f, TransformComponent).(Transform)
-			if w.HasComponent(f, InstanceComponent) {
-				instances := r.World.GetComponent(f, InstanceComponent).([]EntityId)
+			transform := w.GetComponent(f, ywd.TransformComponent).(Transform)
+			if w.HasComponent(f, ywd.InstanceComponent) {
+				instances := r.World.GetComponent(f, ywd.InstanceComponent).([]ywd.EntityId)
 				renderable.DrawCmd.InstanceCount = uint32(len(instances))
 				mats := make([]y3d.Mat4, len(instances))
 				rs := make([]PerObjectRenderState, len(instances))
 				tags := make([]uint32, len(instances))
 				for i, ie := range instances {
-					mats[i] = r.World.GetComponent(ie, TransformComponent).(Transform).World
+					mats[i] = r.World.GetComponent(ie, ywd.TransformComponent).(Transform).World
 					rs[i] = renderable.RenderParams
 					tags[i] = uint32(ie)
 				}

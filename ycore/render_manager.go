@@ -12,6 +12,7 @@ import (
 	"yam/ycontroller"
 	"yam/yphy"
 	"yam/yui"
+	"yam/ywd"
 
 	"github.com/go-gl/gl/v4.3-core/gl"
 	"github.com/veandco/go-sdl2/sdl"
@@ -112,10 +113,10 @@ type RenderManager struct {
 	DrawBoundingTree   bool
 	DrawDebugLines     bool
 	EnablePicking      bool
-	PickedEntity       EntityId
+	PickedEntity       ywd.EntityId
 	BoundingTree       *Octree
 	PickRay            y3d.Vec3
-	World              *World
+	World              *ywd.World
 	DrawMode           uint32
 	ActiveProgram      uint32
 	screenVao          uint32
@@ -666,8 +667,8 @@ func (r *RenderManager) Transfrom3Dto2D(pos y3d.Vec3) y3d.Vec2 {
 	}
 }
 
-func (r *RenderManager) DragObject(entity EntityId, pos y3d.Vec2) {
-	if !r.World.HasComponent(entity, MoveControllerComponent) {
+func (r *RenderManager) DragObject(entity ywd.EntityId, pos y3d.Vec2) {
+	if !r.World.HasComponent(entity, ywd.MoveControllerComponent) {
 		return
 	}
 	width, height := float32(r.ViewPort[r.Stage].Width),
@@ -683,7 +684,7 @@ func (r *RenderManager) DragObject(entity EntityId, pos y3d.Vec2) {
 	InvProj := r.ProjP[r.Stage]
 	(&InvProj).Invert()
 	ray_eye := InvProj.MulVec4(ray_clip)
-	m := r.World.GetComponent(entity, MoveControllerComponent).(*ycontroller.MovementController)
+	m := r.World.GetComponent(entity, ywd.MoveControllerComponent).(*ycontroller.MovementController)
 	pos4 := y3d.Vec4{
 		X: m.Position.X,
 		Y: m.Position.Y,
@@ -929,8 +930,8 @@ func (r *RenderManager) PickPhase() {
 // hmmm
 func (r *RenderManager) Render() {
 	entities := r.World.Query(
-		RenderableComponent,
-		BoundingBoxComponent)
+		ywd.RenderableComponent,
+		ywd.BoundingBoxComponent)
 	r.RenderEntities(true, entities)
 	err := r.VertextManager.ForceRenderAll()
 	if err != nil {
@@ -1081,15 +1082,15 @@ func (r *RenderManager) Resize() {
 
 // might move from here
 func (r *RenderManager) HighlightPickedEntity() {
-	if r.PickedEntity == NullEntity {
+	if r.PickedEntity == ywd.NullEntity {
 		return
 	}
-	if !r.World.HasComponent(r.PickedEntity, MoveControllerComponent) {
+	if !r.World.HasComponent(r.PickedEntity, ywd.MoveControllerComponent) {
 		return
 	}
 	e := r.PickedEntity
-	m := r.World.GetComponent(e, MoveControllerComponent).(*ycontroller.MovementController)
-	box := r.World.GetComponent(e, BoundingBoxComponent).(yphy.Box)
+	m := r.World.GetComponent(e, ywd.MoveControllerComponent).(*ycontroller.MovementController)
+	box := r.World.GetComponent(e, ywd.BoundingBoxComponent).(yphy.Box)
 	r.DrawGizmo(m, box.World.GetHalfSize().X)
 
 	if r.DrawBoundingBoxes {
@@ -1111,10 +1112,10 @@ func (r *RenderManager) RenderBoundingBoxes() {
 	if r.World == nil {
 		return
 	}
-	entities := r.World.Query(BoundingBoxComponent)
+	entities := r.World.Query(ywd.BoundingBoxComponent)
 	var total int
 	for i, e := range entities {
-		box := r.World.GetComponent(e, BoundingBoxComponent).(yphy.Box)
+		box := r.World.GetComponent(e, ywd.BoundingBoxComponent).(yphy.Box)
 		matrix := box.RenderBoxMatrix()
 		matrixBytes := unsafe.Slice((*byte)(unsafe.Pointer(&matrix)), 64)
 		if total+len(matrixBytes) >= r.boundingboxssbocap {
@@ -1184,9 +1185,9 @@ func (r *RenderManager) RenderBoundingTree() {
 	gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
 }
 
-func (r *RenderManager) SortIntoPipelines(entites []EntityId) {
+func (r *RenderManager) SortIntoPipelines(entites []ywd.EntityId) {
 	for _, e := range entites {
-		pipelineType := r.World.GetComponent(e, PipelineComponent).(PipelineType)
+		pipelineType := r.World.GetComponent(e, ywd.PipelineComponent).(PipelineType)
 		pipeline, ok := r.Pipelines[pipelineType]
 		if ok && pipeline.DrawFunc != nil {
 			pipeline.Entites = append(pipeline.Entites, e)
@@ -1196,9 +1197,9 @@ func (r *RenderManager) SortIntoPipelines(entites []EntityId) {
 
 func (r *RenderManager) DrawPipelines() {
 	entities := r.World.Query(
-		RenderableComponent,
-		BoundingBoxComponent,
-		PipelineComponent)
+		ywd.RenderableComponent,
+		ywd.BoundingBoxComponent,
+		ywd.PipelineComponent)
 	r.SortIntoPipelines(entities)
 	for _, p := range r.Pipelines {
 		if p.DrawFunc != nil {
@@ -1208,7 +1209,7 @@ func (r *RenderManager) DrawPipelines() {
 	}
 }
 
-func (r *RenderManager) RenderEntities(cull bool, entities []EntityId) {
+func (r *RenderManager) RenderEntities(cull bool, entities []ywd.EntityId) {
 	if r.World == nil {
 		return
 	}
@@ -1218,13 +1219,13 @@ func (r *RenderManager) RenderEntities(cull bool, entities []EntityId) {
 	rs := make([]PerObjectRenderState, 0, 1000)
 	tags := make([]uint32, 0, 1000)
 	for _, e := range entities {
-		renderable := r.World.GetComponent(e, RenderableComponent).(Renderable)
+		renderable := r.World.GetComponent(e, ywd.RenderableComponent).(Renderable)
 		v, err := vm.GetCache(renderable.VertexType, renderable.VertexCacheId)
 		if err != nil {
 			continue //no cache for this entity
 		}
-		if r.World.HasComponent(e, InstanceComponent) {
-			instances := r.World.GetComponent(e, InstanceComponent).([]EntityId)
+		if r.World.HasComponent(e, ywd.InstanceComponent) {
+			instances := r.World.GetComponent(e, ywd.InstanceComponent).([]ywd.EntityId)
 			for _, ie := range instances {
 				//works but I do not like it at all,
 				//this is very slow not correct
@@ -1232,15 +1233,15 @@ func (r *RenderManager) RenderEntities(cull bool, entities []EntityId) {
 					//entity has been removed
 					continue
 				}
-				box := r.World.GetComponent(ie, BoundingBoxComponent).(yphy.Box)
+				box := r.World.GetComponent(ie, ywd.BoundingBoxComponent).(yphy.Box)
 				if cull && box.World.Cull(frustum[:]) {
 					continue
 				}
-				if r.World.HasComponent(ie, PbrMaterialComponent) {
+				if r.World.HasComponent(ie, ywd.PbrMaterialComponent) {
 					//if we have textures for materials bound to this entity
 					nrs := renderable.RenderParams
 					//have only one source of truth for textures
-					pbr := r.World.GetComponent(ie, PbrMaterialComponent).(PbrMaterial)
+					pbr := r.World.GetComponent(ie, ywd.PbrMaterialComponent).(PbrMaterial)
 					t, err := v.AddTexture(pbr.Albeo)
 					if err == nil {
 						nrs.Tex1 = uint32(t)
@@ -1257,7 +1258,7 @@ func (r *RenderManager) RenderEntities(cull bool, entities []EntityId) {
 				} else {
 					rs = append(rs, renderable.RenderParams)
 				}
-				mats = append(mats, r.World.GetComponent(ie, TransformComponent).(Transform).World)
+				mats = append(mats, r.World.GetComponent(ie, ywd.TransformComponent).(Transform).World)
 				tags = append(tags, uint32(ie))
 			}
 			renderable.DrawCmd.InstanceCount = uint32(len(mats))
@@ -1268,22 +1269,22 @@ func (r *RenderManager) RenderEntities(cull bool, entities []EntityId) {
 			rs = rs[:0]
 			mats = mats[:0]
 			tags = tags[:0]
-			instances = slices.DeleteFunc(instances, func(e EntityId) bool {
+			instances = slices.DeleteFunc(instances, func(e ywd.EntityId) bool {
 				return !r.World.IsEntity(e)
 			})
-			r.World.SetComponent(e, InstanceComponent, instances)
+			r.World.SetComponent(e, ywd.InstanceComponent, instances)
 		} else {
-			box := r.World.GetComponent(e, BoundingBoxComponent).(yphy.Box)
+			box := r.World.GetComponent(e, ywd.BoundingBoxComponent).(yphy.Box)
 			if cull && box.World.Cull(frustum[:]) {
 				continue
 			}
-			transform := r.World.GetComponent(e, TransformComponent).(Transform)
+			transform := r.World.GetComponent(e, ywd.TransformComponent).(Transform)
 			v.AddInstances(&renderable.DrawCmd)
 			v.AddMatrix(int(renderable.DrawCmd.BaseInstance), transform.World) //this needs to be world
-			if r.World.HasComponent(e, PbrMaterialComponent) {
+			if r.World.HasComponent(e, ywd.PbrMaterialComponent) {
 				//if we have textures for materials bound to this entity
 				nrs := renderable.RenderParams
-				pbr := r.World.GetComponent(e, PbrMaterialComponent).(PbrMaterial)
+				pbr := r.World.GetComponent(e, ywd.PbrMaterialComponent).(PbrMaterial)
 				t, err := v.AddTexture(pbr.Albeo)
 				if err == nil {
 					nrs.Tex1 = uint32(t)

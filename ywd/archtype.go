@@ -1,14 +1,15 @@
-package ycore
+package ywd
 
 import (
 	"encoding/gob"
 	"errors"
 	"fmt"
 	"log"
+	"math"
+	"math/rand"
 	"reflect"
 	"sort"
 	"sync"
-	"yam/y3d"
 )
 
 const (
@@ -23,6 +24,27 @@ const (
 var (
 	ErrorNoComponentInArchType = errors.New("no component in archtype")
 )
+
+const (
+	MoveControllerComponent ComponentId = iota
+	TransformComponent
+	BoundingBoxComponent
+	InputComponent
+	RenderableComponent
+	SkeletonComponent
+	HierarchyComponent
+	FlagComponent
+	AnimationComponent
+	InstanceComponent
+	ScaleComponent
+	PbrMaterialComponent
+	ParticleComponent
+	PipelineComponent
+)
+
+func GenerateRandomId() int {
+	return rand.Intn(math.MaxInt-1) + 1 //never generates 0
+}
 
 type ArchetypeId uint64
 type ComponentId uint64
@@ -179,16 +201,16 @@ type entityRecord struct {
 	archetype *Archetype
 	row       int
 }
-
+type Hierarchy struct {
+	Children []EntityId
+	Parent   EntityId
+}
 type World struct {
 	mu                 sync.RWMutex
 	entities           map[EntityId]*entityRecord
 	archetypes         map[string]*Archetype
 	SceneRootHierarchy Hierarchy
 	SceneRoot          EntityId
-	Gravity            y3d.Vec3
-	BoundingTree       *Octree
-	ForceRegistry      *ForceRegistry
 }
 
 func NewWorld() *World {
@@ -196,7 +218,6 @@ func NewWorld() *World {
 		entities:   make(map[EntityId]*entityRecord),
 		archetypes: make(map[string]*Archetype),
 	}
-	w.BoundingTree = NewOctree(w)
 	return w
 }
 

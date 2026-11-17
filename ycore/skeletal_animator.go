@@ -5,6 +5,7 @@ import (
 	"sync"
 	"unsafe"
 	"yam/y3d"
+	"yam/ywd"
 
 	"github.com/go-gl/gl/v4.3-core/gl"
 )
@@ -190,19 +191,19 @@ func (a *Animation) UpdateSkeleton(s *Skeleton) {
 	}
 }
 
-func UpdateEntityAnimation(w *World, delta float32) {
-	entites := w.Query(AnimationComponent)
+func UpdateEntityAnimation(w *ywd.World, delta float32) {
+	entites := w.Query(ywd.AnimationComponent)
 	var wg sync.WaitGroup
 	for _, e := range entites {
 		wg.Go(func() {
-			anim := w.GetComponent(e, AnimationComponent).(*Animation)
+			anim := w.GetComponent(e, ywd.AnimationComponent).(*Animation)
 			anim.Play(delta)
-			if w.HasComponent(e, SkeletonComponent) {
-				s := w.GetComponent(e, SkeletonComponent).(*Skeleton)
+			if w.HasComponent(e, ywd.SkeletonComponent) {
+				s := w.GetComponent(e, ywd.SkeletonComponent).(*Skeleton)
 				anim.UpdateSkeleton(s)
-				w.SetComponent(e, SkeletonComponent, s)
+				w.SetComponent(e, ywd.SkeletonComponent, s)
 			}
-			w.SetComponent(e, AnimationComponent, anim)
+			w.SetComponent(e, ywd.AnimationComponent, anim)
 		})
 	}
 	wg.Wait()

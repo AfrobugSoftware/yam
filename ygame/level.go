@@ -4,9 +4,7 @@ import (
 	"encoding/gob"
 	"errors"
 	"os"
-	"yam/y3d"
-	"yam/ycontroller"
-	"yam/ycore"
+	"yam/ywd"
 )
 
 const (
@@ -36,48 +34,17 @@ type LevelParameters struct {
 }
 
 type Level struct {
-	World   *ycore.World
-	OctTree *ycore.Octree
+	World *ywd.World
 
 	levelParametersUBO uint32
-	LastSelected       ycore.EntityId
+	LastSelected       ywd.EntityId
 }
 
 func NewLevel() *Level {
 	l := &Level{
-		World: ycore.NewWorld(),
+		World: ywd.NewWorld(),
 	}
-	l.OctTree = ycore.NewOctree(l.World)
 	return l
-}
-
-func (l *Level) Select(pickRay y3d.Ray) (bool, [2]y3d.PVertex) {
-	b, e, h := l.OctTree.TestCollisionWithRay(pickRay)
-	if b {
-		lines := [2]y3d.PVertex{
-			{
-				Pos:   pickRay.O,
-				Color: y3d.Vec4{X: 0.0, Y: 0.0, Z: 1.0, W: 1.0},
-			},
-			{
-				Pos:   h,
-				Color: y3d.Vec4{X: 1.0, Y: 0.0, Z: 0.0, W: 1.0},
-			},
-		}
-		l.LastSelected = e
-		return true, lines
-	}
-	return false, [2]y3d.PVertex{}
-}
-
-func (l *Level) ProcessEntityInput(input *ycore.InputManager) {
-	entites := l.World.Query(ycore.InputComponent, ycore.MoveControllerComponent)
-	for _, e := range entites {
-		movement := l.World.GetComponent(e, ycore.MoveControllerComponent).(*ycontroller.MovementController)
-		inputfunc := l.World.GetComponent(e, ycore.InputComponent).(ycore.InputFunc)
-
-		inputfunc(input, movement)
-	}
 }
 
 func (l *Level) Save(filename string) error {

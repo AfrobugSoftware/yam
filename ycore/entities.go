@@ -5,30 +5,14 @@ import (
 	"yam/y3d"
 	"yam/ycontroller"
 	"yam/yphy"
+	"yam/ywd"
 )
 
 type InputFunc func(*InputManager, ycontroller.Controller)
 
-const (
-	MoveControllerComponent ComponentId = iota
-	TransformComponent
-	BoundingBoxComponent
-	InputComponent
-	RenderableComponent
-	SkeletonComponent
-	HierarchyComponent
-	FlagComponent
-	AnimationComponent
-	InstanceComponent
-	ScaleComponent
-	PbrMaterialComponent
-	ParticleComponent
-	PipelineComponent
-)
-
 func AddEntityRenderableData(
-	world *World,
-	ent EntityId,
+	world *ywd.World,
+	ent ywd.EntityId,
 	vertexType string,
 	scale float32,
 	v, i *bytes.Buffer, vm *VertexCacheManager) error {
@@ -48,55 +32,55 @@ func AddEntityRenderableData(
 	format := vm.Formats[vertexType]
 	stride := vm.Strides[vertexType]
 	box := yphy.BoundBox(int(stride), int(format[0].RelativeOffset), v, i)
-	world.AddComponent(ent, BoundingBoxComponent, box)
-	world.AddComponent(ent, RenderableComponent, renderable)
-	world.AddComponent(ent, ScaleComponent, scale)
+	world.AddComponent(ent, ywd.BoundingBoxComponent, box)
+	world.AddComponent(ent, ywd.RenderableComponent, renderable)
+	world.AddComponent(ent, ywd.ScaleComponent, scale)
 	return nil
 }
 
-func AddScaleCompoment(world *World,
-	ent EntityId, scale float32) {
-	world.AddComponent(ent, ScaleComponent, scale)
+func AddScaleCompoment(world *ywd.World,
+	ent ywd.EntityId, scale float32) {
+	world.AddComponent(ent, ywd.ScaleComponent, scale)
 }
 
 func AddEntityMoveData(
-	world *World,
-	ent EntityId,
+	world *ywd.World,
+	ent ywd.EntityId,
 	pos y3d.Vec3,
 	orientation y3d.Quaternion,
 ) *ycontroller.MovementController {
 	move := ycontroller.NewMovementController(pos, orientation)
-	world.AddComponent(ent, TransformComponent, NewTransform())
-	world.AddComponent(ent, MoveControllerComponent, move)
+	world.AddComponent(ent, ywd.TransformComponent, NewTransform())
+	world.AddComponent(ent, ywd.MoveControllerComponent, move)
 	return move
 }
 
-func AddEntityAsInstance(w *World, holder EntityId, instance EntityId) {
-	if !w.HasComponent(holder, InstanceComponent) {
-		instances := make([]EntityId, 0)
+func AddEntityAsInstance(w *ywd.World, holder ywd.EntityId, instance ywd.EntityId) {
+	if !w.HasComponent(holder, ywd.InstanceComponent) {
+		instances := make([]ywd.EntityId, 0)
 		instances = append(instances, instance)
-		box := w.GetComponent(holder, BoundingBoxComponent).(yphy.Box)
-		w.AddComponent(instance, BoundingBoxComponent, box)
-		w.AddComponent(holder, InstanceComponent, instances)
+		box := w.GetComponent(holder, ywd.BoundingBoxComponent).(yphy.Box)
+		w.AddComponent(instance, ywd.BoundingBoxComponent, box)
+		w.AddComponent(holder, ywd.InstanceComponent, instances)
 		return
 	}
-	instances := w.GetComponent(holder, InstanceComponent).([]EntityId)
+	instances := w.GetComponent(holder, ywd.InstanceComponent).([]ywd.EntityId)
 	instances = append(instances, instance)
-	box := w.GetComponent(holder, BoundingBoxComponent).(yphy.Box)
-	w.AddComponent(instance, BoundingBoxComponent, box)
-	w.SetComponent(holder, InstanceComponent, instances)
+	box := w.GetComponent(holder, ywd.BoundingBoxComponent).(yphy.Box)
+	w.AddComponent(instance, ywd.BoundingBoxComponent, box)
+	w.SetComponent(holder, ywd.InstanceComponent, instances)
 }
 
 func AddEntityTransformData(
-	world *World,
-	ent EntityId,
+	world *ywd.World,
+	ent ywd.EntityId,
 	transform Transform) {
-	world.AddComponent(ent, TransformComponent, transform)
+	world.AddComponent(ent, ywd.TransformComponent, transform)
 }
 
 func AddEntityInputData(
-	world *World,
-	ent EntityId,
+	world *ywd.World,
+	ent ywd.EntityId,
 	input InputFunc) {
-	world.AddComponent(ent, InputComponent, input)
+	world.AddComponent(ent, ywd.InputComponent, input)
 }

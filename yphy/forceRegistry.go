@@ -1,13 +1,13 @@
-package ycore
+package yphy
 
 import (
 	"slices"
-	"yam/yphy"
+	"yam/ywd"
 )
 
 type ForceRegisterEntry struct {
-	Entity   EntityId
-	ForceGen yphy.ForceGenerator
+	Entity   ywd.EntityId
+	ForceGen ForceGenerator
 }
 
 type ForceRegistry struct {
@@ -20,22 +20,23 @@ func NewForceRegistry() *ForceRegistry {
 	}
 }
 
-func (r *ForceRegistry) Add(e EntityId, f yphy.ForceGenerator) {
+func (r *ForceRegistry) Add(e ywd.EntityId, f ForceGenerator) {
 	r.Register = append(r.Register, ForceRegisterEntry{
 		Entity:   e,
 		ForceGen: f,
 	})
 }
 
-func (r *ForceRegistry) Remove(e EntityId, f yphy.ForceGenerator) {
+func (r *ForceRegistry) Remove(e ywd.EntityId, f ForceGenerator) {
 	r.Register = slices.DeleteFunc(r.Register, func(r ForceRegisterEntry) bool {
 		return r.Entity == e && r.ForceGen == f
 	})
 }
-func (r *ForceRegistry) Update(w *World, dt float32) {
+
+func (r *ForceRegistry) Update(w *ywd.World, dt float32) {
 	for _, e := range r.Register {
-		if w.HasComponent(e.Entity, ParticleComponent) {
-			p := w.GetComponent(e.Entity, ParticleComponent).(yphy.Particle)
+		if w.HasComponent(e.Entity, ywd.ParticleComponent) {
+			p := w.GetComponent(e.Entity, ywd.ParticleComponent).(Particle)
 			p.AddForce(e.ForceGen, dt)
 		}
 	}

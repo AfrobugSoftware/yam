@@ -1,7 +1,9 @@
 package ycore
 
-type EnterExitStateFunc func(w *World, a EntityId) error
-type UpdateStateFunc func(w *World, a EntityId, dt float64) error
+import "yam/ywd"
+
+type EnterExitStateFunc func(w *ywd.World, a ywd.EntityId) error
+type UpdateStateFunc func(w *ywd.World, a ywd.EntityId, dt float64) error
 type State int
 type StateMachine struct {
 	PrevState State
@@ -11,13 +13,13 @@ type StateMachine struct {
 	OnLeave   [][]EnterExitStateFunc
 }
 
-func (s *StateMachine) Update(w *World, dt float64, e EntityId) {
+func (s *StateMachine) Update(w *ywd.World, dt float64, e ywd.EntityId) {
 	if s.OnUpdate != nil {
 		s.OnUpdate[s.CurState](w, e, dt)
 	}
 }
 
-func (s *StateMachine) ChangeState(w *World, e EntityId, state State) {
+func (s *StateMachine) ChangeState(w *ywd.World, e ywd.EntityId, state State) {
 	if s.OnLeave == nil || s.OnEnter == nil {
 		return
 	}

@@ -4,18 +4,19 @@ import (
 	"math"
 	"yam/y3d"
 	"yam/yphy"
+	"yam/ywd"
 )
 
 type BSPTree struct {
-	World       *World
+	World       *ywd.World
 	BoundingBox y3d.AABB
 	Plane       y3d.Plane
 	Back        *BSPTree
 	Front       *BSPTree
 	Root        *BSPTree
 	Parent      *BSPTree
-	Children    []EntityId //if leaf it would have a bunch of this
-	Spliter     EntityId
+	Children    []ywd.EntityId //if leaf it would have a bunch of this
+	Spliter     ywd.EntityId
 }
 
 func (bs *BSPTree) SetRelationShip(r, d *BSPTree) {
@@ -45,7 +46,7 @@ func (bs *BSPTree) CalculateBoundingBox() {
 		},
 	}
 	for _, p := range bs.Children {
-		b := bs.World.GetComponent(p, BoundingBoxComponent).(yphy.Box).World
+		b := bs.World.GetComponent(p, ywd.BoundingBoxComponent).(yphy.Box).World
 		box.Max = y3d.Max(box.Max, b.Max)
 		box.Min = y3d.Min(box.Min, b.Min)
 	}
@@ -59,8 +60,8 @@ func (bs *BSPTree) FindBestSplitter() bool {
 	for i := range bs.Children {
 		front, back, splits = 0, 0, 0
 		p1 := bs.Children[i]
-		flag := bs.World.GetComponent(p1, FlagComponent).(uint32)
-		pbox := bs.World.GetComponent(p1, BoundingBoxComponent).(yphy.Box).World
+		flag := bs.World.GetComponent(p1, ywd.FlagComponent).(uint32)
+		pbox := bs.World.GetComponent(p1, ywd.BoundingBoxComponent).(yphy.Box).World
 		if flag == 0x01 {
 			continue
 		}
@@ -69,7 +70,7 @@ func (bs *BSPTree) FindBestSplitter() bool {
 				continue
 			}
 			plane = pbox.GetPlanes()[0]
-			jbox := bs.World.GetComponent(bs.Children[j], BoundingBoxComponent).(yphy.Box).World
+			jbox := bs.World.GetComponent(bs.Children[j], ywd.BoundingBoxComponent).(yphy.Box).World
 			class := jbox.WhichSide(plane)
 			switch class {
 			case y3d.FRONT:
@@ -99,7 +100,7 @@ func (bs *BSPTree) FindBestSplitter() bool {
 		return false
 	}
 	bs.Spliter = bs.Children[bestSplitter]
-	bs.World.SetComponent(bs.Spliter, FlagComponent, uint32(0x01))
+	bs.World.SetComponent(bs.Spliter, ywd.FlagComponent, uint32(0x01))
 	bs.Plane = plane
 	return true
 }
@@ -111,12 +112,12 @@ func (bs *BSPTree) CreateChild() {
 	}
 	if bs.Front == nil {
 		bs.Front = &BSPTree{
-			Children: make([]EntityId, len(bs.Children)),
+			Children: make([]ywd.EntityId, len(bs.Children)),
 		}
 	}
 	if bs.Back == nil {
 		bs.Back = &BSPTree{
-			Children: make([]EntityId, len(bs.Children)),
+			Children: make([]ywd.EntityId, len(bs.Children)),
 		}
 	}
 	bs.Front.SetRelationShip(bs.Root, bs)
@@ -129,7 +130,7 @@ func (bs *BSPTree) CreateChild() {
 			bs.Back.Children = append(bs.Back.Children, p)
 			continue
 		}
-		pbox := bs.World.GetComponent(p, BoundingBoxComponent).(yphy.Box).World
+		pbox := bs.World.GetComponent(p, ywd.BoundingBoxComponent).(yphy.Box).World
 		class := bs.Plane.ClassifyAABB(pbox)
 		switch class {
 		case y3d.FRONT:
@@ -146,7 +147,7 @@ func (bs *BSPTree) CreateChild() {
 	bs.Back.CreateChild()
 }
 
-func (bs *BSPTree) BuildTree(entities []EntityId) {
+func (bs *BSPTree) BuildTree(entities []ywd.EntityId) {
 	bs.Root = bs
 	bs.Parent = nil
 	copy(bs.Children, entities)
@@ -157,7 +158,7 @@ func (bs *BSPTree) BuildTree(entities []EntityId) {
 func (bs *BSPTree) TestCollision(r y3d.Ray, fl float32) (bool, y3d.Vec3) {
 	if bs.IsLeaf() {
 		for _, p := range bs.Children {
-			pbox := bs.World.GetComponent(p, BoundingBoxComponent).(yphy.Box).World
+			pbox := bs.World.GetComponent(p, ywd.BoundingBoxComponent).(yphy.Box).World
 			b, h := r.IntersectsAABB(pbox)
 			if b {
 				return b, h
@@ -214,13 +215,13 @@ func (bs *BSPTree) LineOfSight(pos, target y3d.Vec3) bool {
 	return !c
 }
 
-func (bs *BSPTree) SelectFromPickRay(r y3d.Ray, fl float32) (EntityId, bool) {
+func (bs *BSPTree) SelectFromPickRay(r y3d.Ray, fl float32) (ywd.EntityId, bool) {
 	smallest := math.MaxFloat32
 	found := false
-	ent := NullEntity
+	ent := ywd.NullEntity
 	if bs.IsLeaf() {
 		for _, p := range bs.Children {
-			pbox := bs.World.GetComponent(p, BoundingBoxComponent).(yphy.Box).World
+			pbox := bs.World.GetComponent(p, ywd.BoundingBoxComponent).(yphy.Box).World
 			b, h := r.IntersectsAABB(pbox)
 			if b {
 				dist := y3d.Sub(h, r.O).Length()

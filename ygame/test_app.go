@@ -8,6 +8,7 @@ import (
 	"yam/ygl"
 	"yam/yphy"
 	"yam/yui"
+	"yam/ywd"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -18,8 +19,8 @@ type TestApplication struct {
 	camPostiion  y3d.Vec3
 	camUp        y3d.Vec3
 	yaw, pitch   float32
-	pickedEntity ycore.EntityId
-	boxEnt       ycore.EntityId
+	pickedEntity ywd.EntityId
+	boxEnt       ywd.EntityId
 	font         *yui.Font
 	useCam       bool
 	drag         *yphy.DragForce
@@ -193,9 +194,9 @@ func (t *TestApplication) LevelTest() {
 	ycore.AddEntityMoveData(w, ie2, y3d.Vec3{X: 10, Z: 0, Y: 2.0}, y3d.IdenQuat())
 	ycore.AddEntityMoveData(w, ie3, y3d.Vec3{X: -5, Z: 0, Y: 2.0}, y3d.IdenQuat())
 
-	w.AddComponent(ie1, ycore.ScaleComponent, float32(1.0))
-	w.AddComponent(ie2, ycore.ScaleComponent, float32(1.0))
-	w.AddComponent(ie3, ycore.ScaleComponent, float32(1.0))
+	w.AddComponent(ie1, ywd.ScaleComponent, float32(1.0))
+	w.AddComponent(ie2, ywd.ScaleComponent, float32(1.0))
+	w.AddComponent(ie3, ywd.ScaleComponent, float32(1.0))
 	ycore.AddEntityAsInstance(w, ent3, ie1)
 	ycore.AddEntityAsInstance(w, ent3, ie2)
 	ycore.AddEntityAsInstance(w, ent3, ie3)
@@ -238,20 +239,20 @@ func (t *TestApplication) ProcessInput(deltaTime float32) {
 				})
 			}
 		} else {
-			if t.pickedEntity != ycore.NullEntity {
+			if t.pickedEntity != ywd.NullEntity {
 				t.engine.RenderManager.DragObject(t.pickedEntity, caged)
 			}
 		}
 	}
 	if im.GetMouseButtonState(sdl.BUTTON_LEFT) == ycore.BUTTON_PRESSED {
 		pixels := t.engine.RenderManager.GetPickInfo(int32(caged.X), int32(caged.Y))
-		b := t.engine.Level.World.IsEntity(ycore.EntityId(pixels[0]))
+		b := t.engine.Level.World.IsEntity(ywd.EntityId(pixels[0]))
 		if b {
-			t.engine.RenderManager.PickedEntity = ycore.EntityId(pixels[0])
-			t.pickedEntity = ycore.EntityId(pixels[0])
+			t.engine.RenderManager.PickedEntity = ywd.EntityId(pixels[0])
+			t.pickedEntity = ywd.EntityId(pixels[0])
 		} else {
-			t.engine.RenderManager.PickedEntity = ycore.NullEntity
-			t.pickedEntity = ycore.NullEntity
+			t.engine.RenderManager.PickedEntity = ywd.NullEntity
+			t.pickedEntity = ywd.NullEntity
 		}
 	}
 	if im.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_UP) == ycore.BUTTON_HELD {
@@ -293,7 +294,7 @@ func (t *TestApplication) AddBox() {
 	if im.GetMouseButtonState(sdl.BUTTON_RIGHT) == ycore.BUTTON_PRESSED {
 		o := t.engine.RenderManager.GetPickRay(caged)
 		ie1 := w.NewEntity()
-		w.AddComponent(ie1, ycore.ScaleComponent, float32(0.5))
+		w.AddComponent(ie1, ywd.ScaleComponent, float32(0.5))
 		ycore.AddEntityMoveData(w, ie1, y3d.Add(o.O, y3d.Smul(o.D, 5.0)), y3d.IdenQuat())
 		ycore.AddEntityAsInstance(w, t.boxEnt, ie1)
 	}
@@ -306,9 +307,9 @@ func (t *TestApplication) ShotBullet() {
 	if im.GetKeyState(sdl.SCANCODE_O) == ycore.BUTTON_PRESSED {
 		o := t.engine.RenderManager.GetPickRay(caged)
 		ie1 := w.NewEntity()
-		w.AddComponent(ie1, ycore.ScaleComponent, float32(0.25))
+		w.AddComponent(ie1, ywd.ScaleComponent, float32(0.25))
 		//ycore.AddEntityMoveData(w, ie1, y3d.Add(o.O, y3d.Smul(o.D, 5.0)), y3d.IdenQuat())
-		w.AddComponent(ie1, ycore.TransformComponent, ycore.NewTransform())
+		w.AddComponent(ie1, ywd.TransformComponent, ycore.NewTransform())
 		ycore.AddEntityAsInstance(w, t.boxEnt, ie1)
 		p := yphy.Particle{
 			InverseMass: float32(1.0 / 2.0),
@@ -321,30 +322,30 @@ func (t *TestApplication) ShotBullet() {
 				Z: 0.0,
 			},
 		}
-		w.AddComponent(ie1, ycore.ParticleComponent, p)
+		w.AddComponent(ie1, ywd.ParticleComponent, p)
 	}
 }
 
 func (t TestApplication) AddDrag(dt float32) {
-	entites := t.engine.RenderManager.World.Query(ycore.ParticleComponent)
+	entites := t.engine.RenderManager.World.Query(ywd.ParticleComponent)
 	for _, e := range entites {
-		p := t.engine.RenderManager.World.GetComponent(e, ycore.ParticleComponent).(yphy.Particle)
+		p := t.engine.RenderManager.World.GetComponent(e, ywd.ParticleComponent).(yphy.Particle)
 		p.AddForce(t.drag, dt)
 
-		t.engine.RenderManager.World.SetComponent(e, ycore.ParticleComponent, p)
+		t.engine.RenderManager.World.SetComponent(e, ywd.ParticleComponent, p)
 	}
 }
 
 func (t *TestApplication) UpdatePickedEntity() {
-	if t.pickedEntity == ycore.NullEntity {
+	if t.pickedEntity == ywd.NullEntity {
 		return
 	}
-	if !t.engine.Level.World.HasComponent(t.pickedEntity, ycore.MoveControllerComponent) {
+	if !t.engine.Level.World.HasComponent(t.pickedEntity, ywd.MoveControllerComponent) {
 		return
 	}
 	im := t.engine.InputManager
 	w := t.engine.Level.World
-	m := w.GetComponent(t.pickedEntity, ycore.MoveControllerComponent).(*ycontroller.MovementController)
+	m := w.GetComponent(t.pickedEntity, ywd.MoveControllerComponent).(*ycontroller.MovementController)
 	speed := float32(10)
 	m.Thrust = 0
 	if im.GetKeyState(sdl.SCANCODE_W) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_W) == ycore.BUTTON_HELD {

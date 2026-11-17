@@ -16,6 +16,7 @@ import (
 	"strings"
 	"unsafe"
 	"yam/y3d"
+	"yam/ywd"
 
 	"image/draw"
 	_ "image/gif"
@@ -83,7 +84,7 @@ var attribOrder = []string{
 	"WEIGHTS_0",
 }
 
-func LoadGLTF(filename string, r *RenderManager, world *World) error {
+func LoadGLTF(filename string, r *RenderManager, world *ywd.World) error {
 	doc, err := gltf.Open(filename)
 	if err != nil {
 		return err
@@ -336,7 +337,7 @@ func accessorAttrib(doc *gltf.Document, acc *gltf.Accessor, data map[int][]byte)
 	return a, nil
 }
 
-func ProcessNode(world *World, node *gltf.Node,
+func ProcessNode(world *ywd.World, node *gltf.Node,
 	doc *gltf.Document,
 	r *RenderManager,
 	skin int,
@@ -489,7 +490,7 @@ func ProcessNode(world *World, node *gltf.Node,
 					}
 				}
 				skeleton := NewSkeleton(int(ynode), joints)
-				world.AddComponent(ynode, SkeletonComponent, skeleton)
+				world.AddComponent(ynode, ywd.SkeletonComponent, skeleton)
 
 				//load the animations
 				for _, a := range doc.Animations {
@@ -603,7 +604,7 @@ func ProcessNode(world *World, node *gltf.Node,
 							}
 						}
 					}
-					world.AddComponent(ynode, AnimationComponent, anim)
+					world.AddComponent(ynode, ywd.AnimationComponent, anim)
 				}
 
 			}
