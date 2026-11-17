@@ -41,6 +41,10 @@ func NewSpringForce(other *Particle, springConstant, restLength float32) *Spring
 	}
 }
 
+func (s *SpringForce) SetOther(other *Particle) {
+	s.Other = other
+}
+
 func (s *SpringForce) Force(p *Particle, dt float32) y3d.Vec3 {
 	d := y3d.Sub(p.Position, s.Other.Position)
 	dp := y3d.Normalize(d)

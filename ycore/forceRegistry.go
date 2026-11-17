@@ -20,6 +20,18 @@ func NewForceRegistry() *ForceRegistry {
 	}
 }
 
+func (r *ForceRegistry) Add(e EntityId, f yphy.ForceGenerator) {
+	r.Register = append(r.Register, ForceRegisterEntry{
+		Entity:   e,
+		ForceGen: f,
+	})
+}
+
+func (r *ForceRegistry) Remove(e EntityId, f yphy.ForceGenerator) {
+	r.Register = slices.DeleteFunc(r.Register, func(r ForceRegisterEntry) bool {
+		return r.Entity == e && r.ForceGen == f
+	})
+}
 func (r *ForceRegistry) Update(w *World, dt float32) {
 	for _, e := range r.Register {
 		if w.HasComponent(e.Entity, ParticleComponent) {

@@ -414,6 +414,7 @@ func ProcessNode(world *World, node *gltf.Node,
 			Z: float32(node.Rotation[2]),
 			W: float32(node.Rotation[3]),
 		}
+		fmt.Println(rotation)
 		err := AddEntityRenderableData(
 			world,
 			ynode,

@@ -188,6 +188,7 @@ type World struct {
 	SceneRoot          EntityId
 	Gravity            y3d.Vec3
 	BoundingTree       *Octree
+	ForceRegistry      *ForceRegistry
 }
 
 func NewWorld() *World {
