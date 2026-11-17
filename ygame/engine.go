@@ -27,7 +27,7 @@ type Engine struct {
 
 var gEngine *Engine
 
-func NewGame(title string, width, height int32) (*Engine, error) {
+func NewEngine(title string, width, height int32) (*Engine, error) {
 	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func NewGame(title string, width, height int32) (*Engine, error) {
 	return gEngine, nil
 }
 
-func GetGame() *Engine {
+func GetEngine() *Engine {
 	return gEngine
 }
 

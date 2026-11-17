@@ -1,6 +1,7 @@
 package yphy
 
 import (
+	"math"
 	"yam/y3d"
 )
 
@@ -23,7 +24,7 @@ func (p *Particle) Update(dt float32) {
 	retAcc = retAcc.AddScale(p.ForceAccum, p.InverseMass)
 	p.Velocity = p.Velocity.AddScale(retAcc, dt)
 
-	//p.Velocity = y3d.Smul(p.Velocity, float32(math.Pow(float64(p.Damping), float64(dt))))
+	p.Velocity = y3d.Smul(p.Velocity, float32(math.Pow(float64(p.Damping), float64(dt))))
 	p.ForceAccum = y3d.UnitV3
 }
 

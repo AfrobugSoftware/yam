@@ -46,6 +46,12 @@ func (t *TestApplication) Startup(e *Engine) {
 	if err != nil {
 		panic(err)
 	}
+	err = ycore.LoadGLTF("assets/gltf/DamagedHelmet.glb",
+		t.engine.RenderManager,
+		t.engine.Level.World)
+	if err != nil {
+		panic(err)
+	}
 	t.camPostiion.Y = 1
 	t.yaw = float32(y3d.ToRadians(90))
 	t.camFront = y3d.Normalize(y3d.Vec3{
@@ -205,7 +211,7 @@ func (t *TestApplication) Update(deltaTime float64) {
 	t.UpdatePickedEntity()
 	t.AddBox()
 	t.ShotBullet()
-	t.AddDrag(float32(deltaTime))
+	//t.AddDrag(float32(deltaTime))
 	t.UpdateCamera()
 }
 
@@ -306,7 +312,7 @@ func (t *TestApplication) ShotBullet() {
 		ycore.AddEntityAsInstance(w, t.boxEnt, ie1)
 		p := yphy.Particle{
 			InverseMass: float32(1.0 / 2.0),
-			Velocity:    y3d.Smul(o.D, 100), //y3d.Vec3{Z: 35},
+			Velocity:    y3d.Smul(o.D, 35), //y3d.Vec3{Z: 35},
 			Position:    o.O,
 			Damping:     0.99,
 			Acceleration: y3d.Vec3{

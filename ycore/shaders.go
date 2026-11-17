@@ -84,35 +84,42 @@ layout(std430,binding = 4) buffer render_parameters {
 }render_params;
 
 vec4 calculate_bling_phong(int light_index) {
-	vec3 light_direction = normalize(vec3(render_params.l[light_index].pos));
+	vec3 light_direction = normalize(vec3(render_params.l[light_index].pos) - fs_in.pos);
 	vec3 view_direction = normalize(render_params.view_pos - fs_in.pos);
 	vec3 halfway_direction = normalize(light_direction + view_direction);
+	vec3 normal = normalize(fs_in.normal);
 
-	float specular_factor = pow(max(dot(fs_in.normal, halfway_direction), 0.0), material.emissive_shineness.w);
+	float specular_factor = pow(max(dot(normal, halfway_direction), 0.0), 0.5);
 	vec4 specular = render_params.l[light_index].color * material.specular * specular_factor;
 
-	float diffuse_factor = max(dot(fs_in.normal, light_direction), 0.0);
+	float diffuse_factor = max(dot(normal, light_direction), 0.0);
 	vec4 diffuse = render_params.l[light_index].color * material.diffuse * diffuse_factor;
-	vec4 ambient = material.ambient * render_params.l[light_index].color * 0.5;
-	return (diffuse + specular + ambient);
+	vec4 ambient = material.ambient * render_params.l[light_index].color * 0.1;
+	return (diffuse + specular);
 }
 
 void main() {
 	out_color = vec4(calculate_bling_phong(0).xyz, ors.data[fs_in.draw_index].alpha);
 }	
 	`
+
 	shadowVertexShader = `
 #version 430
 layout(location = 0) in vec3 pos;
 layout(location = 10) in uint dInx;
-layout(std430, binding = 0) buffer MatrixSSBO {
-    mat4 world[];
+struct per_object_transform {
+	mat4 world;
+	mat4 normal;
+};
+
+layout(std430, binding = 0) buffer matrix_ssbo {
+    per_object_transform world[];
 };
 layout(std140, binding = 4) uniform vp {
 	mat4 viewproj;
 };
 void main() {
-	gl_Position = viewproj * world[dInx] * vec4(pos, 1.0);
+	gl_Position = viewproj * world[dInx].world * vec4(pos, 1.0);
 };
 	`
 	shadowFragmentShader = `

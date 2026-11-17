@@ -287,7 +287,7 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 	l := y3d.Light{
 		Pos: y3d.Vec4{
 			X: -2.0,
-			Y: 4.0,
+			Y: 400.0,
 			Z: -1.0,
 			W: 1.0},
 		Color: y3d.Vec4{
@@ -298,9 +298,9 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 		},
 	}
 	rm.View3D[SHADOW_STAGE] = y3d.LookAt(y3d.Vec3{
-		X: -2.0,
-		Y: 4.0,
-		Z: -1.0}, y3d.Vec3{}, y3d.UNIT_Y)
+		X: 0.0,
+		Y: 400.0,
+		Z: 1.0}, y3d.Vec3{}, y3d.UNIT_Y)
 	rm.AddLight(l)
 	rm.SetupGrid()
 
@@ -866,7 +866,10 @@ func (r *RenderManager) ShadowPhase() {
 	r.LoadRenderParameters()
 	gl.BindBufferBase(gl.UNIFORM_BUFFER, VIEW_PROJ_BINDING, r.viewubo)
 	gl.UseProgram(r.shadowProgram)
+	gl.Enable(gl.CULL_FACE)
+	gl.CullFace(gl.FRONT)
 	r.Render()
+	gl.Disable(gl.CULL_FACE)
 	r.RenderParams.shadowMatrix = r.ViewProj
 }
 
@@ -890,7 +893,9 @@ func (r *RenderManager) EntitiesRenderPhase() {
 	gl.CullFace(gl.BACK)
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+	gl.Enable(gl.FRAMEBUFFER_SRGB)
 	r.Render()
+	gl.Disable(gl.FRAMEBUFFER_SRGB)
 }
 
 func (r *RenderManager) Draw() {

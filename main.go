@@ -48,7 +48,7 @@ func TestNetwork() {
 }
 
 func main() {
-	g, err := ygame.NewGame("Kiwi Island", 1000, 600)
+	g, err := ygame.NewEngine("Kiwi Island", 1000, 600)
 	if err != nil {
 		log.Panicf("Error creating game: %v", err)
 	}
