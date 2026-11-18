@@ -1243,20 +1243,23 @@ func (r *RenderManager) RenderEntities(cull bool, entities []ywd.EntityId) {
 					//if we have textures for materials bound to this entity
 					nrs := renderable.RenderParams
 					//have only one source of truth for textures
-					pbr := r.World.GetComponent(ie, ywd.PbrMaterialComponent).(PbrMaterial)
-					t, err := v.AddTexture(pbr.Albeo)
-					if err == nil {
-						nrs.Tex1 = uint32(t)
+					pbrs := r.World.GetComponent(ie, ywd.PbrMaterialComponent).([]PbrMaterial)
+					if len(pbrs) > 0 {
+						pbr := pbrs[0]
+						t, err := v.AddTexture(pbr.Albeo)
+						if err == nil {
+							nrs.Tex1 = uint32(t)
+						}
+						t, err = v.AddTexture(pbr.Specular)
+						if err == nil {
+							nrs.Tex2 = uint32(t)
+						}
+						t, err = v.AddTexture(pbr.NormalMap)
+						if err == nil {
+							nrs.Tex1 = uint32(t)
+						}
+						rs = append(rs, nrs)
 					}
-					t, err = v.AddTexture(pbr.Specular)
-					if err == nil {
-						nrs.Tex2 = uint32(t)
-					}
-					t, err = v.AddTexture(pbr.NormalMap)
-					if err == nil {
-						nrs.Tex1 = uint32(t)
-					}
-					rs = append(rs, nrs)
 				} else {
 					rs = append(rs, renderable.RenderParams)
 				}
@@ -1286,24 +1289,45 @@ func (r *RenderManager) RenderEntities(cull bool, entities []ywd.EntityId) {
 			if r.World.HasComponent(e, ywd.PbrMaterialComponent) {
 				//if we have textures for materials bound to this entity
 				nrs := renderable.RenderParams
-				pbr := r.World.GetComponent(e, ywd.PbrMaterialComponent).(PbrMaterial)
-				t, err := v.AddTexture(pbr.Albeo)
-				if err == nil {
-					nrs.Tex1 = uint32(t)
+				pbrs := r.World.GetComponent(e, ywd.PbrMaterialComponent).([]PbrMaterial)
+				var pbr PbrMaterial
+				if len(pbrs) > 0 {
+					pbr = pbrs[0]
+					t, err := v.AddTexture(pbr.Albeo)
+					if err == nil {
+						nrs.Tex1 = uint32(t)
+					}
+					t, err = v.AddTexture(pbr.Specular)
+					if err == nil {
+						nrs.Tex2 = uint32(t)
+					}
+					t, err = v.AddTexture(pbr.NormalMap)
+					if err == nil {
+						nrs.Tex3 = uint32(t)
+					}
+					if r.World.HasComponent(e, ywd.PbrMaterialDataComponent) {
+						pbrDat := r.World.GetComponent(e, ywd.PbrMaterialDataComponent).([]PbrMaterialData)
+						indx, err := v.AddPbrMaterialData(pbrDat...)
+						if err != nil {
+							panic(err)
+						}
+						nrs.BasePbrMatIdx = uint32(indx)
+					}
+					v.AddRenderState(int(renderable.DrawCmd.BaseInstance), nrs)
 				}
-				t, err = v.AddTexture(pbr.Specular)
-				if err == nil {
-					nrs.Tex2 = uint32(t)
-				}
-				t, err = v.AddTexture(pbr.NormalMap)
-				if err == nil {
-					nrs.Tex1 = uint32(t)
-				}
-				v.AddRenderState(int(renderable.DrawCmd.BaseInstance), nrs)
 			} else {
+				if r.World.HasComponent(e, ywd.PbrMaterialDataComponent) {
+					pbrDat := r.World.GetComponent(e, ywd.PbrMaterialDataComponent).([]PbrMaterialData)
+					indx, err := v.AddPbrMaterialData(pbrDat...)
+					if err != nil {
+						panic(err)
+					}
+					renderable.RenderParams.BasePbrMatIdx = uint32(indx)
+				}
 				v.AddRenderState(int(renderable.DrawCmd.BaseInstance), renderable.RenderParams)
 			}
 			v.AddTag(int(renderable.DrawCmd.BaseInstance), uint32(e))
+
 		}
 		v.AddDrawCommand(renderable.DrawCmd)
 	}

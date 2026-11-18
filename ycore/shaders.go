@@ -59,6 +59,13 @@ struct light {
 	uint flag;
 };
 
+struct pbr_material_data {
+	vec4 base_color_factor;
+	float metallic_factor;
+	float roughness_factor;
+	vec3 emissive_factor;
+};
+
 struct per_object_render_state {
 	float alpha;
 	uint render_flag;
@@ -67,6 +74,7 @@ struct per_object_render_state {
 	uint tex3;
 	uint tex4;
 	uint base_joint_idx;
+	uint base_pbr_mat_idx;
 };
 
 layout(std430, binding = 2) buffer per_object_render_state_buffer {
@@ -87,6 +95,10 @@ layout(std430,binding = 4) buffer render_parameters {
 	light l[128];
 }render_params;
 
+layout(std430, binding = 5) buffer pbr_material_data_buffer {
+	pbr_material_data data[];
+}pbr_data;
+
 vec4 calculate_bling_phong(int light_index) {
 	vec3 light_direction = normalize(vec3(render_params.l[light_index].pos) - fs_in.pos);
 	vec3 view_direction = normalize(render_params.view_pos - fs_in.pos);
@@ -106,7 +118,8 @@ void main() {
 	if(fs_in.prim_index == 0) {
 		out_color = vec4(normalize(fs_in.normal), 1.0);
 	} else {
-		out_color = vec4(calculate_bling_phong(0).xyz, ors.data[fs_in.draw_index].alpha);
+	 	vec4 color = pbr_data.data[ors.data[fs_in.draw_index].base_pbr_mat_idx + fs_in.prim_index].base_color_factor;
+		out_color = color; //vec4(calculate_bling_phong(0).xyz, ors.data[fs_in.draw_index].alpha);
 	}
 }	
 	`

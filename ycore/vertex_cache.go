@@ -16,14 +16,19 @@ const (
 	ENTITY_SELECTED = 1 << iota
 )
 
+const (
+	MAX_PRIMITIVE = 100
+)
+
 type PerObjectRenderState struct {
-	Alpha        float32
-	Flag         uint32
-	Tex1         uint32
-	Tex2         uint32
-	Tex3         uint32
-	Tex4         uint32
-	BaseJointIdx uint32
+	Alpha         float32
+	Flag          uint32
+	Tex1          uint32
+	Tex2          uint32
+	Tex3          uint32
+	Tex4          uint32
+	BaseJointIdx  uint32
+	BasePbrMatIdx uint32
 }
 
 type VertexFormat struct {
@@ -146,8 +151,9 @@ func NewVertexCache(
 	gl.NamedBufferStorage(pickSSBO, int(4*maxInstances), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
 
 	gl.CreateBuffers(1, &pbrSSBO)
-	gl.NamedBufferStorage(pbrSSBO, int(unsafe.Sizeof(PbrMaterialData{})*uintptr(maxInstances)), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
-	UpdateGPUMem(uint64(unsafe.Sizeof(PbrMaterialData{}) * uintptr(maxInstances)))
+	gl.NamedBufferStorage(pbrSSBO, int(unsafe.Sizeof(PbrMaterialData{})*uintptr(maxInstances*MAX_PRIMITIVE)),
+		nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
+	UpdateGPUMem(uint64(unsafe.Sizeof(PbrMaterialData{}) * uintptr(maxInstances*MAX_PRIMITIVE)))
 
 	err := CheckError()
 	if err != nil {
@@ -232,7 +238,7 @@ func (v *VertexCache) Add(command *DrawCommand,
 		int(4*v.NumIndices),
 		dataI.Len(),
 		gl.Ptr(dataI.Bytes()))
-	if dataP != nil {
+	if dataP != nil && dataP.Len() > 0 {
 		gl.NamedBufferSubData(v.PPVbo,
 			int(v.NumVertics*int32(unsafe.Sizeof(uint32(0)))),
 			dataP.Len(),
@@ -247,17 +253,19 @@ func (v *VertexCache) Add(command *DrawCommand,
 	return CheckError()
 }
 
-// this should be per primtive not per instance, how can we fix this ?
-func (v *VertexCache) AddPbrMaterialData(baseInstance int, data ...PbrMaterialData) error {
-	if baseInstance >= int(v.MaxInstances) {
-		return errors.New("no space for pbr material data")
+func (v *VertexCache) AddPbrMaterialData(data ...PbrMaterialData) (uint32, error) {
+	if len(data) >= int(v.MaxInstances*MAX_PRIMITIVE) {
+		return 0, errors.New("no space for pbr material data")
 	}
+	bytes := unsafe.Slice((*byte)(unsafe.Pointer(reflect.ValueOf(data).Index(0).UnsafeAddr())),
+		len(data)*int(unsafe.Sizeof(PbrMaterialData{})))
 	gl.NamedBufferSubData(v.PBRMaterialSSBO,
-		int(baseInstance)*int(unsafe.Sizeof(PbrMaterialData{})),
+		int(v.NumOfPbrMaterials)*int(unsafe.Sizeof(PbrMaterialData{}))*MAX_PRIMITIVE,
 		len(data)*int(unsafe.Sizeof(PbrMaterialData{})),
-		gl.Ptr(&data[0]))
+		gl.Ptr(bytes))
+	baseIndex := uint32(v.NumOfPbrMaterials)
 	v.NumOfPbrMaterials += int32(len(data))
-	return CheckError()
+	return baseIndex, CheckError()
 }
 
 func (v *VertexCache) IsEmpty() bool {
@@ -445,6 +453,7 @@ func (v *VertexCache) DrawCache() {
 		v.NumDrawCommands = 0
 		v.NumOfJoints = 0
 		v.NumOfInstances = 0
+		v.NumOfPbrMaterials = 0
 		v.Textures = v.Textures[:0]
 	}
 }
@@ -455,6 +464,7 @@ func (v *VertexCache) Reset() {
 	v.NumDrawCommands = 0
 	v.NumOfInstances = 0
 	v.NumOfTags = 0
+	v.NumOfPbrMaterials = 0
 }
 
 func (v *VertexCache) Destroy() {

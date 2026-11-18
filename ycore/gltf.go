@@ -362,6 +362,8 @@ func ProcessNode(world *ywd.World, node *gltf.Node,
 		var format []VertexFormat
 		var base uint32
 		var vertexSize int
+		pbrMaterialData := make([]PbrMaterialData, 0)
+		pbrMaterials := make([]PbrMaterial, 0)
 		for primIndx, primitive := range mesh.Primitives {
 			names := attributeNames(primitive.Attributes)
 			pf := make([]VertexFormat, 0, len(names))
@@ -429,25 +431,25 @@ func ProcessNode(world *ywd.World, node *gltf.Node,
 				}
 				var pbrMaterial PbrMaterial
 				if material.PBRMetallicRoughness.BaseColorTexture != nil {
-					texIndx := material.PBRMetallicRoughness.BaseColorTexture.Index
-					texId, err := loadTexture(doc, texIndx, r.TextureManager)
-					if err != nil {
-						return err
-					}
-					pbrMaterial.Albeo = texId
+					// texIndx := material.PBRMetallicRoughness.BaseColorTexture.Index
+					// texId, err := loadTexture(doc, texIndx, r.TextureManager)
+					// if err != nil {
+					// 	return err
+					// }
+					// pbrMaterial.Albeo = texId
 				}
 				if material.NormalTexture != nil {
-					texIndx := material.NormalTexture.Index
-					if texIndx != nil {
-						texId, err := loadTexture(doc, *texIndx, r.TextureManager)
-						if err != nil {
-							return err
-						}
-						pbrMaterial.NormalMap = texId
-					}
+					// texIndx := material.NormalTexture.Index
+					// if texIndx != nil {
+					// 	texId, err := loadTexture(doc, *texIndx, r.TextureManager)
+					// 	if err != nil {
+					// 		return err
+					// 	}
+					// 	pbrMaterial.NormalMap = texId
+					// }
 				}
-				r.World.AddComponent(ynode, ywd.PbrMaterialDataComponent, materialData)
-				r.World.AddComponent(ynode, ywd.PbrMaterialComponent, pbrMaterial)
+				pbrMaterialData = append(pbrMaterialData, materialData)
+				pbrMaterials = append(pbrMaterials, pbrMaterial)
 			}
 			base += uint32(count)
 		}
@@ -487,6 +489,8 @@ func ProcessNode(world *ywd.World, node *gltf.Node,
 			position,
 			rotation,
 		)
+		world.AddComponent(ynode, ywd.PbrMaterialComponent, pbrMaterials)
+		world.AddComponent(ynode, ywd.PbrMaterialDataComponent, pbrMaterialData)
 		if node.Skin != nil {
 			sskin := doc.Skins[*node.Skin]
 			if sskin.InverseBindMatrices != nil {
