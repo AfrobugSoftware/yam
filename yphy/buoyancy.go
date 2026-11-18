@@ -1,0 +1,36 @@
+package yphy
+
+import (
+	"yam/y3d"
+	"yam/ywd"
+)
+
+type BuoyancyForce struct {
+	World         *ywd.World
+	MaxDepth      float32
+	Volume        float32
+	WaterHeight   float32
+	LiquidDensity float32
+}
+
+func NewBuoyancyForce(world *ywd.World, maxDepth, volume, waterHeight, liquidDensity float32) *BuoyancyForce {
+	return &BuoyancyForce{
+		World:         world,
+		MaxDepth:      maxDepth,
+		Volume:        volume,
+		WaterHeight:   waterHeight,
+		LiquidDensity: liquidDensity,
+	}
+}
+
+func (b *BuoyancyForce) Force(p *Particle, dt float32) y3d.Vec3 {
+	depth := p.Position.Y
+	if depth >= b.WaterHeight+b.MaxDepth {
+		return y3d.Vec3{}
+	}
+	if depth <= b.WaterHeight-b.MaxDepth {
+		return y3d.Vec3{X: 0, Y: b.LiquidDensity * b.Volume, Z: 0}
+	}
+	fy := b.LiquidDensity * b.Volume * (depth - b.MaxDepth - b.WaterHeight) / (2 * b.MaxDepth)
+	return y3d.Vec3{X: 0, Y: fy, Z: 0}
+}

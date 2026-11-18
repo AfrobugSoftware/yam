@@ -38,8 +38,12 @@ const (
 	InstanceComponent
 	ScaleComponent
 	PbrMaterialComponent
+	PbrMaterialDataComponent
 	ParticleComponent
 	PipelineComponent
+	AnodeComponent
+	LightComponent
+	TriggerComponent
 )
 
 func GenerateRandomId() int {

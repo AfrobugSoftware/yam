@@ -208,3 +208,15 @@ func UpdateEntityAnimation(w *ywd.World, delta float32) {
 	}
 	wg.Wait()
 }
+
+type Animator struct {
+	Animations []*Animation
+	Current    int
+}
+
+func NewAnimator(animations []*Animation) *Animator {
+	return &Animator{
+		Animations: animations,
+		Current:    0,
+	}
+}

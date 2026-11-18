@@ -43,6 +43,7 @@ var (
 		gltf.ComponentFloat:  5126,
 	}
 	minFilter = map[gltf.MinFilter]uint16{
+		gltf.MinUndefined:            gl.NEAREST,
 		gltf.MinNearest:              9728,
 		gltf.MinLinear:               9729,
 		gltf.MinNearestMipMapNearest: 9984,
@@ -51,8 +52,9 @@ var (
 		gltf.MinLinearMipMapLinear:   9987,
 	}
 	magFilter = map[gltf.MagFilter]uint16{
-		gltf.MagNearest: 9728,
-		gltf.MagLinear:  9729,
+		gltf.MagUndefined: gl.NEAREST,
+		gltf.MagNearest:   9728,
+		gltf.MagLinear:    9729,
 	}
 	wrapMode = map[gltf.WrappingMode]uint16{
 		gltf.WrapClampToEdge:    33071,
@@ -126,6 +128,11 @@ func loadTexture(doc *gltf.Document, texIndx int, skinManager *TextureManager) (
 		gl.TextureParameteri(texId, gl.TEXTURE_WRAP_T, int32(wrapMode[sampler.WrapT]))
 		gl.TextureParameteri(texId, gl.TEXTURE_MIN_FILTER, int32(minFilter[sampler.MinFilter]))
 		gl.TextureParameteri(texId, gl.TEXTURE_MAG_FILTER, int32(magFilter[sampler.MagFilter]))
+
+		err := CheckError()
+		if err != nil {
+			return 0, err
+		}
 
 		bv := doc.BufferViews[*img.BufferView]
 		buffer := doc.Buffers[bv.Buffer]
@@ -393,6 +400,49 @@ func ProcessNode(world *ywd.World, node *gltf.Node,
 					binary.LittleEndian.PutUint32(tmp[:], base+uint32(n))
 					i.Write(tmp[:])
 				}
+			}
+			if primitive.Material != nil {
+				material := doc.Materials[*primitive.Material]
+				materialData := PbrMaterialData{
+					BaseColorFactor: y3d.Vec4{
+						X: float32(material.PBRMetallicRoughness.BaseColorFactor[0]),
+						Y: float32(material.PBRMetallicRoughness.BaseColorFactor[1]),
+						Z: float32(material.PBRMetallicRoughness.BaseColorFactor[2]),
+						W: float32(material.PBRMetallicRoughness.BaseColorFactor[3]),
+					},
+					EmissiveFactor: y3d.Vec3{
+						X: float32(material.EmissiveFactor[0]),
+						Y: float32(material.EmissiveFactor[1]),
+						Z: float32(material.EmissiveFactor[2]),
+					},
+				}
+				if material.PBRMetallicRoughness.MetallicFactor != nil {
+					materialData.MetallicFactor = float32(*material.PBRMetallicRoughness.MetallicFactor)
+				}
+				if material.PBRMetallicRoughness.RoughnessFactor != nil {
+					materialData.RoughnessFactor = float32(*material.PBRMetallicRoughness.RoughnessFactor)
+				}
+				var pbrMaterial PbrMaterial
+				if material.PBRMetallicRoughness.BaseColorTexture != nil {
+					texIndx := material.PBRMetallicRoughness.BaseColorTexture.Index
+					texId, err := loadTexture(doc, texIndx, r.TextureManager)
+					if err != nil {
+						return err
+					}
+					pbrMaterial.Albeo = texId
+				}
+				if material.NormalTexture != nil {
+					texIndx := material.NormalTexture.Index
+					if texIndx != nil {
+						texId, err := loadTexture(doc, *texIndx, r.TextureManager)
+						if err != nil {
+							return err
+						}
+						pbrMaterial.NormalMap = texId
+					}
+				}
+				r.World.AddComponent(ynode, ywd.PbrMaterialDataComponent, materialData)
+				r.World.AddComponent(ynode, ywd.PbrMaterialComponent, pbrMaterial)
 			}
 			base += uint32(count)
 		}

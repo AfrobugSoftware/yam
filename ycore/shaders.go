@@ -89,7 +89,7 @@ vec4 calculate_bling_phong(int light_index) {
 	vec3 halfway_direction = normalize(light_direction + view_direction);
 	vec3 normal = normalize(fs_in.normal);
 
-	float specular_factor = pow(max(dot(normal, halfway_direction), 0.0), 0.5);
+	float specular_factor = pow(max(dot(normal, halfway_direction), 0.0), material.emissive_shineness.w);
 	vec4 specular = render_params.l[light_index].color * material.specular * specular_factor;
 
 	float diffuse_factor = max(dot(normal, light_direction), 0.0);
@@ -99,7 +99,7 @@ vec4 calculate_bling_phong(int light_index) {
 }
 
 void main() {
-	out_color = vec4(calculate_bling_phong(0).xyz, ors.data[fs_in.draw_index].alpha);
+	out_color = vec4(normalize(fs_in.normal), 1.0);//vec4(calculate_bling_phong(0).xyz, ors.data[fs_in.draw_index].alpha);
 }	
 	`
 

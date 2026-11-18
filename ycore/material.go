@@ -22,4 +22,12 @@ type PbrMaterial struct {
 	Albeo     uint32
 	Specular  uint32
 	NormalMap uint32
+	PbrParam  uint32 //index into the pbr material data buffer
+}
+
+type PbrMaterialData struct {
+	BaseColorFactor y3d.Vec4
+	MetallicFactor  float32
+	RoughnessFactor float32
+	EmissiveFactor  y3d.Vec3
 }

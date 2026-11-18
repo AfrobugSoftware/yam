@@ -42,34 +42,36 @@ type DrawCommand struct {
 }
 
 type VertexCache struct {
-	Vao             uint32
-	VertexVbo       uint32
-	IndexVbo        uint32
-	DrawCommandBo   uint32
-	DrawIndexVbo    uint32
-	WorldMatrixSSBO uint32
-	RenderStateSSBO uint32
-	JointSSBO       uint32
-	TagSSBO         uint32
-	MaxVertices     int32
-	MaxIndices      int32
-	MaxDrawCommands int32
-	MaxInstances    int32
-	MaxJoints       int32
-	MaxTags         int32
-	NumVertics      int32
-	NumIndices      int32
-	NumDrawCommands int32
-	NumOfInstances  int32
-	NumOfJoints     int32
-	NumOfTags       int32
-	Stride          int32
-	DrawMode        uint32
-	Id              int
-	Textures        []uint32
-	Format          []VertexFormat
-	SkinManager     *TextureManager
-	VManager        *VertexCacheManager
+	Vao               uint32
+	VertexVbo         uint32
+	IndexVbo          uint32
+	DrawCommandBo     uint32
+	DrawIndexVbo      uint32
+	WorldMatrixSSBO   uint32
+	RenderStateSSBO   uint32
+	JointSSBO         uint32
+	TagSSBO           uint32
+	PBRMaterialSSBO   uint32
+	MaxVertices       int32
+	MaxIndices        int32
+	MaxDrawCommands   int32
+	MaxInstances      int32
+	MaxJoints         int32
+	MaxTags           int32
+	NumVertics        int32
+	NumIndices        int32
+	NumDrawCommands   int32
+	NumOfInstances    int32
+	NumOfJoints       int32
+	NumOfTags         int32
+	NumOfPbrMaterials int32
+	Stride            int32
+	DrawMode          uint32
+	Id                int
+	Textures          []uint32
+	Format            []VertexFormat
+	SkinManager       *TextureManager
+	VManager          *VertexCacheManager
 }
 
 func NewVertexCache(
@@ -81,7 +83,7 @@ func NewVertexCache(
 	id int,
 	format []VertexFormat,
 ) *VertexCache {
-	var vao, vvbo, ivbo, dcbo, divbo, mssbo, rfssobo, jssbo, pickSSBO uint32
+	var vao, vvbo, ivbo, dcbo, divbo, mssbo, rfssobo, jssbo, pickSSBO, pbrSSBO uint32
 	gl.CreateVertexArrays(1, &vao)
 	gl.BindVertexArray(vao)
 
@@ -108,11 +110,11 @@ func NewVertexCache(
 	gl.CreateBuffers(1, &divbo)
 	gl.NamedBufferStorage(divbo, int(maxInstances*int32(unsafe.Sizeof(uint32(0)))), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
 	UpdateGPUMem(uint64(maxInstances * int32(unsafe.Sizeof(uint32(0)))))
-	gl.VertexArrayAttribBinding(vao, 10, DRAW_INDEX_BINDING)
+	gl.VertexArrayAttribBinding(vao, DRAW_INDEX_BINDING, DRAW_INDEX_BINDING)
 	gl.VertexArrayVertexBuffer(vao, DRAW_INDEX_BINDING, divbo, 0, int32(unsafe.Sizeof(uint32(0))))
-	gl.VertexArrayAttribIFormat(vao, 10, 1, gl.UNSIGNED_INT, 0)
-	gl.VertexArrayVertexAttribDivisorEXT(vao, 10, 1)
-	gl.EnableVertexArrayAttrib(vao, 10)
+	gl.VertexArrayAttribIFormat(vao, DRAW_INDEX_BINDING, 1, gl.UNSIGNED_INT, 0)
+	gl.VertexArrayVertexAttribDivisorEXT(vao, DRAW_INDEX_BINDING, 1)
+	gl.EnableVertexArrayAttrib(vao, DRAW_INDEX_BINDING)
 
 	gl.CreateBuffers(1, &dcbo)
 	gl.NamedBufferStorage(dcbo, int(unsafe.Sizeof(DrawCommand{})*uintptr(maxDraws)), nil, gl.DYNAMIC_STORAGE_BIT)
@@ -132,6 +134,10 @@ func NewVertexCache(
 	gl.CreateBuffers(1, &pickSSBO)
 	gl.NamedBufferStorage(pickSSBO, int(4*maxInstances), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
 
+	gl.CreateBuffers(1, &pbrSSBO)
+	gl.NamedBufferStorage(pbrSSBO, int(unsafe.Sizeof(PbrMaterialData{})*uintptr(maxInstances)), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
+	UpdateGPUMem(uint64(unsafe.Sizeof(PbrMaterialData{}) * uintptr(maxInstances)))
+
 	err := CheckError()
 	if err != nil {
 		panic(err)
@@ -148,6 +154,7 @@ func NewVertexCache(
 		JointSSBO:       jssbo,
 		TagSSBO:         pickSSBO,
 		RenderStateSSBO: rfssobo,
+		PBRMaterialSSBO: pbrSSBO,
 		MaxVertices:     maxVertex,
 		MaxIndices:      maxIndex,
 		MaxDrawCommands: maxDraws,
@@ -221,6 +228,20 @@ func (v *VertexCache) Add(command *DrawCommand,
 	v.NumIndices += int32(dataI.Len() / 4)
 	return CheckError()
 }
+
+// this should be per primtive not per instance, how can we fix this ?
+func (v *VertexCache) AddPbrMaterialData(baseInstance int, data ...PbrMaterialData) error {
+	if baseInstance >= int(v.MaxInstances) {
+		return errors.New("no space for pbr material data")
+	}
+	gl.NamedBufferSubData(v.PBRMaterialSSBO,
+		int(baseInstance)*int(unsafe.Sizeof(PbrMaterialData{})),
+		len(data)*int(unsafe.Sizeof(PbrMaterialData{})),
+		gl.Ptr(&data[0]))
+	v.NumOfPbrMaterials += int32(len(data))
+	return CheckError()
+}
+
 func (v *VertexCache) IsEmpty() bool {
 	return v.NumVertics == 0 || v.NumDrawCommands == 0
 }
@@ -391,6 +412,7 @@ func (v *VertexCache) DrawCache() {
 		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, JOINTS_SSBO_BINDING, v.JointSSBO)
 		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, RENDER_FLAG_BINDING, v.RenderStateSSBO)
 		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, TAG_BUFFER_BINDING, v.TagSSBO)
+		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, PBR_MATERIAL_BINDING, v.PBRMaterialSSBO)
 		gl.BindBuffer(gl.DRAW_INDIRECT_BUFFER, v.DrawCommandBo)
 		switch v.DrawMode {
 		case gl.TRIANGLES, gl.LINES, gl.LINE_STRIP:
@@ -426,6 +448,7 @@ func (v *VertexCache) Destroy() {
 	gl.DeleteBuffers(1, &v.RenderStateSSBO)
 	gl.DeleteBuffers(1, &v.JointSSBO)
 	gl.DeleteBuffers(1, &v.TagSSBO)
+	gl.DeleteBuffers(1, &v.PBRMaterialSSBO)
 	gl.DeleteVertexArrays(1, &v.Vao)
 }
 
