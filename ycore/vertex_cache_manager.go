@@ -321,7 +321,7 @@ func (vm *VertexCacheManager) LoadInstances(vertexType string, Id int, command *
 
 func (vm *VertexCacheManager) LoadCache(
 	vertexType string,
-	dataV, dataI *bytes.Buffer,
+	dataV, dataI, dataP *bytes.Buffer,
 	command *DrawCommand,
 ) (int, error) {
 	vc, ok := vm.Caches[vertexType]
@@ -339,6 +339,7 @@ func (vm *VertexCacheManager) LoadCache(
 			command,
 			dataV,
 			dataI,
+			dataP,
 		)
 		if err != nil {
 			return -1, err

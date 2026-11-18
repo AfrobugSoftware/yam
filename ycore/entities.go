@@ -15,9 +15,9 @@ func AddEntityRenderableData(
 	ent ywd.EntityId,
 	vertexType string,
 	scale float32,
-	v, i *bytes.Buffer, vm *VertexCacheManager) error {
+	v, i, p *bytes.Buffer, vm *VertexCacheManager) error {
 	cmd := DrawCommand{}
-	vid, err := vm.LoadCache(vertexType, v, i, &cmd)
+	vid, err := vm.LoadCache(vertexType, v, i, p, &cmd)
 	if err != nil {
 		return err
 	}

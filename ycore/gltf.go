@@ -234,7 +234,8 @@ func attributeNames[V any](attrs map[string]V) []string {
 
 func align4(n int) int { return (n + 3) &^ 3 }
 
-func makeVBuffer(v *bytes.Buffer, format []VertexFormat, attribs []vertexAttrib) (int, int, error) {
+func makeVBuffer(v, p *bytes.Buffer,
+	primIndx int, format []VertexFormat, attribs []vertexAttrib) (int, int, error) {
 	if len(format) != len(attribs) {
 		return 0, 0, errors.New("format list must match attribute list")
 	}
@@ -266,6 +267,10 @@ func makeVBuffer(v *bytes.Buffer, format []VertexFormat, attribs []vertexAttrib)
 			src := n * a.stride
 			copy(out[dst:dst+a.size], a.src[src:src+a.size])
 		}
+	}
+	//copy the primitive index for each vertex
+	for range count {
+		binary.Write(p, binary.LittleEndian, uint32(primIndx))
 	}
 	v.Write(out)
 	out = nil
@@ -352,12 +357,12 @@ func ProcessNode(world *ywd.World, node *gltf.Node,
 	if node.Mesh != nil {
 		ynode := world.NewEntity()
 		mesh := doc.Meshes[*node.Mesh]
-		v, i := &bytes.Buffer{}, &bytes.Buffer{}
+		v, i, p := &bytes.Buffer{}, &bytes.Buffer{}, &bytes.Buffer{}
 		vertexType := ""
 		var format []VertexFormat
 		var base uint32
 		var vertexSize int
-		for _, primitive := range mesh.Primitives {
+		for primIndx, primitive := range mesh.Primitives {
 			names := attributeNames(primitive.Attributes)
 			pf := make([]VertexFormat, 0, len(names))
 			attribs := make([]vertexAttrib, 0, len(names))
@@ -375,7 +380,7 @@ func ProcessNode(world *ywd.World, node *gltf.Node,
 				attribs = append(attribs, a)
 			}
 			vertexType = strings.Join(names, ".")
-			count, vs, err := makeVBuffer(v, pf, attribs)
+			count, vs, err := makeVBuffer(v, p, primIndx, pf, attribs)
 			vertexSize = vs
 			if err != nil {
 				return err
@@ -465,13 +470,12 @@ func ProcessNode(world *ywd.World, node *gltf.Node,
 			Z: float32(node.Rotation[2]),
 			W: float32(node.Rotation[3]),
 		}
-		fmt.Println(rotation)
 		err := AddEntityRenderableData(
 			world,
 			ynode,
 			vertexType,
 			1.0,
-			v, i,
+			v, i, p,
 			r.VertextManager,
 		)
 		if err != nil {

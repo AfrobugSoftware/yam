@@ -8,6 +8,7 @@ layout(location = 1) in vec3 norm;
 layout(location = 2) in vec2 tc;
 layout(location = 3) in vec4 color;
 layout(location = 10) in uint dInx;
+layout(location = 11) in uint primInx;
 
 struct per_object_transform {
 	mat4 world;
@@ -25,6 +26,7 @@ out data {
 	vec3 normal;
 	vec2 tc;
 	vec4 color;
+	flat uint prim_index;
 	flat uint draw_index;
 }vs_out;
 void main() {
@@ -32,6 +34,7 @@ void main() {
 	vs_out.normal = mat3(world[dInx].normal) * norm;
 	vs_out.tc = tc;
 	vs_out.draw_index = dInx;
+	vs_out.prim_index = primInx;
 	gl_Position = view_proj * world[dInx].world * vec4(pos, 1.0);
 };
 
@@ -44,6 +47,7 @@ in data {
 	vec3 normal;
 	vec2 tc;
 	vec4 color;
+	flat uint prim_index;
 	flat uint draw_index;
 }fs_in;
 
@@ -99,7 +103,11 @@ vec4 calculate_bling_phong(int light_index) {
 }
 
 void main() {
-	out_color = vec4(normalize(fs_in.normal), 1.0);//vec4(calculate_bling_phong(0).xyz, ors.data[fs_in.draw_index].alpha);
+	if(fs_in.prim_index == 0) {
+		out_color = vec4(normalize(fs_in.normal), 1.0);
+	} else {
+		out_color = vec4(calculate_bling_phong(0).xyz, ors.data[fs_in.draw_index].alpha);
+	}
 }	
 	`
 

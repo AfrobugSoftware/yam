@@ -47,6 +47,7 @@ type VertexCache struct {
 	IndexVbo          uint32
 	DrawCommandBo     uint32
 	DrawIndexVbo      uint32
+	PPVbo             uint32
 	WorldMatrixSSBO   uint32
 	RenderStateSSBO   uint32
 	JointSSBO         uint32
@@ -83,7 +84,7 @@ func NewVertexCache(
 	id int,
 	format []VertexFormat,
 ) *VertexCache {
-	var vao, vvbo, ivbo, dcbo, divbo, mssbo, rfssobo, jssbo, pickSSBO, pbrSSBO uint32
+	var vao, vvbo, ivbo, dcbo, divbo, mssbo, rfssobo, jssbo, pickSSBO, pbrSSBO, ppVbo uint32
 	gl.CreateVertexArrays(1, &vao)
 	gl.BindVertexArray(vao)
 
@@ -115,6 +116,16 @@ func NewVertexCache(
 	gl.VertexArrayAttribIFormat(vao, DRAW_INDEX_BINDING, 1, gl.UNSIGNED_INT, 0)
 	gl.VertexArrayVertexAttribDivisorEXT(vao, DRAW_INDEX_BINDING, 1)
 	gl.EnableVertexArrayAttrib(vao, DRAW_INDEX_BINDING)
+
+	gl.CreateBuffers(1, &ppVbo)
+	gl.NamedBufferStorage(ppVbo, int(maxVertex*int32(unsafe.Sizeof(uint32(0)))), nil, gl.DYNAMIC_STORAGE_BIT)
+	zero := uint32(0)
+	gl.ClearNamedBufferData(ppVbo, gl.R32UI, gl.RED_INTEGER, gl.UNSIGNED_INT, gl.Ptr(&zero))
+	UpdateGPUMem(uint64(maxVertex * int32(unsafe.Sizeof(uint32(0)))))
+	gl.VertexArrayAttribBinding(vao, PRIMITIVE_ID_BINDING, PRIMITIVE_ID_BINDING)
+	gl.VertexArrayVertexBuffer(vao, PRIMITIVE_ID_BINDING, ppVbo, 0, int32(unsafe.Sizeof(uint32(0))))
+	gl.VertexArrayAttribIFormat(vao, PRIMITIVE_ID_BINDING, 1, gl.UNSIGNED_INT, 0)
+	gl.EnableVertexArrayAttrib(vao, PRIMITIVE_ID_BINDING)
 
 	gl.CreateBuffers(1, &dcbo)
 	gl.NamedBufferStorage(dcbo, int(unsafe.Sizeof(DrawCommand{})*uintptr(maxDraws)), nil, gl.DYNAMIC_STORAGE_BIT)
@@ -150,6 +161,7 @@ func NewVertexCache(
 		IndexVbo:        ivbo,
 		DrawCommandBo:   dcbo,
 		DrawIndexVbo:    divbo,
+		PPVbo:           ppVbo,
 		WorldMatrixSSBO: mssbo,
 		JointSSBO:       jssbo,
 		TagSSBO:         pickSSBO,
@@ -208,7 +220,7 @@ func (v *VertexCache) AddPolygon(indices []uint32,
 }
 
 func (v *VertexCache) Add(command *DrawCommand,
-	dataV, dataI *bytes.Buffer) error {
+	dataV, dataI, dataP *bytes.Buffer) error {
 	if dataV == nil || dataI == nil {
 		return errors.New("cannot load empty vertex or index buffer")
 	}
@@ -220,6 +232,12 @@ func (v *VertexCache) Add(command *DrawCommand,
 		int(4*v.NumIndices),
 		dataI.Len(),
 		gl.Ptr(dataI.Bytes()))
+	if dataP != nil {
+		gl.NamedBufferSubData(v.PPVbo,
+			int(v.NumVertics*int32(unsafe.Sizeof(uint32(0)))),
+			dataP.Len(),
+			gl.Ptr(dataP.Bytes()))
+	}
 	command.BaseVertex = uint32(v.NumVertics)
 	command.FirstIndex = uint32(v.NumIndices)
 	command.Count = uint32(dataI.Len() / 4)
