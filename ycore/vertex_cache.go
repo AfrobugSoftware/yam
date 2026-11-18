@@ -17,7 +17,15 @@ const (
 )
 
 const (
-	MAX_PRIMITIVE = 100
+	MAX_PRIMITIVE = 10000
+)
+
+// render flags
+const (
+	FLAG_SELECTED = 1 << iota
+	FLAG_TEXTURED_ALBEO
+	FLAG_TEXTURED_SPECULAR
+	FLAG_TEXTURED_NORMAL
 )
 
 type PerObjectRenderState struct {
@@ -29,6 +37,14 @@ type PerObjectRenderState struct {
 	Tex4          uint32
 	BaseJointIdx  uint32
 	BasePbrMatIdx uint32
+}
+
+func (p *PerObjectRenderState) SetFlag(flag uint32) {
+	p.Flag |= flag
+}
+
+func (p *PerObjectRenderState) ClearFlag(flag uint32) {
+	p.Flag &^= flag
 }
 
 type VertexFormat struct {
@@ -151,9 +167,9 @@ func NewVertexCache(
 	gl.NamedBufferStorage(pickSSBO, int(4*maxInstances), nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
 
 	gl.CreateBuffers(1, &pbrSSBO)
-	gl.NamedBufferStorage(pbrSSBO, int(unsafe.Sizeof(PbrMaterialData{})*uintptr(maxInstances*MAX_PRIMITIVE)),
+	gl.NamedBufferStorage(pbrSSBO, int(unsafe.Sizeof(PbrMaterialData{})*uintptr(10*MAX_PRIMITIVE)),
 		nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
-	UpdateGPUMem(uint64(unsafe.Sizeof(PbrMaterialData{}) * uintptr(maxInstances*MAX_PRIMITIVE)))
+	UpdateGPUMem(uint64(unsafe.Sizeof(PbrMaterialData{}) * uintptr(10*MAX_PRIMITIVE)))
 
 	err := CheckError()
 	if err != nil {

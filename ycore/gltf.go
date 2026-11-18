@@ -431,23 +431,32 @@ func ProcessNode(world *ywd.World, node *gltf.Node,
 				}
 				var pbrMaterial PbrMaterial
 				if material.PBRMetallicRoughness.BaseColorTexture != nil {
-					// texIndx := material.PBRMetallicRoughness.BaseColorTexture.Index
-					// texId, err := loadTexture(doc, texIndx, r.TextureManager)
-					// if err != nil {
-					// 	return err
-					// }
-					// pbrMaterial.Albeo = texId
+					texIndx := material.PBRMetallicRoughness.BaseColorTexture.Index
+					texId, err := loadTexture(doc, texIndx, r.TextureManager)
+					if err != nil {
+						return err
+					}
+					pbrMaterial.Albeo = texId
+				}
+				if material.PBRMetallicRoughness.MetallicRoughnessTexture != nil {
+					texIndx := material.PBRMetallicRoughness.MetallicRoughnessTexture.Index
+					texId, err := loadTexture(doc, texIndx, r.TextureManager)
+					if err != nil {
+						return err
+					}
+					pbrMaterial.Specular = texId
 				}
 				if material.NormalTexture != nil {
-					// texIndx := material.NormalTexture.Index
-					// if texIndx != nil {
-					// 	texId, err := loadTexture(doc, *texIndx, r.TextureManager)
-					// 	if err != nil {
-					// 		return err
-					// 	}
-					// 	pbrMaterial.NormalMap = texId
-					// }
+					texIndx := material.NormalTexture.Index
+					if texIndx != nil {
+						texId, err := loadTexture(doc, *texIndx, r.TextureManager)
+						if err != nil {
+							return err
+						}
+						pbrMaterial.NormalMap = texId
+					}
 				}
+
 				pbrMaterialData = append(pbrMaterialData, materialData)
 				pbrMaterials = append(pbrMaterials, pbrMaterial)
 			}

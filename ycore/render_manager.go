@@ -1295,14 +1295,17 @@ func (r *RenderManager) RenderEntities(cull bool, entities []ywd.EntityId) {
 					pbr = pbrs[0]
 					t, err := v.AddTexture(pbr.Albeo)
 					if err == nil {
+						nrs.SetFlag(FLAG_TEXTURED_ALBEO)
 						nrs.Tex1 = uint32(t)
 					}
 					t, err = v.AddTexture(pbr.Specular)
 					if err == nil {
+						nrs.SetFlag(FLAG_TEXTURED_SPECULAR)
 						nrs.Tex2 = uint32(t)
 					}
 					t, err = v.AddTexture(pbr.NormalMap)
 					if err == nil {
+						nrs.SetFlag(FLAG_TEXTURED_NORMAL)
 						nrs.Tex3 = uint32(t)
 					}
 					if r.World.HasComponent(e, ywd.PbrMaterialDataComponent) {

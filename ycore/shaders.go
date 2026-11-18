@@ -99,6 +99,8 @@ layout(std430, binding = 5) buffer pbr_material_data_buffer {
 	pbr_material_data data[];
 }pbr_data;
 
+uniform sampler2D textures[32];
+
 vec4 calculate_bling_phong(int light_index) {
 	vec3 light_direction = normalize(vec3(render_params.l[light_index].pos) - fs_in.pos);
 	vec3 view_direction = normalize(render_params.view_pos - fs_in.pos);
@@ -106,20 +108,24 @@ vec4 calculate_bling_phong(int light_index) {
 	vec3 normal = normalize(fs_in.normal);
 
 	float specular_factor = pow(max(dot(normal, halfway_direction), 0.0), material.emissive_shineness.w);
-	vec4 specular = render_params.l[light_index].color * material.specular * specular_factor;
+	vec4 specular = render_params.l[light_index].color * specular_factor;
 
 	float diffuse_factor = max(dot(normal, light_direction), 0.0);
-	vec4 diffuse = render_params.l[light_index].color * material.diffuse * diffuse_factor;
+	vec4 diffuse = render_params.l[light_index].color * diffuse_factor;
 	vec4 ambient = material.ambient * render_params.l[light_index].color * 0.1;
 	return (diffuse + specular);
 }
 
 void main() {
-	if(fs_in.prim_index == 0) {
-		out_color = vec4(normalize(fs_in.normal), 1.0);
+	if((ors.data[fs_in.draw_index].render_flag & (1 << 1)) != 0) {
+		out_color = texture(textures[ors.data[fs_in.draw_index].tex1], fs_in.tc);
+		return;
+	}else if(fs_in.prim_index == 0) {
+		//out_color = vec4(normalize(fs_in.normal), 1.0);
+		out_color =  vec4(calculate_bling_phong(0).xyz, ors.data[fs_in.draw_index].alpha);
 	} else {
 	 	vec4 color = pbr_data.data[ors.data[fs_in.draw_index].base_pbr_mat_idx + fs_in.prim_index].base_color_factor;
-		out_color = color; //vec4(calculate_bling_phong(0).xyz, ors.data[fs_in.draw_index].alpha);
+		out_color = vec4(color.xyz, 1.0); //vec4(calculate_bling_phong(0).xyz, ors.data[fs_in.draw_index].alpha);
 	}
 }	
 	`

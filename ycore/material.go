@@ -1,6 +1,10 @@
 package ycore
 
-import "yam/y3d"
+import (
+	"yam/y3d"
+
+	"github.com/go-gl/gl/v4.3-core/gl"
+)
 
 var (
 	IdentityMaterial = Material{
@@ -23,6 +27,21 @@ type PbrMaterial struct {
 	Specular  uint32
 	NormalMap uint32
 	PbrParam  uint32 //index into the pbr material data buffer
+}
+
+func (p *PbrMaterial) Close() {
+	if p.Albeo != 0 {
+		gl.DeleteTextures(1, &p.Albeo)
+		p.Albeo = 0
+	}
+	if p.Specular != 0 {
+		gl.DeleteTextures(1, &p.Specular)
+		p.Specular = 0
+	}
+	if p.NormalMap != 0 {
+		gl.DeleteTextures(1, &p.NormalMap)
+		p.NormalMap = 0
+	}
 }
 
 type PbrMaterialData struct {
