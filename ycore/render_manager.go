@@ -294,7 +294,7 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 			Z: -1.0,
 			W: 1.0},
 		Color: y3d.Vec4{
-			X: 0.0,
+			X: 1.0,
 			Y: 1.0,
 			Z: 1.0,
 			W: 1.0,
