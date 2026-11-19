@@ -128,6 +128,9 @@ func Draw(root *UIElement, proj y3d.Mat4) {
 	}
 	i := 0
 	for _, ui := range flat {
+		if ui.Flag&UI_INVISIBLE != 0 {
+			continue
+		}
 		if len(ui.Lines) > 0 {
 			i = DrawText(i, ui)
 		} else {

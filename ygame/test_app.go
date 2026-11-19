@@ -69,10 +69,18 @@ func (t *TestApplication) Startup(e *Engine) {
 	t.LevelTest() //level test
 }
 func (t *TestApplication) TestAbsolutePositioning() {
-	root := yui.Button("Click me", y3d.Vec2{
-		X: 110,
-		Y: 50,
-	}, t.font)
+	root := yui.Column(y3d.Vec4{X: 2, Y: 2, Z: 2, W: 2},
+		10,
+		yui.Button("Click me", y3d.Vec2{
+			X: 110,
+			Y: 50,
+		}, [4]uint8{0, 0, 0, 255}, t.font),
+		yui.SizedBox(y3d.Vec2{X: 0, Y: 10}),
+		yui.Button("Click me again", y3d.Vec2{
+			X: 150,
+			Y: 50,
+		}, yui.BLUE, t.font),
+	)
 	t.engine.RenderManager.RootUI = root
 	t.drag = yphy.NewDragForce(0.5, 0.5)
 }

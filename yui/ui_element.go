@@ -26,6 +26,7 @@ const (
 	UI_TEXT                 = 1 << 18
 	UI_ABSOLUTE_POSITION    = 1 << 19
 	UI_TEXTURED             = 1 << 20
+	UI_INVISIBLE            = 1 << 21
 )
 const (
 	UI_GROW         = UI_GROW_X | UI_GROW_Y
@@ -66,11 +67,7 @@ type UIElement struct {
 func NewUIElement(pos, baseSize y3d.Vec2) *UIElement {
 	return &UIElement{
 		Position: pos,
-		Flag:     UI_FIT | UI_LAYOUT_LEFT_TO_RIGHT,
-		ChildGap: 0,
 		BaseSize: baseSize,
-		Size:     y3d.Vec2{X: 1, Y: 1},
-		Padding:  y3d.Vec4{X: 2, Y: 2, Z: 2, W: 2},
 	}
 }
 
@@ -94,6 +91,11 @@ func (ui *UIElement) SetPadding(padding y3d.Vec4) *UIElement {
 }
 func (ui *UIElement) SetColor(color [4]uint8) *UIElement {
 	ui.Color = color
+	return ui
+}
+
+func (ui *UIElement) SetChildGap(gap int) *UIElement {
+	ui.ChildGap = int(gap)
 	return ui
 }
 func (ui *UIElement) Add(eui ...*UIElement) *UIElement {

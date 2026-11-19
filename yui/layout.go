@@ -180,9 +180,6 @@ func fitSize(ui *UIElement, a axis) {
 		minContent += ui.gap()
 	} else {
 		for _, c := range ui.Children {
-			if c.Flag&UI_FLOATING != 0 {
-				continue
-			}
 			content = max(content, get(c.Size, a))
 			minContent = max(minContent, get(c.minSize, a))
 		}
