@@ -14,16 +14,17 @@ import (
 )
 
 type TestApplication struct {
-	engine       *Engine
-	camFront     y3d.Vec3
-	camPostiion  y3d.Vec3
-	camUp        y3d.Vec3
-	yaw, pitch   float32
-	pickedEntity ywd.EntityId
-	boxEnt       ywd.EntityId
-	font         *yui.Font
-	useCam       bool
-	drag         *yphy.DragForce
+	engine        *Engine
+	camFront      y3d.Vec3
+	camPostiion   y3d.Vec3
+	camUp         y3d.Vec3
+	yaw, pitch    float32
+	pickedEntity  ywd.EntityId
+	boxEnt        ywd.EntityId
+	font          *yui.Font
+	useCam        bool
+	drag          *yphy.DragForce
+	forceRegistry *yphy.ForceRegistry
 }
 
 func (t *TestApplication) Startup(e *Engine) {
@@ -53,6 +54,7 @@ func (t *TestApplication) Startup(e *Engine) {
 	if err != nil {
 		panic(err)
 	}
+	t.forceRegistry = yphy.NewForceRegistry()
 	t.camPostiion.Y = 1
 	t.yaw = float32(y3d.ToRadians(90))
 	t.camFront = y3d.Normalize(y3d.Vec3{
@@ -212,6 +214,8 @@ func (t *TestApplication) Update(deltaTime float64) {
 	t.UpdatePickedEntity()
 	t.AddBox()
 	t.ShotBullet()
+	t.forceRegistry.Update(t.engine.RenderManager.World,
+		float32(deltaTime))
 	//t.AddDrag(float32(deltaTime))
 	t.UpdateCamera()
 }

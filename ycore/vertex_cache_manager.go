@@ -346,7 +346,7 @@ func (vm *VertexCacheManager) LoadCache(
 		}
 		return vc[i].Id, nil
 	}
-	return -1, errors.New("no cache avaliale for data")
+	return -1, errors.New("no cache available for data")
 }
 
 func (vm *VertexCacheManager) ForceRender(vertexType string) error {

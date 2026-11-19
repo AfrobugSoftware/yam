@@ -82,3 +82,33 @@ func (s *BungeeSpringForce) Force(p *Particle, dt float32) y3d.Vec3 {
 	coeff := s.SpringConstant * (s.RestLength - dist)
 	return y3d.Smul(dp, -coeff)
 }
+
+type FakeSpringForce struct {
+	Anchor         y3d.Vec3
+	SpringConstant float32
+	Damping        float32
+}
+
+func NewFakeSpringForce(anchor y3d.Vec3, springConstant, damping float32) *FakeSpringForce {
+	return &FakeSpringForce{
+		Anchor:         anchor,
+		SpringConstant: springConstant,
+		Damping:        damping,
+	}
+}
+
+// using damped harmonic motion to calculate the force of a spring with damping
+// cannot be used for springs that has other forces acting on it, like gravity or other springs
+func (s *FakeSpringForce) Force(p *Particle, dt float32) y3d.Vec3 {
+	position := y3d.Sub(p.Position, s.Anchor)
+	gamma := float32(0.5 * math.Sqrt(4*float64(s.SpringConstant)-float64(s.Damping*s.Damping)))
+	if gamma == 0 {
+		return y3d.UnitV3
+	}
+	c := y3d.Add(y3d.Smul(position, (s.Damping/(2*float32(gamma)))), y3d.Smul(p.Velocity, 1/float32(gamma)))
+	target := y3d.Add(y3d.Smul(position, float32(math.Cos(float64(gamma*dt)))), y3d.Smul(c, float32(math.Sin(float64(gamma*dt)))))
+	target = y3d.Smul(target, float32(math.Exp(float64(-0.5*dt*s.Damping))))
+	accel := y3d.Smul(y3d.Sub(target, position), 1/(dt*dt))
+	accel = y3d.Sub(accel, y3d.Smul(p.Velocity, dt))
+	return y3d.Smul(accel, 1/p.InverseMass)
+}
