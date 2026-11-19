@@ -1,7 +1,6 @@
 package ycore
 
 import (
-	"fmt"
 	"yam/y3d"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -202,9 +201,12 @@ func (im *InputManager) ProcessInput() bool {
 				Y: float32(w.Y),
 			}
 			im.ScrollWheelDir = w.Direction
-		case sdl.WINDOWEVENT_SIZE_CHANGED:
-			fmt.Println("resized")
-			im.IsResized = true
+		case sdl.WINDOWEVENT:
+			we := event.(*sdl.WindowEvent)
+			switch we.Event {
+			case sdl.WINDOWEVENT_RESIZED:
+				im.IsResized = true
+			}
 		case sdl.TEXTINPUT:
 			c := event.(*sdl.TextInputEvent)
 			im.TextInput = c.GetText()

@@ -40,7 +40,7 @@ func NewEngine(title string, width, height int32) (*Engine, error) {
 	sdl.GLSetAttribute(sdl.GL_DEPTH_SIZE, 24)
 	sdl.GLSetSwapInterval(1)
 	window, err := sdl.CreateWindow(title, sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, width, height,
-		sdl.WINDOW_OPENGL|sdl.WINDOW_ALLOW_HIGHDPI|sdl.WINDOW_SHOWN)
+		sdl.WINDOW_OPENGL|sdl.WINDOW_RESIZABLE|sdl.WINDOW_ALLOW_HIGHDPI|sdl.WINDOW_SHOWN)
 	if err != nil {
 		return nil, err
 	}

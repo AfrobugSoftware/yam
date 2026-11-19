@@ -275,7 +275,7 @@ func NewRenderManager(window *sdl.Window, width, height int) *RenderManager {
 	rm.renderParamsSSBO = ssbo
 	rm.Prepare2D(float32(fbW), float32(fbH), 0.1, 1000.0)
 	rm.SetStage(MODE_3D_PERSPECTIVE, 0) //SET TO THE 0TH stage
-	err = rm.CreateFrameBuffer()
+	err = rm.CreateGbuffer()
 	if err != nil {
 		panic(err)
 	}
@@ -346,12 +346,11 @@ func (r *RenderManager) CreatePickBuffer() error {
 	gl.TextureParameteri(r.pickTexture, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, r.pickTexture, 0)
 
-	//depth texture
-	gl.CreateTextures(gl.TEXTURE_2D, 1, &r.pickDepth)
-	gl.TextureStorage2D(r.pickDepth, 1, gl.DEPTH24_STENCIL8, int32(r.ViewPort[r.Stage].Width), int32(r.ViewPort[r.Stage].Height))
-	gl.TextureParameteri(r.pickDepth, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	gl.TextureParameteri(r.pickDepth, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.TEXTURE_2D, r.pickDepth, 0)
+	gl.CreateRenderbuffers(1, &r.pickDepth)
+	gl.BindRenderbuffer(gl.RENDERBUFFER, r.pickDepth)
+	gl.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH24_STENCIL8, int32(r.ViewPort[r.Stage].Width), int32(r.ViewPort[r.Stage].Height))
+	gl.BindRenderbuffer(gl.RENDERBUFFER, 0)
+	gl.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.RENDERBUFFER, r.pickDepth)
 
 	attachments := [3]uint32{
 		gl.COLOR_ATTACHMENT0,
@@ -365,7 +364,7 @@ func (r *RenderManager) CreatePickBuffer() error {
 	return CheckError()
 }
 
-func (r *RenderManager) CreateFrameBuffer() error {
+func (r *RenderManager) CreateGbuffer() error {
 	gl.GenFramebuffers(1, &r.gBuffer)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.gBuffer)
 
@@ -471,11 +470,13 @@ func (r *RenderManager) BindFramebufferTextures() {
 func (r *RenderManager) DestroyFrameBuffer() {
 	gl.DeleteFramebuffers(1, &r.gBuffer)
 	gl.DeleteFramebuffers(1, &r.shadowbuffer)
+	gl.DeleteFramebuffers(1, &r.pickBuffer)
 	gl.DeleteTextures(1, &r.gNormal)
 	gl.DeleteTextures(1, &r.gPosition)
 	gl.DeleteTextures(1, &r.gAlbedoSpec)
 	gl.DeleteTextures(1, &r.gDepth)
 	gl.DeleteTextures(1, &r.shadowMap)
+	gl.DeleteTextures(1, &r.pickTexture)
 }
 
 func (r *RenderManager) GetFrustum() [6]y3d.Plane {
@@ -1077,9 +1078,11 @@ func (r *RenderManager) Resize() {
 	r.Width = int(fbW)
 	r.Height = int(fbH)
 	r.Prepare2D(float32(fbW), float32(fbH), 0.1, 1000.0)
-	if r.RootUI != nil {
-		r.RootUI.BaseSize = y3d.Vec2{X: float32(fbW), Y: float32(fbH)}
-	}
+	gl.DeleteFramebuffers(1, &r.pickBuffer)
+	gl.DeleteTextures(1, &r.pickTexture)
+	gl.DeleteRenderbuffers(1, &r.pickDepth)
+	r.CreatePickBuffer()
+
 }
 
 // might move from here
