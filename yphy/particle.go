@@ -14,6 +14,10 @@ type Particle struct {
 	Damping      float32
 }
 
+func (p *Particle) HasInfinateMass() bool {
+	return p.InverseMass == 0
+}
+
 func (p *Particle) Update(dt float32) {
 	if p.InverseMass <= 0.0 {
 		return

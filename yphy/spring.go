@@ -100,6 +100,10 @@ func NewFakeSpringForce(anchor y3d.Vec3, springConstant, damping float32) *FakeS
 // using damped harmonic motion to calculate the force of a spring with damping
 // cannot be used for springs that has other forces acting on it, like gravity or other springs
 func (s *FakeSpringForce) Force(p *Particle, dt float32) y3d.Vec3 {
+	if p.InverseMass == 0 {
+		return y3d.Vec3{} //infinte mass
+	}
+
 	position := y3d.Sub(p.Position, s.Anchor)
 	gamma := float32(0.5 * math.Sqrt(4*float64(s.SpringConstant)-float64(s.Damping*s.Damping)))
 	if gamma == 0 {
