@@ -5,24 +5,25 @@ import (
 	"yam/ywd"
 )
 
-type ParticleContact struct {
+type Contact struct {
 	World                   *ywd.World
 	ContactNormal           y3d.Vec3 // A <- B
+	ContactPosition         y3d.Vec3
 	CoefficentOfRestitution float32
 	InterpenerationDepth    float32
 	A, B                    ywd.EntityId
 }
 
-func (p *ParticleContact) SetContactNormal(a, b *Particle) {
+func (p *Contact) SetContactNormal(a, b *Particle) {
 	p.ContactNormal = y3d.Normalize(y3d.Sub(a.Position, b.Position))
 }
 
-func (p *ParticleContact) resolve(dt float32) {
+func (p *Contact) resolve(dt float32) {
 	p.resolveVelocity(dt)
 	p.resolveInterpenetration(dt)
 }
 
-func (p *ParticleContact) calculateSeperatingVelocity() float32 {
+func (p *Contact) calculateSeperatingVelocity() float32 {
 	avel := p.World.GetComponent(p.A, ywd.ParticleComponent).(Particle).Velocity
 	if p.B != ywd.NullEntity {
 		bvel := p.World.GetComponent(p.B,
@@ -32,7 +33,7 @@ func (p *ParticleContact) calculateSeperatingVelocity() float32 {
 	return y3d.Dot(avel, p.ContactNormal)
 }
 
-func (p *ParticleContact) resolveVelocity(_ float32) {
+func (p *Contact) resolveVelocity(_ float32) {
 	sv := p.calculateSeperatingVelocity()
 	if sv > 0 {
 		//stationary or seperating
@@ -61,6 +62,6 @@ func (p *ParticleContact) resolveVelocity(_ float32) {
 	}
 }
 
-func (p *ParticleContact) resolveInterpenetration(dt float32) {
+func (p *Contact) resolveInterpenetration(dt float32) {
 
 }

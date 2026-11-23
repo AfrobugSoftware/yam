@@ -42,7 +42,7 @@ func (t *Transform) TransformAABB(b y3d.AABB) y3d.AABB {
 }
 
 func (t *Transform) TransformOBB(b y3d.OBB) y3d.OBB {
-	return b.DeTransform(t.World)
+	return b.Transform(t.World)
 }
 
 func RotateToFoward(forward y3d.Vec3) y3d.Quaternion {

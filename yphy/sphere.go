@@ -35,6 +35,10 @@ func (s Sphere) Intersects(c Collider) bool {
 	return false
 }
 
+func (s Sphere) GenerateContact(c Collider) Contact {
+	return Contact{}
+}
+
 func BoundSphere(stride, relativeOffset int, dataV, dataI *bytes.Buffer) Sphere {
 	bd := dataV.Bytes()
 	getPos := func(i int) y3d.Vec3 {

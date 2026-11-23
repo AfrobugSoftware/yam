@@ -153,7 +153,7 @@ func OBBIntersects(a, b OBB) bool {
 	return true
 }
 
-func (obb OBB) DeTransform(m Mat4) OBB {
+func (obb OBB) Transform(m Mat4) OBB {
 	vct := Vec3{
 		X: m[12],
 		Y: m[13],

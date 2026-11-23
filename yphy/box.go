@@ -2,6 +2,7 @@ package yphy
 
 import (
 	"bytes"
+	"fmt"
 	"unsafe"
 	"yam/y3d"
 )
@@ -42,6 +43,15 @@ func (b Box) GetColliderType() ColliderType {
 
 func (b Box) Intersects(c Collider) bool {
 	return false
+}
+
+func (b Box) GenerateContact(c Collider) Contact {
+	switch t := c.(type) {
+	case Box:
+		fmt.Println(t.World)
+	}
+
+	return Contact{}
 }
 
 func BoundBox(stride, relativeOffset int, dataV, dataI *bytes.Buffer) Box {

@@ -2,7 +2,7 @@ package yphy
 
 type ParticleContactResolver struct {
 	Iterations int
-	Contacts   []ParticleContact
+	Contacts   []Contact
 }
 
 func NewParticleContactResolver(iterations int) *ParticleContactResolver {
