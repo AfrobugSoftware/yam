@@ -26,8 +26,7 @@ var (
 )
 
 const (
-	MoveControllerComponent ComponentId = iota
-	TransformComponent
+	TransformComponent ComponentId = iota
 	BoundingBoxComponent
 	InputComponent
 	RenderableComponent
@@ -39,11 +38,17 @@ const (
 	ScaleComponent
 	PbrMaterialComponent
 	PbrMaterialDataComponent
-	ParticleComponent
 	PipelineComponent
 	AnodeComponent
 	LightComponent
 	TriggerComponent
+	PositionComponent
+	OrientationComponent
+	VelocityComponent
+	AccelerationComponent
+	InverseMassComponent
+	ForceComponent
+	MoveComponent
 )
 
 func GenerateRandomId() int {

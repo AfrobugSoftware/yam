@@ -23,8 +23,9 @@ func NewBuoyancyForce(world *ywd.World, maxDepth, volume, waterHeight, liquidDen
 	}
 }
 
-func (b *BuoyancyForce) Force(p *Particle, dt float32) y3d.Vec3 {
-	depth := p.Position.Y
+func (b *BuoyancyForce) Force(w *ywd.World, e ywd.EntityId, dt float32) y3d.Vec3 {
+	position := w.GetComponent(e, ywd.PositionComponent).(y3d.Vec3)
+	depth := position.Y
 	if depth >= b.WaterHeight+b.MaxDepth {
 		return y3d.Vec3{}
 	}

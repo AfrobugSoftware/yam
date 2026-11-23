@@ -3,12 +3,9 @@ package ycore
 import (
 	"bytes"
 	"yam/y3d"
-	"yam/ycontroller"
 	"yam/yphy"
 	"yam/ywd"
 )
-
-type InputFunc func(*InputManager, ycontroller.Controller)
 
 func AddEntityRenderableData(
 	world *ywd.World,
@@ -48,11 +45,11 @@ func AddEntityMoveData(
 	ent ywd.EntityId,
 	pos y3d.Vec3,
 	orientation y3d.Quaternion,
-) *ycontroller.MovementController {
-	move := ycontroller.NewMovementController(pos, orientation)
+) {
+	world.AddComponent(ent, ywd.MoveComponent, &Move{})
 	world.AddComponent(ent, ywd.TransformComponent, NewTransform())
-	world.AddComponent(ent, ywd.MoveControllerComponent, move)
-	return move
+	world.AddComponent(ent, ywd.PositionComponent, pos)
+	world.AddComponent(ent, ywd.OrientationComponent, orientation)
 }
 
 func AddEntityAsInstance(w *ywd.World, holder ywd.EntityId, instance ywd.EntityId) {
@@ -76,11 +73,4 @@ func AddEntityTransformData(
 	ent ywd.EntityId,
 	transform Transform) {
 	world.AddComponent(ent, ywd.TransformComponent, transform)
-}
-
-func AddEntityInputData(
-	world *ywd.World,
-	ent ywd.EntityId,
-	input InputFunc) {
-	world.AddComponent(ent, ywd.InputComponent, input)
 }

@@ -1,10 +1,8 @@
 package ycore
 
 import (
-	"math"
 	"sync"
 	"yam/y3d"
-	"yam/ycontroller"
 	"yam/yphy"
 	"yam/ywd"
 )
@@ -34,59 +32,43 @@ func UpdateGS(w *ywd.World, owner ywd.EntityId, hierarchy ywd.Hierarchy) {
 	w.SetComponent(owner, ywd.BoundingBoxComponent, box)
 }
 
-func UpdateParticle(w *ywd.World, dt float32) {
+func UpdateTranform(w *ywd.World) {
 	entites := w.Query(
+		ywd.PositionComponent,
+		ywd.OrientationComponent,
+		ywd.ScaleComponent,
 		ywd.TransformComponent,
-		ywd.ParticleComponent,
 		ywd.BoundingBoxComponent,
 	)
 	for _, e := range entites {
 		wg.Go(func() {
-			particle := w.GetComponent(e, ywd.ParticleComponent).(yphy.Particle)
 			transform := w.GetComponent(e, ywd.TransformComponent).(Transform)
 			scaleFactor := w.GetComponent(e, ywd.ScaleComponent).(float32)
-
-			if math.Abs(float64(particle.Position.Z)) > 500 || particle.Position.Y < 0.0 {
-				w.DestroyEntity(e)
-				return
-			}
-			particle.Update(dt)
-			transform.World = y3d.TranslationScale(particle.Position, scaleFactor)
+			position := w.GetComponent(e, ywd.PositionComponent).(y3d.Vec3)
+			orientation := w.GetComponent(e, ywd.OrientationComponent).(y3d.Quaternion)
 			box := w.GetComponent(e, ywd.BoundingBoxComponent).(yphy.Box)
+
+			transform.World = y3d.TRS(position,
+				orientation,
+				y3d.Vec3{X: scaleFactor, Y: scaleFactor, Z: scaleFactor})
 			box.World = transform.TransformAABB(box.Local)
 			w.SetComponent(e, ywd.BoundingBoxComponent, box)
 			w.SetComponent(e, ywd.TransformComponent, transform)
-			w.SetComponent(e, ywd.ParticleComponent, particle)
 		})
 	}
 	wg.Wait()
 }
 
 func UpdateMovement(w *ywd.World, deltaTime float32) {
-	entites := w.Query(
-		ywd.TransformComponent,
-		ywd.ScaleComponent,
-		ywd.MoveControllerComponent)
+	entites := w.Query(ywd.MoveComponent,
+		ywd.PositionComponent,
+		ywd.OrientationComponent)
 	for _, e := range entites {
 		//change to go routine pool
 		wg.Go(
 			func() {
-				movement := w.GetComponent(e, ywd.MoveControllerComponent).(*ycontroller.MovementController)
-				transform := w.GetComponent(e, ywd.TransformComponent).(Transform)
-				box := w.GetComponent(e, ywd.BoundingBoxComponent).(yphy.Box)
-
-				movement.Update(deltaTime)
-				scaleFactor := w.GetComponent(e, ywd.ScaleComponent).(float32)
-				transform.Local = y3d.TRS(movement.Position, movement.Orientation, y3d.Vec3{
-					X: scaleFactor,
-					Y: scaleFactor,
-					Z: scaleFactor,
-				})
-				transform.World = transform.Local
-				box.World = transform.TransformAABB(box.Local)
-				w.SetComponent(e, ywd.TransformComponent, transform)
-				w.SetComponent(e, ywd.BoundingBoxComponent, box)
-
+				movement := w.GetComponent(e, ywd.MoveComponent).(*Move)
+				movement.Update(w, e, deltaTime)
 			})
 	}
 	wg.Wait()

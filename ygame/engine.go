@@ -4,6 +4,7 @@ import (
 	"runtime"
 	"time"
 	"yam/ycore"
+	"yam/yphy"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -74,7 +75,8 @@ func (g *Engine) Update(dt float64) {
 		g.App.Update(dt)
 	}
 	ycore.UpdateMovement(g.RenderManager.World, float32(dt))
-	ycore.UpdateParticle(g.RenderManager.World, float32(dt))
+	yphy.IntegrateParticles(g.RenderManager.World, float32(dt))
+	ycore.UpdateTranform(g.RenderManager.World)
 	g.RenderManager.BoundingTree.BuildTree()
 }
 

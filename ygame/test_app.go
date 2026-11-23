@@ -3,7 +3,6 @@ package ygame
 import (
 	"math"
 	"yam/y3d"
-	"yam/ycontroller"
 	"yam/ycore"
 	"yam/ygl"
 	"yam/yphy"
@@ -168,8 +167,7 @@ func (t *TestApplication) LevelTest() {
 	ent3 := t.engine.Level.World.NewEntity()
 	ent4 := t.engine.Level.World.NewEntity()
 	w := t.engine.Level.World
-	m := ycore.AddEntityMoveData(t.engine.Level.World, ent, y3d.Vec3{Z: -20, Y: 5}, y3d.IdenQuat())
-	m.Thrust = 0
+	ycore.AddEntityMoveData(t.engine.Level.World, ent, y3d.Vec3{Z: -20, Y: 5}, y3d.IdenQuat())
 	ycore.AddEntityMoveData(t.engine.Level.World, ent2, y3d.Vec3{Z: -50, Y: 5.0}, y3d.IdenQuat())
 	ycore.AddEntityMoveData(t.engine.Level.World, ent4, y3d.Vec3{X: 5, Z: 10, Y: 5.0}, y3d.IdenQuat())
 
@@ -224,7 +222,6 @@ func (t *TestApplication) Update(deltaTime float64) {
 	t.ShotBullet()
 	t.forceRegistry.Update(t.engine.RenderManager.World,
 		float32(deltaTime))
-	//t.AddDrag(float32(deltaTime))
 	t.UpdateCamera()
 }
 
@@ -323,28 +320,15 @@ func (t *TestApplication) ShotBullet() {
 		//ycore.AddEntityMoveData(w, ie1, y3d.Add(o.O, y3d.Smul(o.D, 5.0)), y3d.IdenQuat())
 		w.AddComponent(ie1, ywd.TransformComponent, ycore.NewTransform())
 		ycore.AddEntityAsInstance(w, t.boxEnt, ie1)
-		p := yphy.Particle{
-			InverseMass: float32(1.0 / 2.0),
-			Velocity:    y3d.Smul(o.D, 35), //y3d.Vec3{Z: 35},
-			Position:    o.O,
-			Damping:     0.99,
-			Acceleration: y3d.Vec3{
-				X: 0.0,
-				Y: -1.0,
-				Z: 0.0,
-			},
-		}
-		w.AddComponent(ie1, ywd.ParticleComponent, p)
-	}
-}
-
-func (t TestApplication) AddDrag(dt float32) {
-	entites := t.engine.RenderManager.World.Query(ywd.ParticleComponent)
-	for _, e := range entites {
-		p := t.engine.RenderManager.World.GetComponent(e, ywd.ParticleComponent).(yphy.Particle)
-		p.AddForce(t.drag, dt)
-
-		t.engine.RenderManager.World.SetComponent(e, ywd.ParticleComponent, p)
+		w.AddComponent(ie1, ywd.PositionComponent, o.O.AddScale(o.D, 10))
+		w.AddComponent(ie1, ywd.VelocityComponent, y3d.Smul(o.D, 35))
+		w.AddComponent(ie1, ywd.InverseMassComponent, float32(1.0/2.0))
+		w.AddComponent(ie1, ywd.AccelerationComponent, y3d.Vec3{
+			X: 0.0,
+			Y: -1.0,
+			Z: 0.0,
+		})
+		w.AddComponent(ie1, ywd.ForceComponent, y3d.Vec3{})
 	}
 }
 
@@ -352,19 +336,17 @@ func (t *TestApplication) UpdatePickedEntity() {
 	if t.pickedEntity == ywd.NullEntity {
 		return
 	}
-	if !t.engine.Level.World.HasComponent(t.pickedEntity, ywd.MoveControllerComponent) {
-		return
-	}
+
 	im := t.engine.InputManager
 	w := t.engine.Level.World
-	m := w.GetComponent(t.pickedEntity, ywd.MoveControllerComponent).(*ycontroller.MovementController)
+	m := w.GetComponent(t.pickedEntity, ywd.MoveComponent).(*ycore.Move)
 	speed := float32(10)
-	m.Thrust = 0
+	m.ForwardSpeed = 0
 	if im.GetKeyState(sdl.SCANCODE_W) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_W) == ycore.BUTTON_HELD {
-		m.Thrust = speed
+		m.ForwardSpeed = speed
 	}
 	if im.GetKeyState(sdl.SCANCODE_S) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_S) == ycore.BUTTON_HELD {
-		m.Thrust = -speed
+		m.ForwardSpeed = -speed
 	}
 	m.RotSpeedPitch = 0
 	if im.GetKeyState(sdl.SCANCODE_A) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_A) == ycore.BUTTON_HELD {

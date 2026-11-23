@@ -22,8 +22,9 @@ func NewAnchorSpringForce(point y3d.Vec3, k float32, restingLength float32) *Anc
 func (as *AnchorSpringForce) SetAnchor(point y3d.Vec3) {
 	as.anchor = point
 }
-func (as *AnchorSpringForce) Force(p *Particle, dt float32) y3d.Vec3 {
-	d := y3d.Sub(p.Position, as.anchor)
+func (as *AnchorSpringForce) Force(w *ywd.World, e ywd.EntityId, dt float32) y3d.Vec3 {
+	position := w.GetComponent(e, ywd.PositionComponent).(y3d.Vec3)
+	d := y3d.Sub(position, as.anchor)
 	dp := y3d.Normalize(d)
 	dist := d.Length()
 	coeff := as.k * (as.restingLength - dist)
@@ -46,9 +47,10 @@ func NewSpringForce(world *ywd.World, other ywd.EntityId, springConstant, restLe
 	}
 }
 
-func (s *SpringForce) Force(p *Particle, dt float32) y3d.Vec3 {
-	otherPos := s.World.GetComponent(s.Other, ywd.ParticleComponent).(Particle).Position
-	d := y3d.Sub(p.Position, otherPos)
+func (s *SpringForce) Force(w *ywd.World, e ywd.EntityId, dt float32) y3d.Vec3 {
+	position := w.GetComponent(e, ywd.PositionComponent).(y3d.Vec3)
+	otherPos := s.World.GetComponent(s.Other, ywd.PositionComponent).(y3d.Vec3)
+	d := y3d.Sub(position, otherPos)
 	dp := y3d.Normalize(d)
 	dist := d.Length()
 	coeff := s.SpringConstant * float32(math.Abs(float64(dist-s.RestLength)))
@@ -71,9 +73,10 @@ func NewBungeeSpringForce(world *ywd.World, other ywd.EntityId, springConstant, 
 	}
 }
 
-func (s *BungeeSpringForce) Force(p *Particle, dt float32) y3d.Vec3 {
-	otherPos := s.World.GetComponent(s.Other, ywd.ParticleComponent).(Particle).Position
-	d := y3d.Sub(p.Position, otherPos)
+func (s *BungeeSpringForce) Force(w *ywd.World, e ywd.EntityId, dt float32) y3d.Vec3 {
+	position := w.GetComponent(e, ywd.PositionComponent).(y3d.Vec3)
+	otherPos := s.World.GetComponent(s.Other, ywd.PositionComponent).(y3d.Vec3)
+	d := y3d.Sub(position, otherPos)
 	dist := d.Length()
 	if dist <= s.RestLength {
 		return y3d.UnitV3
@@ -99,20 +102,23 @@ func NewFakeSpringForce(anchor y3d.Vec3, springConstant, damping float32) *FakeS
 
 // using damped harmonic motion to calculate the force of a spring with damping
 // cannot be used for springs that has other forces acting on it, like gravity or other springs
-func (s *FakeSpringForce) Force(p *Particle, dt float32) y3d.Vec3 {
-	if p.InverseMass == 0 {
+func (s *FakeSpringForce) Force(w *ywd.World, e ywd.EntityId, dt float32) y3d.Vec3 {
+	pos := w.GetComponent(e, ywd.PositionComponent).(y3d.Vec3)
+	velocity := w.GetComponent(e, ywd.VelocityComponent).(y3d.Vec3)
+	inverseMass := w.GetComponent(e, ywd.InverseMassComponent).(float32)
+	if inverseMass == 0 {
 		return y3d.Vec3{} //infinte mass
 	}
 
-	position := y3d.Sub(p.Position, s.Anchor)
+	position := y3d.Sub(pos, s.Anchor)
 	gamma := float32(0.5 * math.Sqrt(4*float64(s.SpringConstant)-float64(s.Damping*s.Damping)))
 	if gamma == 0 {
 		return y3d.UnitV3
 	}
-	c := y3d.Add(y3d.Smul(position, (s.Damping/(2*float32(gamma)))), y3d.Smul(p.Velocity, 1/float32(gamma)))
+	c := y3d.Add(y3d.Smul(position, (s.Damping/(2*float32(gamma)))), y3d.Smul(velocity, 1/float32(gamma)))
 	target := y3d.Add(y3d.Smul(position, float32(math.Cos(float64(gamma*dt)))), y3d.Smul(c, float32(math.Sin(float64(gamma*dt)))))
 	target = y3d.Smul(target, float32(math.Exp(float64(-0.5*dt*s.Damping))))
 	accel := y3d.Smul(y3d.Sub(target, position), 1/(dt*dt))
-	accel = y3d.Sub(accel, y3d.Smul(p.Velocity, dt))
-	return y3d.Smul(accel, 1/p.InverseMass)
+	accel = y3d.Sub(accel, y3d.Smul(velocity, dt))
+	return y3d.Smul(accel, 1/inverseMass)
 }

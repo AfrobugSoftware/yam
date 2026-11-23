@@ -9,7 +9,6 @@ import (
 	"strings"
 	"unsafe"
 	"yam/y3d"
-	"yam/ycontroller"
 	"yam/yphy"
 	"yam/yui"
 	"yam/ywd"
@@ -151,8 +150,6 @@ type RenderManager struct {
 	lightSphere        int
 	numLight           int
 	viewubo            uint32
-	FpCamera           *FPCamera
-	FollowCamera       *FollowCamera
 	RootUI             *yui.UIElement
 	Pipelines          map[PipelineType]*Pipeline
 }
@@ -671,9 +668,6 @@ func (r *RenderManager) Transfrom3Dto2D(pos y3d.Vec3) y3d.Vec2 {
 }
 
 func (r *RenderManager) DragObject(entity ywd.EntityId, pos y3d.Vec2) {
-	if !r.World.HasComponent(entity, ywd.MoveControllerComponent) {
-		return
-	}
 	width, height := float32(r.ViewPort[r.Stage].Width),
 		float32(r.ViewPort[r.Stage].Height)
 		//this is completely flipped, the x, y and z are all inverted for it to work
@@ -687,11 +681,12 @@ func (r *RenderManager) DragObject(entity ywd.EntityId, pos y3d.Vec2) {
 	InvProj := r.ProjP[r.Stage]
 	(&InvProj).Invert()
 	ray_eye := InvProj.MulVec4(ray_clip)
-	m := r.World.GetComponent(entity, ywd.MoveControllerComponent).(*ycontroller.MovementController)
+	w := r.World
+	position := w.GetComponent(entity, ywd.PositionComponent).(y3d.Vec3)
 	pos4 := y3d.Vec4{
-		X: m.Position.X,
-		Y: m.Position.Y,
-		Z: m.Position.Z,
+		X: position.X,
+		Y: position.Y,
+		Z: position.Z,
 		W: 1,
 	}
 	objView := r.View3D[r.Stage].MulVec4(pos4)
@@ -711,12 +706,11 @@ func (r *RenderManager) DragObject(entity ywd.EntityId, pos y3d.Vec2) {
 	dirX := (view3d[0]*ray_eye.X + view3d[1]*ray_eye.Y + view3d[2]*ray_eye.Z) + camX
 	dirY := (view3d[4]*ray_eye.X + view3d[5]*ray_eye.Y + view3d[6]*ray_eye.Z) + camY
 	dirZ := (view3d[8]*ray_eye.X + view3d[9]*ray_eye.Y + view3d[10]*ray_eye.Z) + camZ
-
-	m.Position = y3d.Vec3{
+	w.SetComponent(entity, ywd.PositionComponent, y3d.Vec3{
 		X: dirX,
 		Y: dirY,
 		Z: dirZ,
-	}
+	})
 }
 
 func (r *RenderManager) GetPickInfo(x, y int32) [4]uint32 {
@@ -976,9 +970,25 @@ func (r *RenderManager) RenderLines() {
 	r.lineCount = 0
 }
 
-func (r *RenderManager) DrawGizmo(m *ycontroller.MovementController,
+func (r *RenderManager) DrawGizmo(pos y3d.Vec3, orientation y3d.Quaternion,
 	radius float32) {
-	c := m.Position
+	c := pos
+	mR := orientation.RotMat()
+	Right := y3d.Vec3{
+		X: mR[0],
+		Y: mR[1],
+		Z: mR[2],
+	}
+	Up := y3d.Vec3{
+		X: mR[3],
+		Y: mR[4],
+		Z: mR[5],
+	}
+	Dir := y3d.Vec3{
+		X: mR[6],
+		Y: mR[7],
+		Z: mR[8],
+	}
 	r.AddLine(
 		[2]y3d.PVertex{
 			{
@@ -986,7 +996,7 @@ func (r *RenderManager) DrawGizmo(m *ycontroller.MovementController,
 				Color: y3d.Vec4{X: 1.0, Y: 0.0, Z: 0.0, W: 1.0},
 			},
 			{
-				Pos:   y3d.Add(c, y3d.Smul(m.Right, radius)),
+				Pos:   y3d.Add(c, y3d.Smul(Right, radius)),
 				Color: y3d.Vec4{X: 1.0, Y: 0.0, Z: 0.0, W: 1.0},
 			},
 		},
@@ -998,7 +1008,7 @@ func (r *RenderManager) DrawGizmo(m *ycontroller.MovementController,
 				Color: y3d.Vec4{X: 0.0, Y: 1.0, Z: 0.0, W: 1.0},
 			},
 			{
-				Pos:   y3d.Add(c, y3d.Smul(m.Up, radius)),
+				Pos:   y3d.Add(c, y3d.Smul(Up, radius)),
 				Color: y3d.Vec4{X: 0.0, Y: 1.0, Z: 0.0, W: 1.0},
 			},
 		},
@@ -1010,7 +1020,7 @@ func (r *RenderManager) DrawGizmo(m *ycontroller.MovementController,
 				Color: y3d.Vec4{X: 0.0, Y: 0.0, Z: 1.0, W: 1.0},
 			},
 			{
-				Pos:   y3d.Add(c, y3d.Smul(m.Dir, radius)),
+				Pos:   y3d.Add(c, y3d.Smul(Dir, radius)),
 				Color: y3d.Vec4{X: 0.0, Y: 0.0, Z: 1.0, W: 1.0},
 			},
 		},
@@ -1042,29 +1052,6 @@ func (r *RenderManager) CopyDepthToDefault() {
 	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 }
 
-func (r *RenderManager) UpdateFPCamera(dt float32) {
-	if r.FpCamera != nil {
-		//using first person camera
-		r.FpCamera.Update(dt)
-		r.View3D[r.Stage] = y3d.ViewFromAxis(
-			r.FpCamera.Right,
-			r.FpCamera.Up,
-			r.FpCamera.Dir,
-			r.FpCamera.Position)
-	}
-}
-
-func (r *RenderManager) UpdateFollowCamera(dt float32) {
-	if r.FollowCamera != nil {
-		r.FollowCamera.Update(dt)
-		r.View3D[r.Stage] = y3d.ViewFromAxis(
-			r.FollowCamera.Right,
-			r.FollowCamera.Up,
-			r.FollowCamera.Dir,
-			r.FollowCamera.Position)
-	}
-}
-
 func (r *RenderManager) Resize() {
 	fbW, fbH := r.Window.GLGetDrawableSize()
 	r.InitStage(0, y3d.Rect{
@@ -1090,13 +1077,13 @@ func (r *RenderManager) HighlightPickedEntity() {
 	if r.PickedEntity == ywd.NullEntity {
 		return
 	}
-	if !r.World.HasComponent(r.PickedEntity, ywd.MoveControllerComponent) {
-		return
-	}
+
 	e := r.PickedEntity
-	m := r.World.GetComponent(e, ywd.MoveControllerComponent).(*ycontroller.MovementController)
+	w := r.World
+	position := w.GetComponent(e, ywd.PositionComponent).(y3d.Vec3)
+	orientation := w.GetComponent(e, ywd.OrientationComponent).(y3d.Quaternion)
 	box := r.World.GetComponent(e, ywd.BoundingBoxComponent).(yphy.Box)
-	r.DrawGizmo(m, box.World.GetHalfSize().X)
+	r.DrawGizmo(position, orientation, box.World.GetHalfSize().X)
 
 	if r.DrawBoundingBoxes {
 		matrix := box.RenderBoxMatrix()

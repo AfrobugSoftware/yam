@@ -2,36 +2,39 @@ package yphy
 
 import (
 	"math"
+	"sync"
 	"yam/y3d"
+	"yam/ywd"
 )
 
-type Particle struct {
-	Position     y3d.Vec3
-	Velocity     y3d.Vec3
-	Acceleration y3d.Vec3
-	ForceAccum   y3d.Vec3
-	InverseMass  float32
-	Damping      float32
-}
+func IntegrateParticles(w *ywd.World, dt float32) {
+	entites := w.Query(
+		ywd.PositionComponent,
+		ywd.VelocityComponent,
+		ywd.AccelerationComponent,
+		ywd.ForceComponent,
+		ywd.InverseMassComponent,
+	)
+	var wg sync.WaitGroup
+	for _, e := range entites {
+		wg.Go(func() {
+			position := w.GetComponent(e, ywd.PositionComponent).(y3d.Vec3)
+			velocity := w.GetComponent(e, ywd.VelocityComponent).(y3d.Vec3)
+			inverseMass := w.GetComponent(e, ywd.InverseMassComponent).(float32)
+			accleration := w.GetComponent(e, ywd.AccelerationComponent).(y3d.Vec3)
+			force := w.GetComponent(e, ywd.ForceComponent).(y3d.Vec3)
 
-func (p *Particle) HasInfinateMass() bool {
-	return p.InverseMass == 0
-}
+			position = position.AddScale(velocity, dt)
+			retAcc := accleration
+			retAcc = retAcc.AddScale(force, inverseMass)
+			velocity = velocity.AddScale(retAcc, dt)
+			velocity = y3d.Smul(velocity, float32(math.Pow(float64(0.99), float64(dt))))
+			force = y3d.Vec3{}
 
-func (p *Particle) Update(dt float32) {
-	if p.InverseMass <= 0.0 {
-		return
+			w.SetComponent(e, ywd.PositionComponent, position)
+			w.SetComponent(e, ywd.VelocityComponent, velocity)
+			w.SetComponent(e, ywd.ForceComponent, force)
+		})
 	}
-	p.Position = p.Position.AddScale(p.Velocity, dt)
-	//update acceleration
-	retAcc := p.Acceleration
-	retAcc = retAcc.AddScale(p.ForceAccum, p.InverseMass)
-	p.Velocity = p.Velocity.AddScale(retAcc, dt)
-
-	p.Velocity = y3d.Smul(p.Velocity, float32(math.Pow(float64(p.Damping), float64(dt))))
-	p.ForceAccum = y3d.UnitV3
-}
-
-func (p *Particle) AddForce(f ForceGenerator, dt float32) {
-	p.ForceAccum = y3d.Add(p.ForceAccum, f.Force(p, dt))
+	wg.Wait()
 }
