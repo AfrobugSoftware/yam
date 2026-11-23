@@ -1,6 +1,7 @@
 package yphy
 
 import (
+	"sync"
 	"yam/y3d"
 	"yam/ywd"
 )
@@ -10,7 +11,7 @@ type Contact struct {
 	ContactNormal           y3d.Vec3 // A <- B
 	ContactPosition         y3d.Vec3
 	CoefficentOfRestitution float32
-	InterpenerationDepth    float32
+	Penetration             float32
 	A, B                    ywd.EntityId
 }
 
@@ -67,4 +68,33 @@ func (p *Contact) resolveVelocity(_ float32) {
 
 func (p *Contact) resolveInterpenetration(dt float32) {
 
+}
+
+type ContactQueue struct {
+	contacts []Contact
+	mu       sync.Mutex
+}
+
+func NewContactQueue() *ContactQueue {
+	return &ContactQueue{
+		contacts: make([]Contact, 0),
+	}
+}
+
+func (cq *ContactQueue) PushBack(contact Contact) {
+	cq.mu.Lock()
+	defer cq.mu.Unlock()
+
+	cq.contacts = append(cq.contacts, contact)
+}
+
+func (cq *ContactQueue) Front() (Contact, bool) {
+	cq.mu.Lock()
+	defer cq.mu.Unlock()
+	if len(cq.contacts) == 0 {
+		return Contact{}, false
+	}
+	c := cq.contacts[0]
+	cq.contacts = cq.contacts[1:]
+	return c, true
 }

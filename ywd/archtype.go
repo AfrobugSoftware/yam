@@ -8,7 +8,7 @@ import (
 	"math"
 	"math/rand"
 	"reflect"
-	"sort"
+	"slices"
 	"sync"
 )
 
@@ -28,7 +28,6 @@ var (
 const (
 	TransformComponent ComponentId = iota
 	BoundingBoxComponent
-	InputComponent
 	RenderableComponent
 	SkeletonComponent
 	HierarchyComponent
@@ -69,7 +68,7 @@ type archetypeKey []ComponentId
 func newArchetypeKey(ids []ComponentId) archetypeKey {
 	key := make(archetypeKey, len(ids))
 	copy(key, ids)
-	sort.Slice(key, func(i, j int) bool { return key[i] < key[j] })
+	slices.Sort(key)
 	return key
 }
 

@@ -30,11 +30,8 @@ func (t *TestApplication) Startup(e *Engine) {
 	t.engine = e
 	t.useCam = true
 	t.camFront = y3d.UNIT_Z
-	v, i := ygl.CreateCube()
-	if v == nil || i == nil {
-		panic("failed to create cube")
-	}
 
+	//loading these things take so much memory, like 200mb worth
 	err := ycore.LoadGLTF("assets/gltf/BrainStem.glb",
 		t.engine.RenderManager,
 		t.engine.Level.World)
