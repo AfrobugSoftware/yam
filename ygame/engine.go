@@ -53,7 +53,7 @@ func NewEngine(title string, width, height int32) (*Engine, error) {
 	gEngine.AudioManager = ycore.NewAudioManager()
 	gEngine.Level = NewLevel()
 	gEngine.RenderManager.World = gEngine.Level.World // this might be an issue
-	gEngine.RenderManager.BoundingTree = ycore.NewOctree(gEngine.Level.World)
+	gEngine.RenderManager.BoundingTree = yphy.NewOctree(gEngine.Level.World)
 	return gEngine, nil
 }
 

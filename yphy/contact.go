@@ -21,8 +21,8 @@ func (p *Contact) SetContactNormal(a, b ywd.EntityId) {
 	p.ContactNormal = y3d.Normalize(y3d.Sub(posA, posb))
 }
 
-func (p *Contact) resolve() {
-	p.resolveVelocity()
+func (p *Contact) resolve(dt float32) {
+	p.resolveVelocity(dt)
 	p.resolveInterpenetration()
 }
 
@@ -36,13 +36,26 @@ func (p *Contact) calculateSeperatingVelocity() float32 {
 	return y3d.Dot(avel, p.ContactNormal)
 }
 
-func (p *Contact) resolveVelocity() {
+func (p *Contact) resolveVelocity(dt float32) {
 	sv := p.calculateSeperatingVelocity()
 	if sv > 0 {
 		//stationary or seperating
 		return
 	}
 	nsv := -sv * p.CoefficentOfRestitution
+	accCausedVelocity := p.World.GetComponent(p.A, ywd.AccelerationComponent).(y3d.Vec3)
+	if p.B != ywd.NullEntity {
+		accCausedVelocity = y3d.Sub(accCausedVelocity,
+			p.World.GetComponent(p.B, ywd.AccelerationComponent).(y3d.Vec3))
+	}
+	accCausedSepVelocity := y3d.Dot(accCausedVelocity, p.ContactNormal) * dt
+	if accCausedSepVelocity < 0 {
+		//we have closing velocity due to acceleration build up
+		nsv += p.CoefficentOfRestitution * accCausedSepVelocity
+		if nsv < 0 {
+			nsv = 0
+		}
+	}
 	dv := nsv - sv
 	totalInverseMass := p.World.GetComponent(p.A, ywd.InverseMassComponent).(float32)
 	if p.B != ywd.NullEntity {

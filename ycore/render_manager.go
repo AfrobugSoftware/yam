@@ -115,7 +115,7 @@ type RenderManager struct {
 	DrawDebugLines     bool
 	EnablePicking      bool
 	PickedEntity       ywd.EntityId
-	BoundingTree       *Octree
+	BoundingTree       *yphy.Octree
 	PickRay            y3d.Vec3
 	World              *ywd.World
 	DrawMode           uint32

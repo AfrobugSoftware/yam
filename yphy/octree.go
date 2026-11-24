@@ -1,11 +1,10 @@
-package ycore
+package yphy
 
 import (
 	"math"
 	"slices"
 	"sync"
 	"yam/y3d"
-	"yam/yphy"
 	"yam/ywd"
 )
 
@@ -74,7 +73,7 @@ func (o *Octree) CalculateBoundingBox() {
 		},
 	}
 	for _, p := range o.Entites {
-		b := o.World.GetComponent(p, ywd.BoundingBoxComponent).(yphy.Box).World
+		b := o.World.GetComponent(p, ywd.BoundingBoxComponent).(Box).World
 		box.Max = y3d.Max(box.Max, b.Max)
 		box.Min = y3d.Min(box.Min, b.Min)
 	}
@@ -137,12 +136,11 @@ func (o *Octree) ChopListToMe(entites []ywd.EntityId) {
 	if len(entites) == 0 {
 		return
 	}
-	//o.Entites = o.Entites[:0]
 	entites = slices.DeleteFunc(entites, func(p ywd.EntityId) bool {
 		if p == ywd.NullEntity {
 			return false
 		}
-		pbox := o.World.GetComponent(p, ywd.BoundingBoxComponent).(yphy.Box).World
+		pbox := o.World.GetComponent(p, ywd.BoundingBoxComponent).(Box).World
 		if o.BoundingBox.Overlaps(pbox) {
 			o.Entites = append(o.Entites, p)
 			return true
@@ -196,7 +194,7 @@ func (o *Octree) TestCollision(b y3d.AABB) (bool, ywd.EntityId) {
 		return false, ywd.NullEntity
 	}
 	for _, p := range o.Entites {
-		box := o.World.GetComponent(p, ywd.BoundingBoxComponent).(yphy.Box).World
+		box := o.World.GetComponent(p, ywd.BoundingBoxComponent).(Box).World
 		if box.Overlaps(b) {
 			return true, p
 		}
@@ -226,7 +224,7 @@ func (o *Octree) TestCollisionWithRay(r y3d.Ray) (bool, ywd.EntityId, y3d.Vec3) 
 	var hit y3d.Vec3
 	var e ywd.EntityId
 	for _, p := range o.Entites {
-		pbox := o.World.GetComponent(p, ywd.BoundingBoxComponent).(yphy.Box).World
+		pbox := o.World.GetComponent(p, ywd.BoundingBoxComponent).(Box).World
 		b, h := r.IntersectsAABB(pbox)
 		dist := y3d.Sub(h, r.O).Length()
 		fl := float32(math.MaxFloat32)
@@ -287,7 +285,7 @@ func (o *Octree) GetFloor(origin y3d.Vec3, from ywd.EntityId) (bool, y3d.Vec3) {
 		if p == from {
 			continue //remove self intersection
 		}
-		box := o.World.GetComponent(p, ywd.BoundingBoxComponent).(yphy.Box).World
+		box := o.World.GetComponent(p, ywd.BoundingBoxComponent).(Box).World
 		if r.O.X < box.Min.X ||
 			r.O.X > box.Max.X ||
 			r.O.Y < box.Min.Y ||

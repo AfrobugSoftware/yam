@@ -168,7 +168,7 @@ func (t *TestApplication) LevelTest() {
 	ycore.AddEntityMoveData(t.engine.Level.World, ent2, y3d.Vec3{Z: -50, Y: 5.0}, y3d.IdenQuat())
 	ycore.AddEntityMoveData(t.engine.Level.World, ent4, y3d.Vec3{X: 5, Z: 10, Y: 5.0}, y3d.IdenQuat())
 
-	v, i := ygl.CreateSphere(64, 36, 5.0)
+	v, i := ygl.CreateSphere(64, 36, 2.0)
 	err := ycore.AddEntityRenderableData(t.engine.Level.World, ent,
 		ycore.VPNTC, 1.0, v, i, nil, t.engine.RenderManager.VertextManager)
 	if err != nil {
