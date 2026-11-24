@@ -150,3 +150,8 @@ func (p Plane) IntersectsOBB(obb OBB) bool {
 	distance := math.Abs(float64(p.SignedDistance(obb.Center)))
 	return distance <= float64(radius)
 }
+
+func (p Plane) IntersectSphere(s Sphere) bool {
+	r := Dot(p.N, s.C) - p.D
+	return float32(math.Abs(float64(r))) <= s.R
+}

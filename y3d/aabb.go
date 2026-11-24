@@ -196,7 +196,3 @@ func (b AABB) IntersectsSphere(sphere Sphere) bool {
 	distSq := b.MinDistSq(sphere.C)
 	return distSq <= (sphere.R * sphere.R)
 }
-
-func (b *AABB) GrowToInclude(a AABB) {
-
-}

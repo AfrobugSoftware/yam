@@ -1,6 +1,7 @@
 package yphy
 
 import (
+	"sort"
 	"sync"
 	"yam/y3d"
 	"yam/ywd"
@@ -119,13 +120,27 @@ func (cq *ContactQueue) PushBack(contact Contact) {
 	cq.contacts = append(cq.contacts, contact)
 }
 
-func (cq *ContactQueue) Front() (Contact, bool) {
+func (cq *ContactQueue) sort() {
+	sort.Slice(cq.contacts, func(i, j int) bool {
+		a := cq.contacts[i]
+		b := cq.contacts[j]
+		//most negative first
+		return a.calculateSeperatingVelocity() <
+			b.calculateSeperatingVelocity()
+	})
+}
+
+func (cq *ContactQueue) ResolveContacts(dt float32) {
 	cq.mu.Lock()
 	defer cq.mu.Unlock()
-	if len(cq.contacts) == 0 {
-		return Contact{}, false
+
+	iterations := len(cq.contacts) * 2
+	for range iterations {
+		cq.sort()
+		contact := cq.contacts[0]
+		if contact.calculateSeperatingVelocity() > 0 {
+			return //if the first contact is seperating we are done
+		}
+		contact.resolve(dt)
 	}
-	c := cq.contacts[0]
-	cq.contacts = cq.contacts[1:]
-	return c, true
 }

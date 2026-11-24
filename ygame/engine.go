@@ -1,6 +1,7 @@
 package ygame
 
 import (
+	"fmt"
 	"runtime"
 	"time"
 	"yam/ycore"
@@ -23,6 +24,8 @@ type Engine struct {
 	InputManager  *ycore.InputManager
 	AudioManager  *ycore.AudioManager
 	NetManager    *ycore.NetManager
+	Cq            *yphy.ContactQueue
+	Window        *sdl.Window
 	Level         *Level //should this be here
 }
 
@@ -47,6 +50,7 @@ func NewEngine(title string, width, height int32) (*Engine, error) {
 	}
 
 	window.SetResizable(true)
+
 	gEngine = &Engine{}
 	gEngine.RenderManager = ycore.NewRenderManager(window, int(width), int(height))
 	gEngine.InputManager = ycore.NewInputManager(window, int(width), int(height))
@@ -54,6 +58,8 @@ func NewEngine(title string, width, height int32) (*Engine, error) {
 	gEngine.Level = NewLevel()
 	gEngine.RenderManager.World = gEngine.Level.World // this might be an issue
 	gEngine.RenderManager.BoundingTree = yphy.NewOctree(gEngine.Level.World)
+	gEngine.Cq = yphy.NewContactQueue()
+	gEngine.RenderManager.Window = window
 	return gEngine, nil
 }
 
@@ -77,7 +83,11 @@ func (g *Engine) Update(dt float64) {
 	ycore.UpdateMovement(g.RenderManager.World, float32(dt))
 	yphy.IntegrateParticles(g.RenderManager.World, float32(dt))
 	ycore.UpdateTranform(g.RenderManager.World)
+
+	//remove the bounding tree from renderer
 	g.RenderManager.BoundingTree.BuildTree()
+	g.RenderManager.BoundingTree.GenerateContacts(g.Cq)
+	g.Cq.ResolveContacts(float32(dt))
 }
 
 func (g *Engine) Draw() {
@@ -97,7 +107,8 @@ func (g *Engine) Run() {
 		g.Update(float64(dt))
 		g.Draw()
 
-		//fmt.Println(1 / dt)
+		title := fmt.Sprintf("Kiwi island; fps: %.2f", 1/dt)
+		g.Window.SetTitle(title)
 	}
 }
 

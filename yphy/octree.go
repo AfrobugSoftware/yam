@@ -176,6 +176,36 @@ func (o *Octree) BuildTree() {
 	o.CreateChild()
 }
 
+func (o *Octree) GenerateContacts(cq *ContactQueue) {
+	if !o.IsLeaf() {
+		for i := range 8 {
+			if o.Children[i] != nil {
+				o.Children[i].GenerateContacts(cq)
+			}
+		}
+		return
+	}
+	es := make([]ywd.EntityId, len(o.Entites))
+	copy(es, o.Entites)
+	for _, e := range o.Entites {
+		for _, f := range es {
+			if e == f {
+				continue
+			}
+			if o.World.HasComponent(e, ywd.ColliderComponent) &&
+				o.World.HasComponent(f, ywd.ColliderComponent) {
+				colliderE := o.World.GetComponent(e, ywd.ColliderComponent).(Collider)
+				colliderF := o.World.GetComponent(f, ywd.ColliderComponent).(Collider)
+				if colliderE.Intersects(colliderF) {
+					contact := colliderE.GenerateContact(colliderF)
+					cq.PushBack(contact)
+				}
+			}
+		}
+		es = es[1:]
+	}
+}
+
 func (o *Octree) TestCollision(b y3d.AABB) (bool, ywd.EntityId) {
 	if o != o.Root {
 		if !o.BoundingBox.Overlaps(b) {

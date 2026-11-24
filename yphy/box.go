@@ -42,6 +42,14 @@ func (b Box) GetColliderType() ColliderType {
 }
 
 func (b Box) Intersects(c Collider) bool {
+	switch t := c.(type) {
+	case Box:
+		b.World.Overlaps(t.World)
+	case Plane:
+		t.World.IntersectsAABB(b.World)
+	case Sphere:
+		return b.World.IntersectsSphere(t.World)
+	}
 	return false
 }
 

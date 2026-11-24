@@ -32,6 +32,14 @@ func (s Sphere) GetColliderType() ColliderType {
 }
 
 func (s Sphere) Intersects(c Collider) bool {
+	switch t := c.(type) {
+	case Box:
+		return t.World.IntersectsSphere(s.World)
+	case Plane:
+		return t.World.IntersectSphere(s.World)
+	case Sphere:
+		return y3d.SphereIntersects(s.World, t.World)
+	}
 	return false
 }
 

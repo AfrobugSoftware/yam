@@ -60,6 +60,9 @@ type ComponentId uint64
 type EntityId uint32
 type Component any
 
+// might replace with an actual B-tree so that data can be streamed in and out of a file
+// implement a journal system that save data that is written
+// one queue writes and reads
 type Storage[T any] struct {
 	Store []T
 }
@@ -78,12 +81,7 @@ func (k archetypeKey) String() string {
 }
 
 func (k archetypeKey) contains(id ComponentId) bool {
-	for _, c := range k {
-		if c == id {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(k, id)
 }
 
 func (k archetypeKey) containsAll(ids []ComponentId) bool {
@@ -375,19 +373,6 @@ func (w *World) SetComponent(entity EntityId, cid ComponentId, comp Component) {
 	//assuming the the component we want to set is in this archetype
 	//possible bug here, if it does not have to component, it would create one
 	record.archetype.setComponent(record.row, cid, comp)
-}
-
-func (w *World) UpdateComponent(entity EntityId, component ComponentId,
-	updater func(comp Component)) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	record := w.entities[entity]
-	if record == nil {
-		return
-	}
-	store := reflect.ValueOf(record.archetype.storageBuffer[component]).Elem()
-	slc := store.Field(0)
-	updater(slc.Index(record.row).Addr())
 }
 
 // returns all entities that has at least the given component ids
