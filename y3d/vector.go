@@ -40,6 +40,18 @@ func Add(v ...Vec3) Vec3 {
 	}
 	return lhs
 }
+func AddV4(v ...Vec4) Vec4 {
+	lhs := Vec4{}
+	for _, rhs := range v {
+		lhs = Vec4{
+			X: lhs.X + rhs.X,
+			Y: lhs.Y + rhs.Y,
+			Z: lhs.Z + rhs.Z,
+			W: lhs.W + rhs.W,
+		}
+	}
+	return lhs
+}
 
 func (v Vec3) AddScale(a Vec3, s float32) Vec3 {
 	return Vec3{
@@ -90,6 +102,14 @@ func Sub(lhs, rhs Vec3) Vec3 {
 		X: lhs.X - rhs.X,
 		Y: lhs.Y - rhs.Y,
 		Z: lhs.Z - rhs.Z,
+	}
+}
+func SubV4(lhs, rhs Vec4) Vec4 {
+	return Vec4{
+		X: lhs.X - rhs.X,
+		Y: lhs.Y - rhs.Y,
+		Z: lhs.Z - rhs.Z,
+		W: lhs.W - rhs.W,
 	}
 }
 
@@ -168,6 +188,10 @@ func GetAngle2D(v Vec3) float64 {
 
 func Dot(v, q Vec3) float32 {
 	return v.X*q.X + v.Y*q.Y + v.Z*q.Z
+}
+
+func DotV4(v, q Vec4) float32 {
+	return v.X*q.X + v.Y*q.Y + v.Z*q.Z + v.W*q.W
 }
 
 func Cross(v, q Vec3) Vec3 {

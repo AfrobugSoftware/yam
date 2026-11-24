@@ -476,70 +476,6 @@ func (r *RenderManager) DestroyFrameBuffer() {
 	gl.DeleteTextures(1, &r.pickTexture)
 }
 
-func (r *RenderManager) GetFrustum() [6]y3d.Plane {
-	var planes [6]y3d.Plane
-	//left
-	planes[0] = y3d.Plane{
-		N: y3d.Vec3{
-			X: -(r.ViewProj[12] + r.ViewProj[0]),
-			Y: -(r.ViewProj[13] + r.ViewProj[1]),
-			Z: -(r.ViewProj[14] + r.ViewProj[2]),
-		},
-		D: -(r.ViewProj[15] + r.ViewProj[3]),
-	}
-	//right
-	planes[1] = y3d.Plane{
-		N: y3d.Vec3{
-			X: -(r.ViewProj[12] - r.ViewProj[0]),
-			Y: -(r.ViewProj[13] - r.ViewProj[1]),
-			Z: -(r.ViewProj[14] - r.ViewProj[2]),
-		},
-		D: -(r.ViewProj[15] - r.ViewProj[3]),
-	}
-	//top
-	planes[2] = y3d.Plane{
-		N: y3d.Vec3{
-			X: -(r.ViewProj[12] - r.ViewProj[4]),
-			Y: -(r.ViewProj[13] - r.ViewProj[5]),
-			Z: -(r.ViewProj[14] - r.ViewProj[6]),
-		},
-		D: -(r.ViewProj[15] - r.ViewProj[7]),
-	}
-	//bottom
-	planes[3] = y3d.Plane{
-		N: y3d.Vec3{
-			X: -(r.ViewProj[12] + r.ViewProj[4]),
-			Y: -(r.ViewProj[13] + r.ViewProj[5]),
-			Z: -(r.ViewProj[14] + r.ViewProj[6]),
-		},
-		D: -(r.ViewProj[15] + r.ViewProj[7]),
-	}
-	//near
-	planes[4] = y3d.Plane{
-		N: y3d.Vec3{
-			X: -(r.ViewProj[8]),
-			Y: -(r.ViewProj[9]),
-			Z: -(r.ViewProj[10]),
-		},
-		D: -(r.ViewProj[11]),
-	}
-	//bottom
-	planes[5] = y3d.Plane{
-		N: y3d.Vec3{
-			X: -(r.ViewProj[12] - r.ViewProj[8]),
-			Y: -(r.ViewProj[13] - r.ViewProj[9]),
-			Z: -(r.ViewProj[14] - r.ViewProj[10]),
-		},
-		D: -(r.ViewProj[15] - r.ViewProj[11]),
-	}
-	for i := range planes {
-		l := planes[i].N.Length()
-		planes[i].D /= l
-		planes[i].N = y3d.SDiv(planes[i].N, l)
-	}
-	return planes
-}
-
 func (r *RenderManager) SetClippingPlanes(near, far float32) {
 	if near > far {
 		near = far
@@ -1201,12 +1137,27 @@ func (r *RenderManager) DrawPipelines() {
 	}
 }
 
+func (r *RenderManager) GetFrustumPlanes() []y3d.Vec4 {
+	vpt := r.ViewProj
+	vpt.Transpose()
+	vs := unsafe.Slice((*y3d.Vec4)(unsafe.Pointer(&vpt[0])), 4)
+	ret := make([]y3d.Vec4, 6)
+	ret[0] = y3d.AddV4(vs[3], vs[0]) //left
+	ret[1] = y3d.SubV4(vs[3], vs[0]) //right
+	ret[2] = y3d.AddV4(vs[3], vs[1]) //bottom
+	ret[3] = y3d.SubV4(vs[3], vs[1]) //top
+	ret[4] = y3d.AddV4(vs[3], vs[2]) //near
+	ret[5] = y3d.SubV4(vs[3], vs[2]) //far
+
+	return ret
+}
+
 func (r *RenderManager) RenderEntities(cull bool, entities []ywd.EntityId) {
 	if r.World == nil {
 		return
 	}
 	vm := r.VertextManager
-	frustum := r.GetFrustum()
+	planes := r.GetFrustumPlanes()
 	mats := make([]y3d.Mat4, 0, 1000)
 	rs := make([]PerObjectRenderState, 0, 1000)
 	tags := make([]uint32, 0, 1000)
@@ -1226,7 +1177,7 @@ func (r *RenderManager) RenderEntities(cull bool, entities []ywd.EntityId) {
 					continue
 				}
 				box := r.World.GetComponent(ie, ywd.BoundingBoxComponent).(yphy.Box)
-				if cull && box.World.Cull(frustum[:]) {
+				if cull && !box.IsVisiable(planes) {
 					continue
 				}
 				if r.World.HasComponent(ie, ywd.PbrMaterialComponent) {
@@ -1270,7 +1221,7 @@ func (r *RenderManager) RenderEntities(cull bool, entities []ywd.EntityId) {
 			r.World.SetComponent(e, ywd.InstanceComponent, instances)
 		} else {
 			box := r.World.GetComponent(e, ywd.BoundingBoxComponent).(yphy.Box)
-			if cull && box.World.Cull(frustum[:]) {
+			if cull && !box.IsVisiable(planes) {
 				continue
 			}
 			transform := r.World.GetComponent(e, ywd.TransformComponent).(Transform)
@@ -1278,6 +1229,7 @@ func (r *RenderManager) RenderEntities(cull bool, entities []ywd.EntityId) {
 			v.AddMatrix(int(renderable.DrawCmd.BaseInstance), transform.World) //this needs to be world
 			if r.World.HasComponent(e, ywd.PbrMaterialComponent) {
 				//if we have textures for materials bound to this entity
+				//TODO: add a layer of indirection so that the textures can have a single source of truth
 				nrs := renderable.RenderParams
 				pbrs := r.World.GetComponent(e, ywd.PbrMaterialComponent).([]PbrMaterial)
 				var pbr PbrMaterial

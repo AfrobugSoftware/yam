@@ -97,6 +97,34 @@ func BoundBox(stride, relativeOffset int, dataV, dataI *bytes.Buffer) Box {
 	}
 }
 
+func (b Box) IsVisiable(planes []y3d.Vec4) bool {
+	max := y3d.Vec4{
+		X: b.World.Max.X,
+		Y: b.World.Max.Y,
+		Z: b.World.Max.Z,
+		W: 1,
+	}
+	min := y3d.Vec4{
+		X: b.World.Min.X,
+		Y: b.World.Min.Y,
+		Z: b.World.Min.Z,
+		W: 1,
+	}
+	for _, f := range planes {
+		if y3d.DotV4(f, min) < 0.0 &&
+			y3d.DotV4(f, y3d.Vec4{X: max.X, Y: min.Y, Z: min.Z, W: 1.0}) < 0.0 &&
+			y3d.DotV4(f, y3d.Vec4{X: min.X, Y: max.Y, Z: min.Z, W: 1.0}) < 0.0 &&
+			y3d.DotV4(f, y3d.Vec4{X: max.X, Y: max.Y, Z: min.Z, W: 1.0}) < 0.0 &&
+			y3d.DotV4(f, y3d.Vec4{X: min.X, Y: min.Y, Z: max.Z, W: 1.0}) < 0.0 &&
+			y3d.DotV4(f, y3d.Vec4{X: max.X, Y: min.Y, Z: max.Z, W: 1.0}) < 0.0 &&
+			y3d.DotV4(f, y3d.Vec4{X: min.X, Y: max.Y, Z: max.Z, W: 1.0}) < 0.0 &&
+			y3d.DotV4(f, max) < 0.0 {
+			return false
+		}
+	}
+	return true
+}
+
 func (b Box) RenderBoxMatrix() y3d.Mat4 {
 	c := b.World.GetCenter()
 	s := b.World.GetHalfSize()

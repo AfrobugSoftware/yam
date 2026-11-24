@@ -83,12 +83,12 @@ func (r Ray) IntersectsAABB(aabb AABB) (bool, Vec3) {
 	return true, Add(r.O, Smul(r.D, tmin))
 }
 
-func (r Ray) IntersectsPlane(plane Plane, cull bool) (bool, Vec3) {
+func (r Ray) IntersectsPlane(plane Plane) (bool, Vec3) {
 	vd := Dot(plane.N, r.D)
-	if math.Abs(float64(vd)) < 0.000001 {
+	if math.Abs(float64(vd)) < 0.0000001 {
 		return false, ZEROV3
 	}
-	if cull && (vd > 0.0) {
+	if vd > 0.0 {
 		return false, ZEROV3
 	}
 	vo := -(Dot(plane.N, r.O) + plane.D)
@@ -96,7 +96,7 @@ func (r Ray) IntersectsPlane(plane Plane, cull bool) (bool, Vec3) {
 	if t < 0.0 {
 		return false, ZEROV3
 	}
-	hit := Add(r.O, Smul(r.D, t))
+	hit := r.O.AddScale(r.D, t)
 	return true, hit
 }
 

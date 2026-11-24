@@ -84,8 +84,8 @@ func RenderSceneGraph(w *ywd.World, r *RenderManager, root ywd.EntityId) {
 		f := q[0]
 		q = q[1:]
 		box := w.GetComponent(f, ywd.BoundingBoxComponent).(yphy.Box)
-		c := r.GetFrustum()
-		if box.World.Cull(c[:]) {
+		c := r.GetFrustumPlanes()
+		if !box.IsVisiable(c) {
 			continue
 		}
 		if w.HasComponent(f, ywd.HierarchyComponent) {

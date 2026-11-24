@@ -48,6 +48,7 @@ const (
 	InverseMassComponent
 	ForceComponent
 	MoveComponent
+	ColliderComponent
 )
 
 func GenerateRandomId() int {

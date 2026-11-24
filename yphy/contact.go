@@ -21,9 +21,9 @@ func (p *Contact) SetContactNormal(a, b ywd.EntityId) {
 	p.ContactNormal = y3d.Normalize(y3d.Sub(posA, posb))
 }
 
-func (p *Contact) resolve(dt float32) {
-	p.resolveVelocity(dt)
-	p.resolveInterpenetration(dt)
+func (p *Contact) resolve() {
+	p.resolveVelocity()
+	p.resolveInterpenetration()
 }
 
 func (p *Contact) calculateSeperatingVelocity() float32 {
@@ -36,7 +36,7 @@ func (p *Contact) calculateSeperatingVelocity() float32 {
 	return y3d.Dot(avel, p.ContactNormal)
 }
 
-func (p *Contact) resolveVelocity(_ float32) {
+func (p *Contact) resolveVelocity() {
 	sv := p.calculateSeperatingVelocity()
 	if sv > 0 {
 		//stationary or seperating
@@ -66,8 +66,26 @@ func (p *Contact) resolveVelocity(_ float32) {
 	}
 }
 
-func (p *Contact) resolveInterpenetration(dt float32) {
-
+func (p *Contact) resolveInterpenetration() {
+	if p.Penetration <= 0 {
+		return
+	}
+	totalInverseMass := p.World.GetComponent(p.A, ywd.InverseMassComponent).(float32)
+	if p.B != ywd.NullEntity {
+		totalInverseMass += p.World.GetComponent(p.B, ywd.InverseMassComponent).(float32)
+	}
+	if totalInverseMass <= 0 {
+		return //both particles have infinate mass
+	}
+	movePerIMass := y3d.Smul(p.ContactNormal, (p.Penetration / totalInverseMass))
+	movement := y3d.Smul(movePerIMass, p.World.GetComponent(p.A, ywd.InverseMassComponent).(float32))
+	posA := y3d.Add(p.World.GetComponent(p.A, ywd.PositionComponent).(y3d.Vec3), movement)
+	p.World.SetComponent(p.A, ywd.PositionComponent, posA)
+	if p.B != ywd.NullEntity {
+		movement := y3d.Smul(movePerIMass, -p.World.GetComponent(p.B, ywd.InverseMassComponent).(float32))
+		posb := y3d.Add(p.World.GetComponent(p.B, ywd.PositionComponent).(y3d.Vec3), movement)
+		p.World.SetComponent(p.B, ywd.PositionComponent, posb)
+	}
 }
 
 type ContactQueue struct {

@@ -300,9 +300,20 @@ func (t *TestApplication) AddBox() {
 	if im.GetMouseButtonState(sdl.BUTTON_RIGHT) == ycore.BUTTON_PRESSED {
 		o := t.engine.RenderManager.GetPickRay(caged)
 		ie1 := w.NewEntity()
-		w.AddComponent(ie1, ywd.ScaleComponent, float32(0.5))
-		ycore.AddEntityMoveData(w, ie1, y3d.Add(o.O, y3d.Smul(o.D, 5.0)), y3d.IdenQuat())
+		w.AddComponent(ie1, ywd.TransformComponent, ycore.NewTransform())
 		ycore.AddEntityAsInstance(w, t.boxEnt, ie1)
+		w.AddComponent(ie1, ywd.PositionComponent, o.O)
+		w.AddComponent(ie1, ywd.OrientationComponent, y3d.IdenQuat())
+		w.AddComponent(ie1, ywd.ScaleComponent, float32(0.25))
+		w.AddComponent(ie1, ywd.VelocityComponent, y3d.Vec3{})
+		w.AddComponent(ie1, ywd.InverseMassComponent, float32(1.0/2.0))
+		w.AddComponent(ie1, ywd.MoveComponent, &ycore.Move{})
+		w.AddComponent(ie1, ywd.AccelerationComponent, y3d.Vec3{
+			X: 0.0,
+			Y: -1.0,
+			Z: 0.0,
+		})
+		w.AddComponent(ie1, ywd.ForceComponent, y3d.Vec3{})
 	}
 }
 

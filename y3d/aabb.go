@@ -102,28 +102,6 @@ func (box AABB) GetHalfSize() Vec3 {
 	}
 }
 
-func (b AABB) CullPlane(p Plane) bool {
-	c := b.GetCenter()
-	e := b.GetHalfSize()
-
-	r := math.Abs(float64(e.X*p.N.X)) +
-		math.Abs(float64(e.Y*p.N.Y)) +
-		math.Abs(float64(e.Z*p.N.Z))
-
-	s := Dot(p.N, c) + p.D
-
-	return s < -float32(r)
-}
-
-func (aabb AABB) Cull(planes []Plane) bool {
-	for _, p := range planes {
-		if !aabb.CullPlane(p) {
-			return false
-		}
-	}
-	return true
-}
-
 func (aabb AABB) GetPlanes() []Plane {
 	planes := make([]Plane, 0)
 	//right
