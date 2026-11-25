@@ -36,6 +36,5 @@ func (p Plane) Transform(w y3d.Mat4) Collider {
 func (p Plane) GetColliderType() ColliderType {
 	return COLLIDER_PLANE
 }
-func (p Plane) GenerateContact(c Collider) Contact {
-	return Contact{}
+func (p Plane) GenerateContact(c Collider, cq *ContactQueue) {
 }

@@ -24,13 +24,12 @@ func (b OrientedBox) Transform(m y3d.Mat4) Collider {
 	return b
 }
 
-func (b OrientedBox) GenerateContact(c Collider) Contact {
+func (b OrientedBox) GenerateContact(c Collider, cq *ContactQueue) {
 	switch t := c.(type) {
 	case Box:
 		fmt.Println(t.World)
 	}
 
-	return Contact{}
 }
 
 func (b OrientedBox) Pick(ray y3d.Ray) (bool, y3d.Vec3) {

@@ -20,5 +20,5 @@ type Collider interface {
 	Intersects(c Collider) bool
 	Transform(w y3d.Mat4) Collider
 	GetColliderType() ColliderType
-	GenerateContact(c Collider) Contact
+	GenerateContact(c Collider, cq *ContactQueue)
 }

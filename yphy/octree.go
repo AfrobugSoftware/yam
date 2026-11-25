@@ -197,8 +197,7 @@ func (o *Octree) GenerateContacts(cq *ContactQueue) {
 				colliderE := o.World.GetComponent(e, ywd.ColliderComponent).(Collider)
 				colliderF := o.World.GetComponent(f, ywd.ColliderComponent).(Collider)
 				if colliderE.Intersects(colliderF) {
-					contact := colliderE.GenerateContact(colliderF)
-					cq.PushBack(contact)
+					colliderE.GenerateContact(colliderF, cq)
 				}
 			}
 		}

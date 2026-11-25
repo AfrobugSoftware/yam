@@ -24,13 +24,12 @@ func (cp Capsule) Intersects(c Collider) bool {
 	return false
 }
 
-func (cp Capsule) GenerateContact(c Collider) Contact {
+func (cp Capsule) GenerateContact(c Collider, cq *ContactQueue) {
 	switch t := c.(type) {
 	case Box:
 		fmt.Println(t.World)
 	}
 
-	return Contact{}
 }
 
 func (cp Capsule) Pick(ray y3d.Ray) (bool, y3d.Vec3) {

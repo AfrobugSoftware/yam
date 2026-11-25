@@ -43,8 +43,7 @@ func (s Sphere) Intersects(c Collider) bool {
 	return false
 }
 
-func (s Sphere) GenerateContact(c Collider) Contact {
-	return Contact{}
+func (s Sphere) GenerateContact(c Collider, cq *ContactQueue) {
 }
 
 func BoundSphere(stride, relativeOffset int, dataV, dataI *bytes.Buffer) Sphere {
