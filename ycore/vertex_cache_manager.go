@@ -3,7 +3,6 @@ package ycore
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"log"
 	"sort"
 	"unsafe"
@@ -18,11 +17,21 @@ const (
 )
 
 const (
+	BINDING_INDEX_POSITION = iota
+	BINDING_INDEX_NORMAL
+	BINDING_INDEX_TEX_0
+	BINDING_INDEX_TEX_1
+	BINDING_INDEX_COLOR
+	BINDING_INDEX_TANGENT
+	BINDING_INDEX_JOINTS
+	BINDING_INDEX_WEIGHTS
+)
+
+const (
 	INVALID_VERTEX_FORMAT = "invalid"
 	VPNT                  = "pos.normal.tex"
 	VPNTC                 = "pos.normal.tex.color"
-	VPNTTB                = "pos.normal.tex.tangent.bitangent"
-	VPNTWJ                = "pos.normal.tex.weight.joint"
+	VPNTJW                = "pos.normal.tex.weight.joint"
 )
 
 type VertexCacheManager struct {
@@ -55,24 +64,26 @@ func NewVertexCacheManager(
 	}
 	vm.Strides[VPNT] = 32
 	vm.Strides[VPNTC] = 48
-	vm.Strides[VPNTTB] = 56
-	vm.Strides[VPNTWJ] = 64
+	vm.Strides[VPNTJW] = 64
 
 	vm.Formats[VPNT] = []VertexFormat{
 		{
 			ComponentSize:  3,
 			Type:           gl.FLOAT,
 			RelativeOffset: 0,
+			BindingIndex:   BINDING_INDEX_POSITION,
 		},
 		{
 			ComponentSize:  3,
 			Type:           gl.FLOAT,
 			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 3),
+			BindingIndex:   BINDING_INDEX_NORMAL,
 		},
 		{
 			ComponentSize:  2,
 			Type:           gl.FLOAT,
 			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 6),
+			BindingIndex:   BINDING_INDEX_TEX_0,
 		},
 	}
 	vm.Formats[VPNTC] = []VertexFormat{
@@ -80,75 +91,57 @@ func NewVertexCacheManager(
 			ComponentSize:  3,
 			Type:           gl.FLOAT,
 			RelativeOffset: 0,
+			BindingIndex:   BINDING_INDEX_POSITION,
 		},
 		{
 			ComponentSize:  3,
 			Type:           gl.FLOAT,
 			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 3),
+			BindingIndex:   BINDING_INDEX_NORMAL,
 		},
 		{
 			ComponentSize:  2,
 			Type:           gl.FLOAT,
 			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 6),
+			BindingIndex:   BINDING_INDEX_TEX_0,
 		},
 		{
 			ComponentSize:  4,
 			Type:           gl.FLOAT,
 			RelativeOffset: uint32(32),
+			BindingIndex:   BINDING_INDEX_COLOR,
 		},
 	}
-	vm.Formats[VPNTWJ] = []VertexFormat{
+	vm.Formats[VPNTJW] = []VertexFormat{
 		{
 			ComponentSize:  3,
 			Type:           gl.FLOAT,
 			RelativeOffset: 0,
+			BindingIndex:   BINDING_INDEX_POSITION,
 		},
 		{
 			ComponentSize:  3,
 			Type:           gl.FLOAT,
 			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 3),
+			BindingIndex:   BINDING_INDEX_NORMAL,
 		},
 		{
 			ComponentSize:  2,
 			Type:           gl.FLOAT,
 			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 6),
+			BindingIndex:   BINDING_INDEX_TEX_0,
 		},
 		{
 			ComponentSize:  4,
 			Type:           gl.FLOAT,
 			RelativeOffset: uint32(unsafe.Sizeof(uint32(0)) * 8),
+			BindingIndex:   BINDING_INDEX_JOINTS,
 		},
 		{
 			ComponentSize:  4,
 			Type:           gl.UNSIGNED_INT,
 			RelativeOffset: uint32(unsafe.Sizeof(uint32(0)) * 12),
-		},
-	}
-	vm.Formats[VPNTTB] = []VertexFormat{
-		{
-			ComponentSize:  3,
-			Type:           gl.FLOAT,
-			RelativeOffset: 0,
-		},
-		{
-			ComponentSize:  3,
-			Type:           gl.FLOAT,
-			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 3),
-		},
-		{
-			ComponentSize:  2,
-			Type:           gl.FLOAT,
-			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 6),
-		},
-		{
-			ComponentSize:  3,
-			Type:           gl.FLOAT,
-			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 8),
-		},
-		{
-			ComponentSize:  3,
-			Type:           gl.FLOAT,
-			RelativeOffset: uint32(unsafe.Sizeof(float32(0)) * 11),
+			BindingIndex:   BINDING_INDEX_WEIGHTS,
 		},
 	}
 
@@ -187,7 +180,7 @@ func NewVertexCacheManager(
 		vm.Caches[VPNTC] = c
 		vm.CacheId++
 
-		c = vm.Caches[VPNTWJ]
+		c = vm.Caches[VPNTJW]
 		c[i] = NewVertexCache(
 			renderManager.TextureManager,
 			vm,
@@ -196,28 +189,12 @@ func NewVertexCacheManager(
 			maxDrawCommands,
 			maxInstances,
 			maxJoints,
-			vm.Strides[VPNTWJ],
+			vm.Strides[VPNTJW],
 			gl.TRIANGLES,
 			vm.CacheId,
-			vm.Formats[VPNTWJ],
+			vm.Formats[VPNTJW],
 		)
-		vm.Caches[VPNTWJ] = c
-		vm.CacheId++
-		c = vm.Caches[VPNTTB]
-		c[i] = NewVertexCache(
-			renderManager.TextureManager,
-			vm,
-			maxVerts,
-			maxIndices,
-			maxDrawCommands,
-			maxInstances,
-			maxJoints,
-			vm.Strides[VPNTTB],
-			gl.TRIANGLES,
-			vm.CacheId,
-			vm.Formats[VPNTTB],
-		)
-		vm.Caches[VPNTTB] = c
+		vm.Caches[VPNTJW] = c
 	}
 	return vm
 }
@@ -400,9 +377,6 @@ func (vm *VertexCacheManager) CreateDrawCommand(dataI *bytes.Buffer,
 // have to render the data into an agency list or a new data structure, then build the tangent
 // then re-render it into a vertex list with the indices into that list
 func (vm *VertexCacheManager) CalculateTangentSpace(dataV, dataI *bytes.Buffer, vertexType string) (*bytes.Buffer, error) {
-	if vertexType != VPNTTB {
-		return nil, fmt.Errorf("cannot create tangent space for this format: %s", vertexType)
-	}
 	format := vm.Formats[vertexType]
 	stride := vm.Strides[vertexType]
 	b := dataV.Bytes()

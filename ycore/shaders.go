@@ -6,7 +6,12 @@ const (
 layout(location = 0) in vec3 pos;
 layout(location = 1) in vec3 norm;
 layout(location = 2) in vec2 tc;
-layout(location = 3) in vec4 color;
+layout(location = 3) in vec2 tc2;
+layout(location = 4) in vec4 color;
+layout(location = 5) in vec4 tangent;
+layout(location = 6) in uvec4 joints;
+layout(location = 7) in vec4 weights;
+
 layout(location = 10) in uint dInx;
 layout(location = 11) in uint primInx;
 
@@ -18,6 +23,11 @@ struct per_object_transform {
 layout(std430, binding = 0) buffer matrix_ssbo {
     per_object_transform world[];
 };
+
+layout(std430, binding = 1) buffer joint_ssbo {
+	mat4 joints_mat[];
+};
+
 layout(std140, binding = 4) uniform vp {
 	mat4 view_proj;
 };
@@ -30,17 +40,39 @@ out data {
 	flat uint draw_index;
 }vs_out;
 
-vec4 animatedPosition() {
-	return vec4(1.0);
-}
+struct per_object_render_state {
+	float alpha;
+	uint render_flag;
+	uint tex1;
+	uint tex2;
+	uint tex3;
+	uint tex4;
+	uint base_joint_idx;
+	uint base_pbr_mat_idx;
+};
 
+layout(std430, binding = 2) buffer per_object_render_state_buffer {
+	per_object_render_state data[];
+}ors;
+
+vec4 animatedPosition(vec3 pos) {
+	mat4 skinMat = weights.x * joints_mat[ors.data[dInx].base_joint_idx+int(joints.x)] +
+		weights.y * joints_mat[ors.data[dInx].base_joint_idx+int(joints.y)] +
+		weights.z * joints_mat[ors.data[dInx].base_joint_idx+int(joints.z)] +
+		weights.w * joints_mat[ors.data[dInx].base_joint_idx+int(joints.w)];
+	return skinMat * vec4(pos, 1.0);
+}
 void main() {
-	vs_out.pos = vec3(world[dInx].world * vec4(pos, 1.0));
+	if((ors.data[dInx].render_flag & (1 << 5)) != 0) {
+		vs_out.pos = vec3(world[dInx].world * animatedPosition(pos));
+	}else {
+		vs_out.pos = vec3(world[dInx].world * vec4(pos, 1.0));
+	}
 	vs_out.normal = mat3(world[dInx].normal) * norm;
 	vs_out.tc = tc;
 	vs_out.draw_index = dInx;
 	vs_out.prim_index = primInx;
-	gl_Position = view_proj * world[dInx].world * vec4(pos, 1.0);
+	gl_Position = view_proj * vec4(vs_out.pos, 1.0);
 };
 
 	`
@@ -430,6 +462,8 @@ void main() {
 	pickVert = `
 #version 430 core
 layout(location = 0) in vec3 pos;
+layout(location = 6) in uvec4 joints;
+layout(location = 7) in vec4 weights;
 layout(location = 10) in uint dInx;
 
 layout(std140, binding = 4) uniform vp {
@@ -443,10 +477,43 @@ struct per_object_transform {
 layout(std430, binding = 0) buffer matrix_ssbo {
     per_object_transform world[];
 };
+layout(std430, binding = 1) buffer joint_ssbo {
+	mat4 joints_mat[];
+};
+
+struct per_object_render_state {
+	float alpha;
+	uint render_flag;
+	uint tex1;
+	uint tex2;
+	uint tex3;
+	uint tex4;
+	uint base_joint_idx;
+	uint base_pbr_mat_idx;
+};
+
+layout(std430, binding = 2) buffer per_object_render_state_buffer {
+	per_object_render_state data[];
+}ors;
+
+vec4 animatedPosition(vec3 pos) {
+	mat4 skinMat = weights.x * joints_mat[ors.data[dInx].base_joint_idx+int(joints.x)] +
+		weights.y * joints_mat[ors.data[dInx].base_joint_idx+int(joints.y)] +
+		weights.z * joints_mat[ors.data[dInx].base_joint_idx+int(joints.z)] +
+		weights.w * joints_mat[ors.data[dInx].base_joint_idx+int(joints.w)];
+	return skinMat * vec4(pos, 1.0);
+}
+
 flat out uint draw_index;
 void main() {
 	draw_index = dInx;
-	gl_Position =  view_proj * world[dInx].world * vec4(pos, 1.0);
+	vec4 outpos;
+	if((ors.data[dInx].render_flag & (1 << 5)) != 0) {
+		outpos = world[dInx].world * animatedPosition(pos);
+	}else {
+		outpos = world[dInx].world * vec4(pos, 1.0);
+	}
+	gl_Position =  view_proj * outpos;
 }
 `
 	pickFrag = `

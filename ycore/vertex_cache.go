@@ -115,15 +115,15 @@ func NewVertexCache(
 	gl.CreateBuffers(1, &vvbo)
 	gl.NamedBufferStorage(vvbo, int(maxVertex*stride), nil, gl.DYNAMIC_STORAGE_BIT)
 	UpdateGPUMem(uint64(maxVertex * stride))
-	for i, f := range format {
-		gl.VertexArrayAttribBinding(vao, uint32(i), VERTEX_ATTRIBUTE_BINDING)
+	for _, f := range format {
+		gl.VertexArrayAttribBinding(vao, f.BindingIndex, VERTEX_ATTRIBUTE_BINDING)
 		switch f.Type {
 		case gl.UNSIGNED_INT, gl.UNSIGNED_BYTE, gl.UNSIGNED_SHORT:
-			gl.VertexArrayAttribIFormat(vao, uint32(i), f.ComponentSize, f.Type, f.RelativeOffset)
+			gl.VertexArrayAttribIFormat(vao, f.BindingIndex, f.ComponentSize, f.Type, f.RelativeOffset)
 		default:
-			gl.VertexArrayAttribFormat(vao, uint32(i), f.ComponentSize, f.Type, f.Normalized, f.RelativeOffset)
+			gl.VertexArrayAttribFormat(vao, f.BindingIndex, f.ComponentSize, f.Type, f.Normalized, f.RelativeOffset)
 		}
-		gl.EnableVertexArrayAttrib(vao, uint32(i))
+		gl.EnableVertexArrayAttrib(vao, f.BindingIndex)
 	}
 	gl.VertexArrayVertexBuffer(vao, VERTEX_ATTRIBUTE_BINDING, vvbo, 0, stride)
 
