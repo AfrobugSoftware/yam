@@ -209,6 +209,7 @@ func loadInverseBindMats(doc *gltf.Document, acc *gltf.Accessor, data map[int][]
 	return out, nil
 }
 
+// add binding index to this
 func attributeNames[V any](attrs map[string]V) []string {
 	rank := func(name string) int {
 		for k, n := range attribOrder {
@@ -590,6 +591,7 @@ func ProcessNode(world *ywd.World, node *gltf.Node,
 								copy(s.rotation, rotations)
 							} else {
 								s := &Sampler{
+									Repeat:         true,
 									OutRotation:    y3d.IdenQuat(),
 									OutTranslation: y3d.Vec3{},
 									OutScale:       y3d.UnitV3,
@@ -624,6 +626,7 @@ func ProcessNode(world *ywd.World, node *gltf.Node,
 								copy(s.translation, translations)
 							} else {
 								s := &Sampler{
+									Repeat:         true,
 									OutRotation:    y3d.IdenQuat(),
 									OutTranslation: y3d.Vec3{},
 									OutScale:       y3d.UnitV3,
@@ -658,6 +661,7 @@ func ProcessNode(world *ywd.World, node *gltf.Node,
 								copy(s.scale, scale)
 							} else {
 								s := &Sampler{
+									Repeat:         true,
 									OutRotation:    y3d.IdenQuat(),
 									OutTranslation: y3d.Vec3{},
 									OutScale:       y3d.UnitV3,

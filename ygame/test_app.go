@@ -20,6 +20,7 @@ type TestApplication struct {
 	yaw, pitch    float32
 	pickedEntity  ywd.EntityId
 	boxEnt        ywd.EntityId
+	sphereEnt     ywd.EntityId
 	font          *yui.Font
 	useCam        bool
 	drag          *yphy.DragForce
@@ -168,12 +169,13 @@ func (t *TestApplication) LevelTest() {
 	ycore.AddEntityMoveData(t.engine.Level.World, ent2, y3d.Vec3{Z: -50, Y: 5.0}, y3d.IdenQuat())
 	ycore.AddEntityMoveData(t.engine.Level.World, ent4, y3d.Vec3{X: 5, Z: 10, Y: 5.0}, y3d.IdenQuat())
 
-	v, i := ygl.CreateSphere(64, 36, 2.0)
+	v, i := ygl.CreateSphere(64, 36, 1.0)
 	err := ycore.AddEntityRenderableData(t.engine.Level.World, ent,
 		ycore.VPNTC, 1.0, v, i, nil, t.engine.RenderManager.VertextManager)
 	if err != nil {
 		panic(err)
 	}
+	t.sphereEnt = ent
 	v2, i2 := ygl.CreateCube()
 	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent3,
 		ycore.VPNTC, 1.0, v2, i2, nil, t.engine.RenderManager.VertextManager)
@@ -198,10 +200,10 @@ func (t *TestApplication) LevelTest() {
 	ycore.AddEntityMoveData(w, ie1, y3d.Vec3{X: 5, Z: 0, Y: 2.0}, y3d.IdenQuat())
 	ycore.AddEntityMoveData(w, ie2, y3d.Vec3{X: 10, Z: 0, Y: 2.0}, y3d.IdenQuat())
 	ycore.AddEntityMoveData(w, ie3, y3d.Vec3{X: -5, Z: 0, Y: 2.0}, y3d.IdenQuat())
-
-	w.AddComponent(ie1, ywd.ScaleComponent, float32(1.0))
-	w.AddComponent(ie2, ywd.ScaleComponent, float32(1.0))
-	w.AddComponent(ie3, ywd.ScaleComponent, float32(1.0))
+	unitScale := y3d.Vec3{X: 1, Y: 1, Z: 1}
+	w.AddComponent(ie1, ywd.ScaleComponent, unitScale)
+	w.AddComponent(ie2, ywd.ScaleComponent, unitScale)
+	w.AddComponent(ie3, ywd.ScaleComponent, unitScale)
 	ycore.AddEntityAsInstance(w, ent3, ie1)
 	ycore.AddEntityAsInstance(w, ent3, ie2)
 	ycore.AddEntityAsInstance(w, ent3, ie3)
@@ -216,6 +218,7 @@ func (t *TestApplication) Update(deltaTime float64) {
 
 	t.UpdatePickedEntity()
 	t.AddBox()
+	t.AddSphere()
 	t.ShotBullet()
 	t.forceRegistry.Update(t.engine.RenderManager.World,
 		float32(deltaTime))
@@ -293,6 +296,19 @@ func (t *TestApplication) ProcessInput(deltaTime float32) {
 
 }
 
+func (t *TestApplication) CreateGroundPlane() {
+	w := t.engine.Level.World
+	ie1 := w.NewEntity()
+	w.AddComponent(ie1, ywd.PositionComponent, y3d.ZEROV3)
+	w.AddComponent(ie1, ywd.OrientationComponent, y3d.IdenQuat())
+	w.AddComponent(ie1, ywd.VelocityComponent, y3d.Vec3{})
+	w.AddComponent(ie1, ywd.InverseMassComponent, float32(0.0))
+	w.AddComponent(ie1, ywd.ColliderComponent, yphy.Plane{
+		Local: y3d.PlaneFromPointNormal(y3d.ZEROV3, y3d.UNIT_Y),
+		World: y3d.PlaneFromPointNormal(y3d.ZEROV3, y3d.UNIT_Y),
+	})
+}
+
 func (t *TestApplication) AddBox() {
 	im := t.engine.InputManager
 	w := t.engine.Level.World
@@ -304,8 +320,32 @@ func (t *TestApplication) AddBox() {
 		ycore.AddEntityAsInstance(w, t.boxEnt, ie1)
 		w.AddComponent(ie1, ywd.PositionComponent, o.O)
 		w.AddComponent(ie1, ywd.OrientationComponent, y3d.IdenQuat())
-		w.AddComponent(ie1, ywd.ScaleComponent, float32(0.25))
+		w.AddComponent(ie1, ywd.ScaleComponent, y3d.Vec3{X: 0.25, Y: 0.25, Z: 0.25})
 		w.AddComponent(ie1, ywd.VelocityComponent, y3d.Vec3{})
+		w.AddComponent(ie1, ywd.InverseMassComponent, float32(1.0/2.0))
+		w.AddComponent(ie1, ywd.MoveComponent, &ycore.Move{})
+		w.AddComponent(ie1, ywd.AccelerationComponent, y3d.Vec3{
+			X: 0.0,
+			Y: -1.0,
+			Z: 0.0,
+		})
+		w.AddComponent(ie1, ywd.ForceComponent, y3d.Vec3{})
+	}
+}
+
+func (t *TestApplication) AddSphere() {
+	im := t.engine.InputManager
+	w := t.engine.Level.World
+	caged := t.engine.InputManager.AbsolutePosition
+	if im.GetKeyState(sdl.SCANCODE_I) == ycore.BUTTON_PRESSED {
+		o := t.engine.RenderManager.GetPickRay(caged)
+		ie1 := w.NewEntity()
+		w.AddComponent(ie1, ywd.TransformComponent, ycore.NewTransform())
+		ycore.AddEntityAsInstance(w, t.sphereEnt, ie1)
+		w.AddComponent(ie1, ywd.PositionComponent, o.O)
+		w.AddComponent(ie1, ywd.OrientationComponent, y3d.IdenQuat())
+		w.AddComponent(ie1, ywd.ScaleComponent, y3d.Vec3{X: 0.25, Y: 0.25, Z: 0.25})
+		w.AddComponent(ie1, ywd.VelocityComponent, y3d.Smul(o.D, 15))
 		w.AddComponent(ie1, ywd.InverseMassComponent, float32(1.0/2.0))
 		w.AddComponent(ie1, ywd.MoveComponent, &ycore.Move{})
 		w.AddComponent(ie1, ywd.AccelerationComponent, y3d.Vec3{
@@ -328,7 +368,7 @@ func (t *TestApplication) ShotBullet() {
 		ycore.AddEntityAsInstance(w, t.boxEnt, ie1)
 		w.AddComponent(ie1, ywd.PositionComponent, o.O)
 		w.AddComponent(ie1, ywd.OrientationComponent, y3d.IdenQuat())
-		w.AddComponent(ie1, ywd.ScaleComponent, float32(0.25))
+		w.AddComponent(ie1, ywd.ScaleComponent, y3d.Vec3{X: 0.25, Y: 0.25, Z: 0.25})
 		w.AddComponent(ie1, ywd.VelocityComponent, y3d.Smul(o.D, 35))
 		w.AddComponent(ie1, ywd.InverseMassComponent, float32(1.0/2.0))
 		w.AddComponent(ie1, ywd.AccelerationComponent, y3d.Vec3{

@@ -43,14 +43,14 @@ func UpdateTranform(w *ywd.World) {
 	for _, e := range entites {
 		wg.Go(func() {
 			transform := w.GetComponent(e, ywd.TransformComponent).(Transform)
-			scaleFactor := w.GetComponent(e, ywd.ScaleComponent).(float32)
+			scale := w.GetComponent(e, ywd.ScaleComponent).(y3d.Vec3)
 			position := w.GetComponent(e, ywd.PositionComponent).(y3d.Vec3)
 			orientation := w.GetComponent(e, ywd.OrientationComponent).(y3d.Quaternion)
 			box := w.GetComponent(e, ywd.BoundingBoxComponent).(yphy.Box)
 
 			transform.World = y3d.TRS(position,
 				orientation,
-				y3d.Vec3{X: scaleFactor, Y: scaleFactor, Z: scaleFactor})
+				scale)
 			box.World = transform.TransformAABB(box.Local)
 			w.SetComponent(e, ywd.BoundingBoxComponent, box)
 			w.SetComponent(e, ywd.TransformComponent, transform)
@@ -72,8 +72,6 @@ func UpdateMovement(w *ywd.World, deltaTime float32) {
 			})
 	}
 	wg.Wait()
-	//w.UpdateGS(w.SceneRoot, w.SceneRootHierarchy)
-	UpdateEntityAnimation(w, deltaTime)
 }
 
 func RenderSceneGraph(w *ywd.World, r *RenderManager, root ywd.EntityId) {

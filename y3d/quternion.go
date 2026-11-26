@@ -22,6 +22,13 @@ type Quaternion struct {
 	W, X, Y, Z float32
 }
 
+func (q *Quaternion) Scale(s float32) {
+	q.W *= s
+	q.X *= s
+	q.Y *= s
+	q.Z *= s
+}
+
 func (qin Quaternion) Conj() Quaternion {
 	qin.X = -qin.X
 	qin.Y = -qin.Y
@@ -42,7 +49,7 @@ func (qin Quaternion) Neg() Quaternion {
 }
 
 func (qin Quaternion) Norm() float32 {
-	return float32(math.Sqrt(float64(qin.Norm2())))
+	return float32(math.Sqrt(float64(qin.W*qin.W + qin.X*qin.X + qin.Y*qin.Y + qin.Z*qin.Z)))
 }
 
 func Scalar(w float32) Quaternion {
@@ -111,7 +118,7 @@ func (qin Quaternion) Rotate(vec Vec3) Vec3 {
 	term1 := Smul(u, 2*Dot(u, vec))
 	term2 := Smul(vec, s*s-Dot(u, u))
 	term3 := Smul(Cross(u, vec), 2*s)
-	return Add(Add(term2, term1), term3)
+	return Add(term2, term1, term3)
 }
 
 func (q Quaternion) Euler() (float32, float32, float32) {
@@ -154,6 +161,18 @@ func (qin Quaternion) ToMat4() Mat4 {
 		m[6], m[7], m[8], 0,
 		0, 0, 0, 1,
 	}
+}
+
+// for angular velocity updates with delta time
+func (q Quaternion) AddScaled(v Vec3, s float32) Quaternion {
+	q1 := Quaternion{0, v.X * s, v.Y * s, v.Z * s}
+	q = ProdQuaternion(q, q1)
+	q.W += q.W * 0.5
+	q.X += q.X * 0.5
+	q.Y += q.Y * 0.5
+	q.Z += q.Z * 0.5
+
+	return q
 }
 
 func Slerp(a, b Quaternion, t float32) Quaternion {

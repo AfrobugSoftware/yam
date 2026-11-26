@@ -28,6 +28,7 @@ type Octree struct {
 	World       *ywd.World
 	Children    [8]*Octree
 	Entites     []ywd.EntityId
+	Ground      ywd.EntityId //used for the ground plan for testing
 	BoundingBox y3d.AABB
 	Parent      *Octree
 	Position    int

@@ -103,8 +103,10 @@ func (p *Contact) resolveInterpenetration() {
 }
 
 type ContactQueue struct {
-	contacts []Contact
-	mu       sync.Mutex
+	Friction   float32
+	Resitution float32
+	contacts   []Contact
+	mu         sync.Mutex
 }
 
 func NewContactQueue() *ContactQueue {

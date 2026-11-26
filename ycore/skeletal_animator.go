@@ -189,9 +189,10 @@ func (a *Animation) UpdateSkeleton(s *Skeleton) {
 			s.Joints[i].Local = y3d.TRS(sampler.OutTranslation, sampler.OutRotation, sampler.OutScale)
 		}
 	}
+
 }
 
-func UpdateEntityAnimation(w *ywd.World, delta float32) {
+func UpdateAnimation(w *ywd.World, delta float32) {
 	entites := w.Query(ywd.AnimationComponent)
 	var wg sync.WaitGroup
 	for _, e := range entites {
@@ -207,6 +208,18 @@ func UpdateEntityAnimation(w *ywd.World, delta float32) {
 		})
 	}
 	wg.Wait()
+	//testing to see if the error is because we are calling from a different thread
+	//the skeleton is updated on the main thread because it is pushed to the gpu after update
+	for _, e := range entites {
+		if w.HasComponent(e, ywd.SkeletonComponent) {
+			s := w.GetComponent(e, ywd.SkeletonComponent).(*Skeleton)
+			err := s.Update()
+			if err != nil {
+				panic(err)
+			}
+			w.SetComponent(e, ywd.SkeletonComponent, s)
+		}
+	}
 }
 
 type Animator struct {

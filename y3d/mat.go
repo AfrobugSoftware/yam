@@ -81,6 +81,18 @@ func (a Mat3) Mul(b Mat3) Mat3 {
 	return out
 }
 
+func Mat3FromAngleAxis(axis Vec3, angle float32) Mat3 {
+	c := float32(math.Cos(float64(angle)))
+	s := float32(math.Sin(float64(angle)))
+	t := 1 - c
+
+	return Mat3{
+		(t * axis.X * axis.X) + c, (t * axis.Y * axis.X) - (s * axis.Z), (t * axis.X * axis.Z) + (s * axis.Y),
+		(t * axis.X * axis.Y) + (s * axis.Z), (t * axis.Y * axis.Y) + c, (t * axis.Y * axis.Z) - (s * axis.X),
+		(t * axis.X * axis.Z) - (s * axis.Y), (t * axis.Y * axis.Z) + (s * axis.X), (t * axis.Z * axis.Z) + c,
+	}
+}
+
 func (m Mat3) Inverse() Mat3 {
 	a00, a01, a02 := m[0], m[1], m[2]
 	a10, a11, a12 := m[3], m[4], m[5]

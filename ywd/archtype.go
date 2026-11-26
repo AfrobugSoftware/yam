@@ -44,11 +44,14 @@ const (
 	PositionComponent
 	OrientationComponent
 	VelocityComponent
+	AngularVelocityComponent
 	AccelerationComponent
+	AngularAccelerationComponent
 	InverseMassComponent
 	ForceComponent
 	MoveComponent
 	ColliderComponent
+	InstanceOfComponent
 )
 
 func GenerateRandomId() int {

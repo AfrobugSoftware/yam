@@ -24,7 +24,8 @@ type Engine struct {
 	InputManager  *ycore.InputManager
 	AudioManager  *ycore.AudioManager
 	NetManager    *ycore.NetManager
-	Cq            *yphy.ContactQueue
+	ContactQueue  *yphy.ContactQueue
+	ForceRegistry *yphy.ForceRegistry
 	Window        *sdl.Window
 	Level         *Level //should this be here
 }
@@ -58,7 +59,8 @@ func NewEngine(title string, width, height int32) (*Engine, error) {
 	gEngine.Level = NewLevel()
 	gEngine.RenderManager.World = gEngine.Level.World // this might be an issue
 	gEngine.RenderManager.BoundingTree = yphy.NewOctree(gEngine.Level.World)
-	gEngine.Cq = yphy.NewContactQueue()
+	gEngine.ContactQueue = yphy.NewContactQueue()
+	gEngine.ForceRegistry = yphy.NewForceRegistry()
 	gEngine.RenderManager.Window = window
 	return gEngine, nil
 }
@@ -80,14 +82,16 @@ func (g *Engine) Update(dt float64) {
 	if g.App != nil {
 		g.App.Update(dt)
 	}
-	ycore.UpdateMovement(g.RenderManager.World, float32(dt))
+	g.ForceRegistry.Update(g.RenderManager.World, float32(dt))
 	yphy.IntegrateParticles(g.RenderManager.World, float32(dt))
+	ycore.UpdateMovement(g.RenderManager.World, float32(dt))
 	ycore.UpdateTranform(g.RenderManager.World)
+	ycore.UpdateAnimation(g.RenderManager.World, float32(dt))
 
 	//remove the bounding tree from renderer
 	g.RenderManager.BoundingTree.BuildTree()
-	g.RenderManager.BoundingTree.GenerateContacts(g.Cq)
-	g.Cq.ResolveContacts(float32(dt))
+	g.RenderManager.BoundingTree.GenerateContacts(g.ContactQueue)
+	g.ContactQueue.ResolveContacts(float32(dt))
 }
 
 func (g *Engine) Draw() {

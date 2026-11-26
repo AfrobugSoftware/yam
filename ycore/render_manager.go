@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"reflect"
-	"slices"
 	"strings"
 	"unsafe"
 	"yam/y3d"
@@ -1167,6 +1166,7 @@ func (r *RenderManager) RenderEntities(cull bool, entities []ywd.EntityId) {
 		if err != nil {
 			continue //no cache for this entity
 		}
+
 		if r.World.HasComponent(e, ywd.InstanceComponent) {
 			instances := r.World.GetComponent(e, ywd.InstanceComponent).([]ywd.EntityId)
 			for _, ie := range instances {
@@ -1179,6 +1179,15 @@ func (r *RenderManager) RenderEntities(cull bool, entities []ywd.EntityId) {
 				box := r.World.GetComponent(ie, ywd.BoundingBoxComponent).(yphy.Box)
 				if cull && !box.IsVisiable(planes) {
 					continue
+				}
+				if r.World.HasComponent(ie, ywd.SkeletonComponent) {
+					s := r.World.GetComponent(ie, ywd.SkeletonComponent).(*Skeleton)
+					idx, err := v.AddSkeleton(s)
+					if err != nil {
+						panic(err)
+					}
+					renderable.RenderParams.BaseJointIdx = uint32(idx)
+					renderable.RenderParams.SetFlag(FLAG_ANIMATED)
 				}
 				if r.World.HasComponent(ie, ywd.PbrMaterialComponent) {
 					//if we have textures for materials bound to this entity
@@ -1215,9 +1224,6 @@ func (r *RenderManager) RenderEntities(cull bool, entities []ywd.EntityId) {
 			rs = rs[:0]
 			mats = mats[:0]
 			tags = tags[:0]
-			instances = slices.DeleteFunc(instances, func(e ywd.EntityId) bool {
-				return !r.World.IsEntity(e)
-			})
 			r.World.SetComponent(e, ywd.InstanceComponent, instances)
 		} else {
 			box := r.World.GetComponent(e, ywd.BoundingBoxComponent).(yphy.Box)
@@ -1227,6 +1233,15 @@ func (r *RenderManager) RenderEntities(cull bool, entities []ywd.EntityId) {
 			transform := r.World.GetComponent(e, ywd.TransformComponent).(Transform)
 			v.AddInstances(&renderable.DrawCmd)
 			v.AddMatrix(int(renderable.DrawCmd.BaseInstance), transform.World) //this needs to be world
+			if r.World.HasComponent(e, ywd.SkeletonComponent) {
+				s := r.World.GetComponent(e, ywd.SkeletonComponent).(*Skeleton)
+				idx, err := v.AddSkeleton(s)
+				if err != nil {
+					panic(err)
+				}
+				renderable.RenderParams.BaseJointIdx = uint32(idx)
+				renderable.RenderParams.SetFlag(FLAG_ANIMATED)
+			}
 			if r.World.HasComponent(e, ywd.PbrMaterialComponent) {
 				//if we have textures for materials bound to this entity
 				//TODO: add a layer of indirection so that the textures can have a single source of truth

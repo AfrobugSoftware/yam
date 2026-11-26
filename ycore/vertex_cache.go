@@ -26,6 +26,8 @@ const (
 	FLAG_TEXTURED_ALBEO
 	FLAG_TEXTURED_SPECULAR
 	FLAG_TEXTURED_NORMAL
+	FLAG_COLORED
+	FLAG_ANIMATED
 )
 
 type PerObjectRenderState struct {
@@ -52,6 +54,7 @@ type VertexFormat struct {
 	Type           uint32
 	RelativeOffset uint32
 	Normalized     bool
+	BindingIndex   uint32
 }
 
 type DrawCommand struct {

@@ -29,6 +29,11 @@ out data {
 	flat uint prim_index;
 	flat uint draw_index;
 }vs_out;
+
+vec4 animatedPosition() {
+	return vec4(1.0);
+}
+
 void main() {
 	vs_out.pos = vec3(world[dInx].world * vec4(pos, 1.0));
 	vs_out.normal = mat3(world[dInx].normal) * norm;

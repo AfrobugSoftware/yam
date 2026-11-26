@@ -2,6 +2,7 @@ package ycore
 
 import (
 	"bytes"
+	"slices"
 	"yam/y3d"
 	"yam/yphy"
 	"yam/ywd"
@@ -31,13 +32,13 @@ func AddEntityRenderableData(
 	box := yphy.BoundBox(int(stride), int(format[0].RelativeOffset), v, i)
 	world.AddComponent(ent, ywd.BoundingBoxComponent, box)
 	world.AddComponent(ent, ywd.RenderableComponent, renderable)
-	world.AddComponent(ent, ywd.ScaleComponent, scale)
+	world.AddComponent(ent, ywd.ScaleComponent, y3d.Vec3{X: scale, Y: scale, Z: scale})
 	return nil
 }
 
 func AddScaleCompoment(world *ywd.World,
 	ent ywd.EntityId, scale float32) {
-	world.AddComponent(ent, ywd.ScaleComponent, scale)
+	world.AddComponent(ent, ywd.ScaleComponent, y3d.Vec3{X: scale, Y: scale, Z: scale})
 }
 
 func AddEntityMoveData(
@@ -56,16 +57,20 @@ func AddEntityAsInstance(w *ywd.World, holder ywd.EntityId, instance ywd.EntityI
 	if !w.HasComponent(holder, ywd.InstanceComponent) {
 		instances := make([]ywd.EntityId, 0)
 		instances = append(instances, instance)
+		slices.Sort(instances)
 		box := w.GetComponent(holder, ywd.BoundingBoxComponent).(yphy.Box)
 		w.AddComponent(instance, ywd.BoundingBoxComponent, box)
 		w.AddComponent(holder, ywd.InstanceComponent, instances)
+		w.AddComponent(instance, ywd.InstanceOfComponent, holder)
 		return
 	}
 	instances := w.GetComponent(holder, ywd.InstanceComponent).([]ywd.EntityId)
 	instances = append(instances, instance)
+	slices.Sort(instances)
 	box := w.GetComponent(holder, ywd.BoundingBoxComponent).(yphy.Box)
 	w.AddComponent(instance, ywd.BoundingBoxComponent, box)
 	w.SetComponent(holder, ywd.InstanceComponent, instances)
+	w.AddComponent(instance, ywd.InstanceOfComponent, holder)
 }
 
 func AddEntityTransformData(
