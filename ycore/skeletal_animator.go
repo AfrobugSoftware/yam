@@ -1,13 +1,9 @@
 package ycore
 
 import (
-	"errors"
 	"sync"
-	"unsafe"
 	"yam/y3d"
 	"yam/ywd"
-
-	"github.com/go-gl/gl/v4.3-core/gl"
 )
 
 const (
@@ -47,8 +43,8 @@ func NewJoint(
 type Skeleton struct {
 	Id     int
 	Joints []*Joint
+	JointP []y3d.Mat4
 	Order  []int
-	jbo    uint32
 	q      []int
 }
 
@@ -56,27 +52,14 @@ func NewSkeleton(id int, joints []*Joint) *Skeleton {
 	s := &Skeleton{
 		Id:     id,
 		Joints: joints,
+		JointP: make([]y3d.Mat4, len(joints)),
 		q:      make([]int, 0),
 	}
-	var ubo uint32
-	gl.CreateBuffers(1, &ubo)
-	gl.NamedBufferStorage(ubo, int(unsafe.Sizeof(y3d.Mat4{}))*len(joints),
-		nil, gl.DYNAMIC_STORAGE_BIT|gl.MAP_WRITE_BIT)
-	s.jbo = ubo
+
 	return s
 }
 
 func (s *Skeleton) Update() error {
-	ptr := gl.MapNamedBufferRange(
-		s.jbo,
-		0,
-		int(unsafe.Sizeof(y3d.Mat4{}))*len(s.Joints),
-		gl.MAP_WRITE_BIT|gl.MAP_INVALIDATE_RANGE_BIT,
-	)
-	if ptr == nil {
-		return errors.New("cannot map joint buffer")
-	}
-	jointP := unsafe.Slice((*y3d.Mat4)(ptr), len(s.Joints))
 	s.q = s.q[:0]
 	for i, j := range s.Joints {
 		if j.Parent == -1 {
@@ -93,15 +76,13 @@ func (s *Skeleton) Update() error {
 			s.Joints[i].World =
 				s.Joints[s.Joints[i].Parent].World.Mul(s.Joints[i].Local)
 		}
-		jointP[i] = s.Joints[i].World.Mul(s.Joints[i].BindPose)
+		s.JointP[i] = s.Joints[i].World.Mul(s.Joints[i].BindPose)
 	}
-	gl.UnmapNamedBuffer(s.jbo)
 	return nil
 }
 
 func (s *Skeleton) Destory() {
 	s.Joints = s.Joints[:0]
-	gl.DeleteBuffers(1, &s.jbo)
 }
 
 type Track[T any] struct {
@@ -210,35 +191,28 @@ func (a *Animation) UpdateSkeleton(s *Skeleton) {
 
 }
 
+// smaplers get blended to product local coordinate systems
 func UpdateAnimation(w *ywd.World, delta float32) {
 	entites := w.Query(ywd.AnimationComponent)
 	var wg sync.WaitGroup
 	for _, e := range entites {
 		wg.Go(func() {
-			anims := w.GetComponent(e, ywd.AnimationComponent).([]*Animation)
-			anim := anims[0]
+			anims := w.GetComponent(e, ywd.AnimationComponent).(*Animator)
+			anim := anims.Animations[anims.Current]
 			anim.Play(delta)
 			if w.HasComponent(e, ywd.SkeletonComponent) {
 				s := w.GetComponent(e, ywd.SkeletonComponent).(*Skeleton)
 				anim.UpdateSkeleton(s)
+				err := s.Update()
+				if err != nil {
+					panic(err)
+				}
 				w.SetComponent(e, ywd.SkeletonComponent, s)
 			}
 			w.SetComponent(e, ywd.AnimationComponent, anims)
 		})
 	}
 	wg.Wait()
-	//testing to see if the error is because we are calling from a different thread
-	//the skeleton is updated on the main thread because it is pushed to the gpu after update
-	for _, e := range entites {
-		if w.HasComponent(e, ywd.SkeletonComponent) {
-			s := w.GetComponent(e, ywd.SkeletonComponent).(*Skeleton)
-			err := s.Update()
-			if err != nil {
-				panic(err)
-			}
-			w.SetComponent(e, ywd.SkeletonComponent, s)
-		}
-	}
 }
 
 type Animator struct {

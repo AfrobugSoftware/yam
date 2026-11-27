@@ -295,9 +295,9 @@ func (v *VertexCache) AddSkeleton(s *Skeleton) (int, error) {
 	if v.NumOfJoints >= v.MaxJoints {
 		return 0, errors.New("cannot add more joints to the cache")
 	}
-	gl.NamedCopyBufferSubDataEXT(s.jbo, v.JointSSBO,
-		0, int(unsafe.Sizeof(y3d.Mat4{}))*int(v.NumOfJoints),
-		int(unsafe.Sizeof(y3d.Mat4{}))*len(s.Joints))
+	addr := unsafe.Slice((*byte)(unsafe.Pointer(reflect.ValueOf(s.JointP).Index(0).UnsafeAddr())),
+		int(unsafe.Sizeof(y3d.Mat4{}))*len(s.JointP))
+	gl.NamedBufferSubData(v.JointSSBO, int(unsafe.Sizeof(y3d.Mat4{}))*int(v.NumOfJoints), len(addr), gl.Ptr(addr))
 	baseJoint := v.NumOfJoints
 	v.NumOfJoints += int32(len(s.Joints))
 	return int(baseJoint), CheckError()

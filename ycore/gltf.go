@@ -659,7 +659,7 @@ func ProcessNode(world *ywd.World, node *gltf.Node,
 				}
 				animsBySkin[*node.Skin] = anims
 			}
-			world.AddComponent(ynode, ywd.AnimationComponent, anims)
+			world.AddComponent(ynode, ywd.AnimationComponent, NewAnimator(anims))
 		}
 
 	}
