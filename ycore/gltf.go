@@ -392,7 +392,7 @@ func readTrack[T any](doc *gltf.Document, s *gltf.AnimationSampler, data map[int
 	return Track[T]{Times: times, Values: values}, nil
 }
 
-func loadSkeleton(doc *gltf.Document, skin *gltf.Skin, data map[int][]byte) ([]*Joint, map[int]int, error) {
+func loadSkeleton(doc *gltf.Document, skin *gltf.Skin, data map[int][]byte) ([]*Joint, error) {
 	n := len(skin.Joints)
 	mats := make([]y3d.Mat4, n)
 	for i := range mats {
@@ -401,10 +401,10 @@ func loadSkeleton(doc *gltf.Document, skin *gltf.Skin, data map[int][]byte) ([]*
 	if skin.InverseBindMatrices != nil {
 		m, err := loadInverseBindMats(doc, doc.Accessors[*skin.InverseBindMatrices], data)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		if len(m) < n {
-			return nil, nil, fmt.Errorf("skin has %d joints but %d inverse bind matrices", n, len(m))
+			return nil, fmt.Errorf("skin has %d joints but %d inverse bind matrices", n, len(m))
 		}
 		copy(mats, m)
 	}
@@ -422,7 +422,7 @@ func loadSkeleton(doc *gltf.Document, skin *gltf.Skin, data map[int][]byte) ([]*
 			}
 		}
 	}
-	return joints, jointsMap, nil
+	return joints, nil
 }
 
 func newSampler(id int, n *gltf.Node) *Sampler {
@@ -431,12 +431,26 @@ func newSampler(id int, n *gltf.Node) *Sampler {
 		Id:             id,
 		Repeat:         true,
 		OutTranslation: y3d.Vec3{X: float32(t[0]), Y: float32(t[1]), Z: float32(t[2])},
-		OutRotation:    y3d.Quaternion{W: float32(r[0]), X: float32(r[1]), Y: float32(r[2]), Z: float32(r[3])}, // x, y, z, w
+		OutRotation:    y3d.Quaternion{W: float32(r[3]), X: float32(r[0]), Y: float32(r[1]), Z: float32(r[2])}, // x, y, z, w
 		OutScale:       y3d.Vec3{X: float32(s[0]), Y: float32(s[1]), Z: float32(s[2])},
 	}
 }
 
-func loadAnimations(doc *gltf.Document, jointsMap map[int]int, data map[int][]byte) ([]*Animation, error) {
+func Rearrange(q []y3d.Quaternion) []y3d.Quaternion {
+	q1 := []y3d.Quaternion{}
+	for _, qq := range q {
+		q2 := unsafe.Slice((*float32)(unsafe.Pointer(&qq)), 4)
+		q1 = append(q1, y3d.Quaternion{
+			X: q2[0],
+			Y: q2[1],
+			Z: q2[2],
+			W: q2[3],
+		})
+	}
+	return q1
+}
+
+func loadAnimations(doc *gltf.Document, data map[int][]byte) ([]*Animation, error) {
 	anims := make([]*Animation, 0, len(doc.Animations))
 	for ai, a := range doc.Animations {
 		if a == nil {
@@ -447,10 +461,7 @@ func loadAnimations(doc *gltf.Document, jointsMap map[int]int, data map[int][]by
 			if c.Target.Node == nil {
 				continue
 			}
-			ji, ok := jointsMap[*c.Target.Node]
-			if !ok {
-				continue // targets a node outside this skin
-			}
+			ji := *c.Target.Node
 			s := anim.Samplers[ji]
 			if s == nil {
 				s = newSampler(ji, doc.Nodes[*c.Target.Node])
@@ -462,6 +473,7 @@ func loadAnimations(doc *gltf.Document, jointsMap map[int]int, data map[int][]by
 			switch c.Target.Path {
 			case gltf.TRSRotation:
 				s.rotation, err = readTrack[y3d.Quaternion](doc, gs, data, gltf.AccessorVec4)
+				s.rotation.Values = Rearrange(s.rotation.Values)
 				s.Flag |= SAMPLER_ROTATION
 			case gltf.TRSTranslation:
 				s.translation, err = readTrack[y3d.Vec3](doc, gs, data, gltf.AccessorVec3)
@@ -635,14 +647,14 @@ func ProcessNode(world *ywd.World, node *gltf.Node,
 		world.AddComponent(ynode, ywd.PbrMaterialDataComponent, pbrMaterialData)
 		animsBySkin := map[int][]*Animation{}
 		if node.Skin != nil {
-			joints, jointsMap, err := loadSkeleton(doc, doc.Skins[*node.Skin], data)
+			joints, err := loadSkeleton(doc, doc.Skins[*node.Skin], data)
 			if err != nil {
 				return err
 			}
 			world.AddComponent(ynode, ywd.SkeletonComponent, NewSkeleton(int(ynode), joints))
 			anims, ok := animsBySkin[*node.Skin]
 			if !ok {
-				if anims, err = loadAnimations(doc, jointsMap, data); err != nil {
+				if anims, err = loadAnimations(doc, data); err != nil {
 					return err
 				}
 				animsBySkin[*node.Skin] = anims

@@ -147,9 +147,9 @@ func (qin Quaternion) RotMat() Mat3 {
 	xy, xz, yz := q.X*q.Y, q.X*q.Z, q.Y*q.Z
 	wx, wy, wz := q.W*q.X, q.W*q.Y, q.W*q.Z
 	return Mat3{
-		float32(1 - 2*(yy+zz)), float32(2 * (xy - wz)), float32(2 * (wy + xz)),
-		float32(2 * (wz + xy)), float32(1 - 2*(zz+xx)), float32(2 * (yz - wx)),
-		float32(2 * (xz - wy)), float32(2 * (wx + yz)), float32(1 - 2*(xx+yy)),
+		1 - 2*(yy+zz), 2 * (xy + wz), 2 * (xz - wy),
+		2 * (xy - wz), 1 - 2*(xx+zz), 2 * (yz + wx),
+		2 * (xz + wy), 2 * (yz - wx), 1 - 2*(xx+yy),
 	}
 }
 
@@ -177,20 +177,23 @@ func (q Quaternion) AddScaled(v Vec3, s float32) Quaternion {
 
 func Slerp(a, b Quaternion, t float32) Quaternion {
 	dot := a.W*b.W + a.X*b.X + a.Y*b.Y + a.Z*b.Z
+	if dot < 0 {
+		b = Quaternion{X: -b.X, Y: -b.Y, Z: -b.Z, W: -b.W}
+		dot = -dot
+	}
 	const threshold = 0.9995
-	if math.Abs(float64(dot)) > threshold {
+	if dot > threshold {
 		q := Quaternion{
-			X: a.X*(1-t) + b.X*t,
-			Y: a.Y*(1-t) + b.Y*t,
-			Z: a.Z*(1-t) + b.Z*t,
-			W: a.W*(1-t) + b.W*t,
+			X: a.X + (b.X-a.X)*t,
+			Y: a.Y + (b.Y-a.Y)*t,
+			Z: a.Z + (b.Z-a.Z)*t,
+			W: a.W + (b.W-a.W)*t,
 		}
 		return q.Unit()
 	}
 	d := math.Acos(float64(dot))
-	sinD := math.Sin(d)
-	ooSinD := 1 / sinD
-	t1 := float32(math.Sin(float64(float32(d)*(1-t))) * ooSinD)
+	ooSinD := 1 / math.Sin(d)
+	t1 := float32(math.Sin(d*float64(1-t)) * ooSinD)
 	t2 := float32(math.Sin(d*float64(t)) * ooSinD)
 
 	return Quaternion{

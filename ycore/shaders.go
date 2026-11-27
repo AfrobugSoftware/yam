@@ -28,18 +28,6 @@ layout(std430, binding = 1) buffer joint_ssbo {
 	mat4 joints_mat[];
 };
 
-layout(std140, binding = 4) uniform vp {
-	mat4 view_proj;
-};
-out data {
-	vec3 pos;
-	vec3 normal;
-	vec2 tc;
-	vec4 color;
-	flat uint prim_index;
-	flat uint draw_index;
-}vs_out;
-
 struct per_object_render_state {
 	float alpha;
 	uint render_flag;
@@ -55,20 +43,37 @@ layout(std430, binding = 2) buffer per_object_render_state_buffer {
 	per_object_render_state data[];
 }ors;
 
-vec4 animatedPosition(vec3 pos) {
-	mat4 skinMat = weights.x * joints_mat[ors.data[dInx].base_joint_idx+int(joints.x)] +
+layout(std140, binding = 4) uniform vp {
+	mat4 view_proj;
+};
+
+out data {
+	vec3 pos;
+	vec3 normal;
+	vec2 tc;
+	vec4 color;
+	flat uint prim_index;
+	flat uint draw_index;
+}vs_out;
+
+
+mat4 animatedMat() {
+	mat4 skin_mat = weights.x * joints_mat[ors.data[dInx].base_joint_idx+int(joints.x)] +
 		weights.y * joints_mat[ors.data[dInx].base_joint_idx+int(joints.y)] +
 		weights.z * joints_mat[ors.data[dInx].base_joint_idx+int(joints.z)] +
 		weights.w * joints_mat[ors.data[dInx].base_joint_idx+int(joints.w)];
-	return skinMat * vec4(pos, 1.0);
+	return skin_mat;
 }
 void main() {
 	if((ors.data[dInx].render_flag & (1 << 5)) != 0) {
-		vs_out.pos = vec3(world[dInx].world * animatedPosition(pos));
+		mat4 skin_mat = animatedMat();
+		vs_out.pos = vec3(world[dInx].world * skin_mat * vec4(pos, 1.0));
+		mat4 skin_mat_normal = transpose(inverse(skin_mat));
+		vs_out.normal = mat3(world[dInx].normal * skin_mat_normal) * norm;
 	}else {
 		vs_out.pos = vec3(world[dInx].world * vec4(pos, 1.0));
+		vs_out.normal = mat3(world[dInx].normal) * norm;
 	}
-	vs_out.normal = mat3(world[dInx].normal) * norm;
 	vs_out.tc = tc;
 	vs_out.draw_index = dInx;
 	vs_out.prim_index = primInx;
@@ -158,11 +163,11 @@ void main() {
 		vec4 color = texture(textures[ors.data[fs_in.draw_index].tex1], fs_in.tc);
 		out_color = vec4(calculate_bling_phong(0, color).xyz, ors.data[fs_in.draw_index].alpha);
 		return;
-	}else if(fs_in.prim_index == 0) {
-		out_color =  vec4(calculate_bling_phong(0, vec4(1.0)).xyz, ors.data[fs_in.draw_index].alpha);
-	} else {
+	} else if((ors.data[fs_in.draw_index].render_flag & (1 << 5)) != 0){
 	 	vec4 color = pbr_data.data[ors.data[fs_in.draw_index].base_pbr_mat_idx + fs_in.prim_index].base_color_factor;
 		out_color = vec4(calculate_bling_phong(0, color).xyz, ors.data[fs_in.draw_index].alpha);
+	}else {
+		out_color =  vec4(calculate_bling_phong(0, vec4(1.0)).xyz, ors.data[fs_in.draw_index].alpha);
 	}
 }	
 	`

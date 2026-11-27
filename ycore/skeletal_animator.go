@@ -49,12 +49,14 @@ type Skeleton struct {
 	Joints []*Joint
 	Order  []int
 	jbo    uint32
+	q      []int
 }
 
 func NewSkeleton(id int, joints []*Joint) *Skeleton {
 	s := &Skeleton{
 		Id:     id,
 		Joints: joints,
+		q:      make([]int, 0),
 	}
 	var ubo uint32
 	gl.CreateBuffers(1, &ubo)
@@ -64,42 +66,34 @@ func NewSkeleton(id int, joints []*Joint) *Skeleton {
 	return s
 }
 
-func (s *Skeleton) FindRoot() int {
-	for i, j := range s.Joints {
-		if j.Parent == -1 {
-			return i
-		}
-	}
-	return 0
-}
-
 func (s *Skeleton) Update() error {
-	//joint parents come before the children
 	ptr := gl.MapNamedBufferRange(
 		s.jbo,
 		0,
 		int(unsafe.Sizeof(y3d.Mat4{}))*len(s.Joints),
 		gl.MAP_WRITE_BIT|gl.MAP_INVALIDATE_RANGE_BIT,
 	)
+	if ptr == nil {
+		return errors.New("cannot map joint buffer")
+	}
 	jointP := unsafe.Slice((*y3d.Mat4)(ptr), len(s.Joints))
-	q := make([]int, 0, len(s.Joints))
-	root := s.FindRoot()
-	q = append(q, root)
-	for len(q) > 0 {
-		i := q[0]
-		q = q[1:]
+	s.q = s.q[:0]
+	for i, j := range s.Joints {
+		if j.Parent == -1 {
+			s.q = append(s.q, i)
+		}
+	}
+	for len(s.q) > 0 {
+		i := s.q[0]
+		s.q = s.q[1:]
+		s.q = append(s.q, s.Joints[i].Children...)
 		if s.Joints[i].Parent == -1 {
 			s.Joints[i].World = s.Joints[i].Local
 		} else {
-			p := s.Joints[s.Joints[i].Parent]
 			s.Joints[i].World =
-				p.World.Mul(s.Joints[i].Local)
+				s.Joints[s.Joints[i].Parent].World.Mul(s.Joints[i].Local)
 		}
 		jointP[i] = s.Joints[i].World.Mul(s.Joints[i].BindPose)
-		q = append(q, s.Joints[i].Children...)
-	}
-	if ptr == nil {
-		return errors.New("cannot map joint buffer")
 	}
 	gl.UnmapNamedBuffer(s.jbo)
 	return nil
@@ -111,20 +105,22 @@ func (s *Skeleton) Destory() {
 }
 
 type Track[T any] struct {
-	Times  []float32
-	Values []T
+	Times        []float32
+	Values       []T
+	PlaybackTime float32
 }
 
-func (track *Track[T]) GetT(playbackTime float32, repeat bool) (float32, int, int) {
+func (track *Track[T]) GetT(dt float32, repeat bool) (float32, int, int) {
 	lastStamp := track.Times[len(track.Times)-1]
-	if playbackTime >= lastStamp {
+	track.PlaybackTime += dt
+	if track.PlaybackTime >= lastStamp {
 		if repeat {
-			playbackTime = 0.0
+			track.PlaybackTime = 0.0
 		}
 	}
 	lastpos, nextpos := -1, -1
 	for i := range track.Times {
-		if track.Times[i] >= playbackTime {
+		if track.Times[i] >= track.PlaybackTime {
 			nextpos = i
 			break
 		}
@@ -132,7 +128,7 @@ func (track *Track[T]) GetT(playbackTime float32, repeat bool) (float32, int, in
 	}
 	var t float32
 	if lastpos != -1 && nextpos != -1 {
-		t = (playbackTime - track.Times[lastpos]) /
+		t = (track.PlaybackTime - track.Times[lastpos]) /
 			(track.Times[nextpos] - track.Times[lastpos])
 	}
 	return t, lastpos, nextpos
@@ -154,9 +150,8 @@ type Sampler struct {
 }
 
 func (s *Sampler) Update(delta float32) {
-	s.PlaybackTime += delta
 	if s.Flag&SAMPLER_SCALE != 0 {
-		t, lastpos, nextpos := s.scale.GetT(s.PlaybackTime, s.Repeat)
+		t, lastpos, nextpos := s.scale.GetT(delta, s.Repeat)
 		if lastpos != -1 && nextpos != -1 {
 			s.OutScale = y3d.Lerp(s.scale.Values[lastpos], s.scale.Values[nextpos], t)
 		} else if lastpos == -1 {
@@ -166,7 +161,7 @@ func (s *Sampler) Update(delta float32) {
 		}
 	}
 	if s.Flag&SAMPLER_TRANSLATION != 0 {
-		t, lastpos, nextpos := s.translation.GetT(s.PlaybackTime, s.Repeat)
+		t, lastpos, nextpos := s.translation.GetT(delta, s.Repeat)
 		if lastpos != -1 && nextpos != -1 {
 			s.OutTranslation = y3d.Lerp(s.translation.Values[lastpos], s.translation.Values[nextpos], t)
 		} else if lastpos == -1 {
@@ -176,7 +171,7 @@ func (s *Sampler) Update(delta float32) {
 		}
 	}
 	if s.Flag&SAMPLER_ROTATION != 0 {
-		t, lastpos, nextpos := s.rotation.GetT(s.PlaybackTime, s.Repeat)
+		t, lastpos, nextpos := s.rotation.GetT(delta, s.Repeat)
 		if lastpos != -1 && nextpos != -1 {
 			s.OutRotation = y3d.Slerp(s.rotation.Values[lastpos],
 				s.rotation.Values[nextpos], t)
