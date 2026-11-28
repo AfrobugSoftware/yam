@@ -34,6 +34,8 @@ const (
 	PRIMITIVE_ID_BINDING     = 11
 )
 
+const TEXTURE_UNITS_BINDING = 5
+
 // UBO
 const (
 	MATERIAL_UBO_BINDING = 2
@@ -1166,7 +1168,7 @@ func (r *RenderManager) RenderEntities(cull bool, entities []ywd.EntityId) {
 		if err != nil {
 			continue //no cache for this entity
 		}
-
+		v.AddTexture(r.shadowMap) //adds the shadow map as 0 index texture
 		if r.World.HasComponent(e, ywd.InstanceComponent) {
 			instances := r.World.GetComponent(e, ywd.InstanceComponent).([]ywd.EntityId)
 			for _, ie := range instances {
@@ -1198,14 +1200,17 @@ func (r *RenderManager) RenderEntities(cull bool, entities []ywd.EntityId) {
 						pbr := pbrs[0]
 						t, err := v.AddTexture(pbr.Albeo)
 						if err == nil {
+							nrs.SetFlag(FLAG_TEXTURED_ALBEO)
 							nrs.Tex1 = uint32(t)
 						}
 						t, err = v.AddTexture(pbr.Specular)
 						if err == nil {
+							nrs.SetFlag(FLAG_TEXTURED_SPECULAR)
 							nrs.Tex2 = uint32(t)
 						}
 						t, err = v.AddTexture(pbr.NormalMap)
 						if err == nil {
+							nrs.SetFlag(FLAG_TEXTURED_NORMAL)
 							nrs.Tex1 = uint32(t)
 						}
 						rs = append(rs, nrs)

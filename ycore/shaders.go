@@ -141,7 +141,11 @@ layout(std430, binding = 5) buffer pbr_material_data_buffer {
 	pbr_material_data data[];
 }pbr_data;
 
-uniform sampler2D textures[32];
+layout(location = 5) uniform sampler2D textures[32];
+
+vec4 shadow_factor() {
+	return vec4(1.0);
+}
 
 vec4 calculate_bling_phong(int light_index, vec4 color) {
 	vec3 light_direction = normalize(vec3(render_params.l[light_index].pos) - fs_in.pos);

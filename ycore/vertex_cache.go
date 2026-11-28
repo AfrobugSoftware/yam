@@ -94,6 +94,7 @@ type VertexCache struct {
 	DrawMode          uint32
 	Id                int
 	Textures          []uint32
+	Units             int32
 	Format            []VertexFormat
 	SkinManager       *TextureManager
 	VManager          *VertexCacheManager
@@ -204,6 +205,7 @@ func NewVertexCache(
 		VManager:        vertexManger,
 		Format:          format,
 		Textures:        make([]uint32, 0, uints),
+		Units:           uints,
 	}
 
 }
@@ -433,14 +435,30 @@ func (v *VertexCache) AddTexture(texId uint32) (int, error) {
 	if texId == 0 {
 		return 0, errors.New("cannot add a 0 texture")
 	}
-	var uints int32
-	gl.GetIntegerv(gl.MAX_TEXTURE_IMAGE_UNITS, &uints)
+
 	i := len(v.Textures)
-	if i >= int(uints) {
+	if i >= int(v.Units) {
 		return 0, errors.New("no space for additional texture")
+	}
+	//see if the texture is already in
+	for i, t := range v.Textures {
+		if t == texId {
+			return i, nil
+		}
 	}
 	v.Textures = append(v.Textures, texId)
 	return i, nil
+}
+
+func (v *VertexCache) BindTextures() {
+	samplers := make([]int32, v.Units)
+	for i := range v.Units {
+		samplers[i] = i
+	}
+	gl.Uniform1iv(TEXTURE_UNITS_BINDING, int32(len(samplers)), &samplers[0])
+	for i, t := range v.Textures {
+		gl.BindTextureUnit(uint32(i), t)
+	}
 }
 
 func (v *VertexCache) DrawCache() {
@@ -449,9 +467,7 @@ func (v *VertexCache) DrawCache() {
 	}
 	if v.NumDrawCommands != 0 {
 		//how to handle framebuffer operations ??? in pipelines
-		for i, t := range v.Textures {
-			gl.BindTextureUnit(uint32(i), t)
-		}
+		v.BindTextures()
 		gl.BindVertexArray(v.Vao)
 		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, WORLD_MATRIX_BINDING, v.WorldMatrixSSBO)
 		gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, JOINTS_SSBO_BINDING, v.JointSSBO)
