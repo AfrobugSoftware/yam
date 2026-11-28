@@ -164,7 +164,8 @@ func (qin Quaternion) ToMat4() Mat4 {
 }
 
 // for angular velocity updates with delta time
-func (q Quaternion) AddScaled(v Vec3, s float32) Quaternion {
+// would this still be a unit quternion ?
+func (q Quaternion) AddScale(v Vec3, s float32) Quaternion {
 	q1 := Quaternion{0, v.X * s, v.Y * s, v.Z * s}
 	q = ProdQuaternion(q, q1)
 	q.W += q.W * 0.5

@@ -52,6 +52,8 @@ const (
 	MoveComponent
 	ColliderComponent
 	InstanceOfComponent
+	InertiaTensorComponent
+	TorqueComponent
 )
 
 func GenerateRandomId() int {
@@ -199,8 +201,7 @@ func (a *Archetype) getComponent(row int, cid ComponentId) Component {
 func (a *Archetype) setComponent(row int, cid ComponentId, comp Component) {
 	str, ok := a.storageBuffer[cid]
 	if !ok {
-		log.Printf("no component: %d", cid)
-		return
+		log.Panicf("no component: %d", cid)
 	}
 	store := reflect.ValueOf(str).Elem()
 	slc := store.Field(0)

@@ -1130,8 +1130,8 @@ func (r *RenderManager) DrawPipelines() {
 	r.SortIntoPipelines(entities)
 	for _, p := range r.Pipelines {
 		if p.DrawFunc != nil {
-			p.DrawFunc(r, p.Entites)
-			p.Entites = p.Entites[:0] //should I sort once or on every frame ?
+			p.DrawFunc(r, p, p.Entites)
+			p.Entites = p.Entites[:0]
 		}
 	}
 }

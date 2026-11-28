@@ -84,6 +84,7 @@ func (g *Engine) Update(dt float64) {
 	}
 	g.ForceRegistry.Update(g.RenderManager.World, float32(dt))
 	yphy.IntegrateParticles(g.RenderManager.World, float32(dt))
+	yphy.IntegrateRigidBodies(g.RenderManager.World, float32(dt))
 	ycore.UpdateMovement(g.RenderManager.World, float32(dt))
 	ycore.UpdateTranform(g.RenderManager.World)
 	ycore.UpdateAnimation(g.RenderManager.World, float32(dt))

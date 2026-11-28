@@ -116,14 +116,13 @@ func (track *Track[T]) GetT(dt float32, repeat bool) (float32, int, int) {
 }
 
 type Sampler struct {
-	Id           int
-	PlaybackTime float32
-	Flag         uint32
-	Repeat       bool
-	TimeStamps   []float32
-	rotation     Track[y3d.Quaternion]
-	translation  Track[y3d.Vec3]
-	scale        Track[y3d.Vec3]
+	Id          int
+	Flag        uint32
+	Repeat      bool
+	TimeStamps  []float32
+	rotation    Track[y3d.Quaternion]
+	translation Track[y3d.Vec3]
+	scale       Track[y3d.Vec3]
 
 	OutRotation    y3d.Quaternion
 	OutTranslation y3d.Vec3

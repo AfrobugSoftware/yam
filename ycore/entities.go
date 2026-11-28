@@ -12,7 +12,7 @@ func AddEntityRenderableData(
 	world *ywd.World,
 	ent ywd.EntityId,
 	vertexType string,
-	scale float32,
+	scale y3d.Vec3,
 	v, i, p *bytes.Buffer, vm *VertexCacheManager) error {
 	cmd := DrawCommand{}
 	vid, err := vm.LoadCache(vertexType, v, i, p, &cmd)
@@ -32,7 +32,7 @@ func AddEntityRenderableData(
 	box := yphy.BoundBox(int(stride), int(format[0].RelativeOffset), v, i)
 	world.AddComponent(ent, ywd.BoundingBoxComponent, box)
 	world.AddComponent(ent, ywd.RenderableComponent, renderable)
-	world.AddComponent(ent, ywd.ScaleComponent, y3d.Vec3{X: scale, Y: scale, Z: scale})
+	world.AddComponent(ent, ywd.ScaleComponent, scale)
 	return nil
 }
 

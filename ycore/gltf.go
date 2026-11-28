@@ -626,11 +626,17 @@ func ProcessNode(world *ywd.World, node *gltf.Node,
 			Z: float32(node.Rotation[2]),
 			W: float32(node.Rotation[3]),
 		}
+
+		scale := y3d.Vec3{
+			X: float32(node.Scale[0]),
+			Y: float32(node.Scale[1]),
+			Z: float32(node.Scale[2]),
+		}
 		err := AddEntityRenderableData(
 			world,
 			ynode,
 			vertexType,
-			1.0,
+			scale,
 			v, i, p,
 			r.VertextManager,
 		)

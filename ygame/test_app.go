@@ -51,6 +51,12 @@ func (t *TestApplication) Startup(e *Engine) {
 	if err != nil {
 		panic(err)
 	}
+	// err = ycore.LoadGLTF("assets/gltf/Fox.glb",
+	// 	t.engine.RenderManager,
+	// 	t.engine.Level.World)
+	// if err != nil {
+	// 	panic(err)
+	// }
 	t.forceRegistry = yphy.NewForceRegistry()
 	t.camPostiion.Y = 1
 	t.yaw = float32(y3d.ToRadians(90))
@@ -171,25 +177,25 @@ func (t *TestApplication) LevelTest() {
 
 	v, i := ygl.CreateSphere(64, 36, 1.0)
 	err := ycore.AddEntityRenderableData(t.engine.Level.World, ent,
-		ycore.VPNTC, 1.0, v, i, nil, t.engine.RenderManager.VertextManager)
+		ycore.VPNTC, y3d.Vec3{X: 1.0, Y: 1.0, Z: 1.0}, v, i, nil, t.engine.RenderManager.VertextManager)
 	if err != nil {
 		panic(err)
 	}
 	t.sphereEnt = ent
 	v2, i2 := ygl.CreateCube()
 	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent3,
-		ycore.VPNTC, 1.0, v2, i2, nil, t.engine.RenderManager.VertextManager)
+		ycore.VPNTC, y3d.Vec3{X: 1.0, Y: 1.0, Z: 1.0}, v2, i2, nil, t.engine.RenderManager.VertextManager)
 	if err != nil {
 		panic(err)
 	}
 	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent2,
-		ycore.VPNTC, 1.0, v, i, nil, t.engine.RenderManager.VertextManager)
+		ycore.VPNTC, y3d.Vec3{X: 1.0, Y: 1.0, Z: 1.0}, v, i, nil, t.engine.RenderManager.VertextManager)
 	if err != nil {
 		panic(err)
 	}
 	v, i = ygl.CreateQuad()
 	err = ycore.AddEntityRenderableData(t.engine.Level.World, ent4,
-		ycore.VPNTC, 1.0, v, i, nil, t.engine.RenderManager.VertextManager)
+		ycore.VPNTC, y3d.Vec3{X: 1.0, Y: 1.0, Z: 1.0}, v, i, nil, t.engine.RenderManager.VertextManager)
 	if err != nil {
 		panic(err)
 	}
@@ -217,6 +223,7 @@ func (t *TestApplication) Update(deltaTime float64) {
 	t.ProcessInput(float32(deltaTime))
 
 	t.UpdatePickedEntity()
+	t.Scale()
 	t.AddBox()
 	t.AddSphere()
 	t.ShotBullet()
@@ -303,6 +310,7 @@ func (t *TestApplication) CreateGroundPlane() {
 	w.AddComponent(ie1, ywd.OrientationComponent, y3d.IdenQuat())
 	w.AddComponent(ie1, ywd.VelocityComponent, y3d.Vec3{})
 	w.AddComponent(ie1, ywd.InverseMassComponent, float32(0.0))
+	w.AddComponent(ie1, ywd.AccelerationComponent, y3d.Vec3{})
 	w.AddComponent(ie1, ywd.ColliderComponent, yphy.Plane{
 		Local: y3d.PlaneFromPointNormal(y3d.ZEROV3, y3d.UNIT_Y),
 		World: y3d.PlaneFromPointNormal(y3d.ZEROV3, y3d.UNIT_Y),
@@ -380,6 +388,22 @@ func (t *TestApplication) ShotBullet() {
 	}
 }
 
+func (t *TestApplication) Scale() {
+	im := t.engine.InputManager
+	w := t.engine.Level.World
+	if t.pickedEntity != ywd.NullEntity {
+		scale := w.GetComponent(t.pickedEntity, ywd.ScaleComponent).(y3d.Vec3)
+		if im.GetKeyState(sdl.SCANCODE_KP_PLUS) == ycore.BUTTON_PRESSED {
+			scale = y3d.Add(scale, y3d.Vec3{X: 0.25, Y: 0.25, Z: 0.25})
+		}
+		if im.GetKeyState(sdl.SCANCODE_KP_MINUS) == ycore.BUTTON_PRESSED {
+			scale = y3d.Sub(scale, y3d.Vec3{X: 0.25, Y: 0.25, Z: 0.25})
+			//need to clamp to zero if not itwould shear or flip
+		}
+		w.SetComponent(t.pickedEntity, ywd.ScaleComponent, scale)
+	}
+}
+
 func (t *TestApplication) UpdatePickedEntity() {
 	if t.pickedEntity == ywd.NullEntity {
 		return
@@ -396,11 +420,19 @@ func (t *TestApplication) UpdatePickedEntity() {
 	if im.GetKeyState(sdl.SCANCODE_S) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_S) == ycore.BUTTON_HELD {
 		m.ForwardSpeed = -speed
 	}
-	m.RotSpeedPitch = 0
+
+	m.RightSpeed = 0
 	if im.GetKeyState(sdl.SCANCODE_A) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_A) == ycore.BUTTON_HELD {
-		m.RotSpeedPitch = speed
+		m.RightSpeed = -speed
 	}
 	if im.GetKeyState(sdl.SCANCODE_D) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_D) == ycore.BUTTON_HELD {
+		m.RightSpeed = speed
+	}
+	m.RotSpeedPitch = 0
+	if im.GetKeyState(sdl.SCANCODE_U) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_U) == ycore.BUTTON_HELD {
+		m.RotSpeedPitch = speed
+	}
+	if im.GetKeyState(sdl.SCANCODE_Y) == ycore.BUTTON_PRESSED || im.GetKeyState(sdl.SCANCODE_Y) == ycore.BUTTON_HELD {
 		m.RotSpeedPitch = -speed
 	}
 	m.RotSpeedRoll = 0

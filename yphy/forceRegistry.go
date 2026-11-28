@@ -2,7 +2,6 @@ package yphy
 
 import (
 	"slices"
-	"yam/y3d"
 	"yam/ywd"
 )
 
@@ -40,10 +39,7 @@ func (r *ForceRegistry) Update(w *ywd.World, dt float32) {
 	})
 	for _, e := range r.Register {
 		if w.HasComponent(e.Entity, ywd.ForceComponent) {
-			force := w.GetComponent(e.Entity, ywd.ForceComponent).(y3d.Vec3)
-			newForce := e.ForceGen.Force(w, e.Entity, dt)
-			force = y3d.Add(force, newForce)
-			w.SetComponent(e.Entity, ywd.ForceComponent, force)
+			e.ForceGen.Force(w, e.Entity, dt)
 		}
 	}
 }
