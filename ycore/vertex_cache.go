@@ -94,6 +94,7 @@ type VertexCache struct {
 	DrawMode          uint32
 	Id                int
 	Textures          []uint32
+	Samplers          []int32
 	Units             int32
 	Format            []VertexFormat
 	SkinManager       *TextureManager
@@ -205,6 +206,7 @@ func NewVertexCache(
 		VManager:        vertexManger,
 		Format:          format,
 		Textures:        make([]uint32, 0, uints),
+		Samplers:        make([]int32, 0, uints),
 		Units:           uints,
 	}
 
@@ -451,14 +453,11 @@ func (v *VertexCache) AddTexture(texId uint32) (int, error) {
 }
 
 func (v *VertexCache) BindTextures() {
-	samplers := make([]int32, v.Units)
-	for i := range v.Units {
-		samplers[i] = i
-	}
-	gl.Uniform1iv(TEXTURE_UNITS_BINDING, int32(len(samplers)), &samplers[0])
 	for i, t := range v.Textures {
+		v.Samplers = append(v.Samplers, int32(i))
 		gl.BindTextureUnit(uint32(i), t)
 	}
+	gl.Uniform1iv(TEXTURE_UNITS_BINDING, int32(len(v.Samplers)), &v.Samplers[0])
 }
 
 func (v *VertexCache) DrawCache() {
@@ -490,6 +489,7 @@ func (v *VertexCache) DrawCache() {
 		v.NumOfInstances = 0
 		v.NumOfPbrMaterials = 0
 		v.Textures = v.Textures[:0]
+		v.Samplers = v.Samplers[:0]
 	}
 }
 
